@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import uuid
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -130,6 +131,44 @@ class RsReport(models.Model):
         self.current_version_id = version
         self._ensure_report_action(report_key)
         return version
+
+    def _render_preview_pdf(self, definition, res_id):
+        """Renderizza un PDF di anteprima da una definizione non ancora salvata.
+
+        Crea vista e azione temporanee e le elimina sempre al termine, anche
+        in caso di errore. Il chiamante deve aver già verificato i permessi
+        di lettura sul record.
+        """
+        self.ensure_one()
+        key = "report_studio.preview_%s_%s" % (self.id, uuid.uuid4().hex)
+        try:
+            arch = compile_definition(
+                definition or EMPTY_DEFINITION,
+                self.model_id.model,
+                key,
+                resolver=self._resolve_field,
+            )
+        except CompileError as exc:
+            raise UserError(_("Definizione del report non valida: %s") % exc)
+
+        view = self.env["ir.ui.view"].sudo().create({
+            "name": "%s - anteprima" % self.name,
+            "type": "qweb",
+            "key": key,
+            "arch": arch,
+        })
+        action = self.env["ir.actions.report"].sudo().create({
+            "name": "%s - anteprima" % self.name,
+            "model": self.model_id.model,
+            "report_type": "qweb-pdf",
+            "report_name": key,
+        })
+        try:
+            pdf, _fmt = action._render_qweb_pdf(key, res_ids=[res_id])
+            return pdf
+        finally:
+            action.unlink()
+            view.unlink()
 
     def action_restore_version(self, version):
         """Ripristina una versione creando una nuova versione copiata da essa."""

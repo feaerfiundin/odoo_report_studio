@@ -51,3 +51,8 @@ class TestRsReport(TransactionCase):
         }]}
         with self.assertRaises(UserError):
             self.report._create_version(json.dumps(bad))
+
+    def test_preview_rejects_invalid_definition_before_rendering(self):
+        bad = {"type": "page", "children": [{"type": "field", "path": "campo_inesistente"}]}
+        with self.assertRaises(UserError):
+            self.report._render_preview_pdf(json.dumps(bad), res_id=1)
