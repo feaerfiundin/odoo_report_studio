@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_studio_editor" model="ir.actions.client">
+        <field name="name">Report Studio</field>
+        <field name="tag">report_studio.editor</field>
+    </record>
+
+    <menuitem id="menu_report_studio_root"
+              name="Report Studio"
+              parent="base.menu_reporting"
+              action="action_report_studio_editor"
+              sequence="90"
+              groups="report_studio.group_rs_viewer"/>
+</odoo>

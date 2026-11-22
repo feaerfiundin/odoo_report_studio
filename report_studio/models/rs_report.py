@@ -206,6 +206,22 @@ class RsReport(models.Model):
             "model_id": self.model_id.id,
         })
 
+    # Metodi pubblici chiamati dall'editor (ORM call, restituiscono id).
+
+    def action_save_version(self, definition, comment=False):
+        self.ensure_one()
+        return self._create_version(definition, comment=comment).id
+
+    def restore_version_by_id(self, version_id):
+        self.ensure_one()
+        version = self.env["rs.report.version"].browse(version_id)
+        return self.action_restore_version(version).id
+
+    def copy_version_by_id(self, version_id, name=None):
+        self.ensure_one()
+        version = self.env["rs.report.version"].browse(version_id)
+        return self.action_copy_version_to_new_report(version, name=name).id
+
     def action_restore_version(self, version):
         """Ripristina una versione creando una nuova versione copiata da essa."""
         self.ensure_one()

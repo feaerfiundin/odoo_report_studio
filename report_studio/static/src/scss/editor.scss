@@ -1,0 +1,28 @@
+.o_rs_editor {
+    .o_rs_block {
+        padding: 2px 6px;
+        margin: 2px 0;
+        border-left: 3px solid transparent;
+        cursor: pointer;
+        font-size: 0.9rem;
+
+        &.o_rs_selected {
+            border-left-color: $primary;
+            background: rgba($primary, 0.08);
+        }
+    }
+
+    .o_rs_children {
+        margin-left: 14px;
+    }
+
+    .o_rs_tree,
+    .o_rs_props,
+    .o_rs_palette {
+        min-height: 0;
+    }
+
+    .o_rs_tree {
+        width: 300px;
+    }
+}

@@ -1,0 +1,386 @@
+/** @odoo-module **/
+import { Component, useState, onWillStart } from "@odoo/owl";
+import { registry } from "@web/core/registry";
+import { useService } from "@web/core/utils/hooks";
+
+const BLOCK_TYPES = [
+    ["section", "Sezione"],
+    ["text", "Testo"],
+    ["field", "Campo"],
+    ["table", "Tabella"],
+    ["if", "Condizione"],
+];
+
+let uidCounter = 0;
+const nextUid = () => ++uidCounter;
+
+function defaultBlock(type) {
+    const base = { _uid: nextUid(), type };
+    switch (type) {
+        case "section":
+            return { ...base, class: "", children: [] };
+        case "text":
+            return { ...base, content: "Testo", class: "" };
+        case "field":
+            return { ...base, path: "" };
+        case "table":
+            return { ...base, source: "", columns: [{ _uid: nextUid(), path: "", label: "" }] };
+        case "if":
+            return { ...base, path: "", op: "==", value: "", children: [] };
+    }
+    return base;
+}
+
+// Aggiunge _uid a tutti i blocchi e alle colonne, per l'editor.
+function withUids(block) {
+    const copy = { ...block, _uid: nextUid() };
+    if (Array.isArray(block.children)) copy.children = block.children.map(withUids);
+    if (Array.isArray(block.columns)) {
+        copy.columns = block.columns.map((c) => ({ ...c, _uid: nextUid() }));
+    }
+    return copy;
+}
+
+// Converte il testo di un valore di confronto in letterale scalare.
+function parseLiteral(text) {
+    if (text === "" || text === null || text === undefined) return null;
+    if (text === "true") return true;
+    if (text === "false") return false;
+    if (text === "null") return null;
+    if (!isNaN(Number(text))) return Number(text);
+    return String(text);
+}
+
+// Rimuove gli _uid e normalizza i valori prima dell'invio al server.
+function cleanBlock(block) {
+    const { _uid, ...rest } = block;
+    const out = { ...rest };
+    if (Array.isArray(block.children)) out.children = block.children.map(cleanBlock);
+    if (Array.isArray(block.columns)) {
+        out.columns = block.columns.map(({ _uid: _c, ...col }) => col);
+    }
+    if (block.type === "if") out.value = parseLiteral(block.value);
+    return out;
+}
+
+function cleanDefinition(definition) {
+    return { layout: definition.layout, children: definition.children.map(cleanBlock) };
+}
+
+// Cerca un blocco per _uid e ritorna il nodo, la lista che lo contiene e l'indice.
+function findNode(children, target) {
+    for (let index = 0; index < children.length; index++) {
+        const node = children[index];
+        if (node._uid === target) return { node, list: children, index };
+        if (node.children) {
+            const found = findNode(node.children, target);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// Nodo ricorsivo dell'albero dei blocchi.
+class BlockNode extends Component {
+    static template = "report_studio.BlockNode";
+    static props = { node: Object, selectedUid: { type: [Number, { value: null }] }, onSelect: Function };
+
+    get label() {
+        const n = this.props.node;
+        switch (n.type) {
+            case "section":
+                return "Sezione";
+            case "text":
+                return `Testo: ${n.content}`;
+            case "field":
+                return `Campo: ${n.path}`;
+            case "table":
+                return `Tabella: ${n.source}`;
+            case "if":
+                return `Se ${n.path} ${n.op} ${n.value}`;
+        }
+        return n.type;
+    }
+
+    onClick(ev) {
+        ev.stopPropagation();
+        this.props.onSelect(this.props.node._uid);
+    }
+}
+BlockNode.components = { BlockNode };
+
+export class ReportStudioEditor extends Component {
+    static template = "report_studio.Editor";
+    static components = { BlockNode };
+    static props = ["*"];
+
+    setup() {
+        this.orm = useService("orm");
+        this.notification = useService("notification");
+        this.blockTypes = BLOCK_TYPES;
+        this.state = useState({
+            reports: [],
+            reportId: false,
+            reportName: "",
+            modelName: "",
+            definition: { layout: "basic", children: [] },
+            selectedUid: null,
+            fieldCache: {},
+            fields: [],
+            versions: [],
+            records: [],
+            recordId: false,
+            comment: "",
+            copyName: "",
+            newName: "",
+            newModel: "",
+            previewUrl: null,
+            dirty: false,
+        });
+        onWillStart(() => this.loadReports());
+    }
+
+    // ----- caricamento -----
+
+    async loadReports() {
+        this.state.reports = await this.orm.searchRead(
+            "rs.report", [], ["name", "model_id", "current_version_id"], { order: "name" }
+        );
+        if (!this.state.reportId && this.state.reports.length) {
+            await this.selectReport(this.state.reports[0].id);
+        }
+    }
+
+    async selectReport(reportId) {
+        if (!reportId) return;
+        const [report] = await this.orm.read(
+            "rs.report", [reportId], ["name", "model_id", "current_version_id"]
+        );
+        const [model] = await this.orm.searchRead(
+            "ir.model", [["id", "=", report.model_id[0]]], ["model"]
+        );
+        this.state.reportId = reportId;
+        this.state.reportName = report.name;
+        this.state.modelName = model.model;
+        await this.loadFields(model.model);
+        await this.loadVersions();
+        const [version] = await this.orm.read(
+            "rs.report.version", [report.current_version_id[0]], ["definition"]
+        );
+        const parsed = JSON.parse(version.definition);
+        this.state.definition = {
+            layout: parsed.layout || "basic",
+            children: (parsed.children || []).map(withUids),
+        };
+        this.state.selectedUid = null;
+        this.state.previewUrl = null;
+        this.state.dirty = false;
+        await this.loadRecords();
+    }
+
+    async loadFields(model) {
+        if (!this.state.fieldCache[model]) {
+            this.state.fieldCache[model] = await this.orm.searchRead(
+                "ir.model.fields", [["model", "=", model]], ["name", "ttype", "relation"]
+            );
+        }
+        this.state.fields = this.state.fieldCache[model];
+    }
+
+    async loadVersions() {
+        this.state.versions = await this.orm.searchRead(
+            "rs.report.version",
+            [["report_id", "=", this.state.reportId]],
+            ["version_no", "comment", "is_active", "user_id"],
+            { order: "version_no desc" }
+        );
+    }
+
+    async loadRecords() {
+        try {
+            this.state.records = await this.orm.searchRead(
+                this.state.modelName, [], ["display_name"], { limit: 50 }
+            );
+        } catch (error) {
+            this.state.records = [];
+        }
+        if (!this.state.records.find((r) => r.id === this.state.recordId)) {
+            this.state.recordId = this.state.records.length ? this.state.records[0].id : false;
+        }
+    }
+
+    // ----- selezione e modifica -----
+
+    get selected() {
+        if (!this.state.selectedUid) return null;
+        const found = findNode(this.state.definition.children, this.state.selectedUid);
+        return found ? found.node : null;
+    }
+
+    get tableColumnFields() {
+        const sel = this.selected;
+        if (!sel || sel.type !== "table") return [];
+        const sourceField = this.state.fields.find((f) => f.name === sel.source);
+        if (!sourceField || !sourceField.relation) return [];
+        return this.state.fieldCache[sourceField.relation] || [];
+    }
+
+    selectBlock(uid) {
+        this.state.selectedUid = uid;
+    }
+
+    markDirty() {
+        this.state.dirty = true;
+    }
+
+    // Il nuovo blocco va nel contenitore selezionato, altrimenti alla radice.
+    onAddBlock(ev) {
+        const type = ev.currentTarget.dataset.type;
+        const block = defaultBlock(type);
+        let target = this.state.definition.children;
+        const sel = this.selected;
+        if (sel) {
+            if (sel.children) {
+                target = sel.children;
+            } else {
+                const found = findNode(this.state.definition.children, sel._uid);
+                target = found.list;
+            }
+        }
+        target.push(block);
+        this.state.selectedUid = block._uid;
+        this.markDirty();
+    }
+
+    onSourceChange(ev) {
+        const sel = this.selected;
+        if (!sel) return;
+        sel.source = ev.target.value;
+        const field = this.state.fields.find((f) => f.name === sel.source);
+        if (field && field.relation) {
+            this.loadFields(field.relation).catch(() => {});
+        }
+        this.markDirty();
+    }
+
+    onAddColumn() {
+        const sel = this.selected;
+        if (!sel || sel.type !== "table") return;
+        sel.columns.push({ _uid: nextUid(), path: "", label: "" });
+        this.markDirty();
+    }
+
+    onRemoveColumn(ev) {
+        const sel = this.selected;
+        if (!sel || sel.type !== "table") return;
+        const uid = parseInt(ev.currentTarget.dataset.uid);
+        sel.columns = sel.columns.filter((c) => c._uid !== uid);
+        this.markDirty();
+    }
+
+    onMove(ev) {
+        const direction = parseInt(ev.currentTarget.dataset.dir);
+        const found = findNode(this.state.definition.children, this.state.selectedUid);
+        if (!found) return;
+        const target = found.index + direction;
+        if (target < 0 || target >= found.list.length) return;
+        [found.list[found.index], found.list[target]] = [found.list[target], found.list[found.index]];
+        this.markDirty();
+    }
+
+    onDelete() {
+        const found = findNode(this.state.definition.children, this.state.selectedUid);
+        if (!found) return;
+        found.list.splice(found.index, 1);
+        this.state.selectedUid = null;
+        this.markDirty();
+    }
+
+    // ----- azioni sul report -----
+
+    async onReportChange(ev) {
+        await this.selectReport(parseInt(ev.target.value));
+    }
+
+    async onRecordChange(ev) {
+        this.state.recordId = parseInt(ev.target.value);
+    }
+
+    async saveVersion() {
+        try {
+            await this.orm.call("rs.report", "action_save_version", [[this.state.reportId]], {
+                definition: JSON.stringify(cleanDefinition(this.state.definition)),
+                comment: this.state.comment || false,
+            });
+            this.state.comment = "";
+            this.state.dirty = false;
+            await this.loadVersions();
+            this.notification.add("Versione salvata", { type: "success" });
+        } catch (error) {
+            this.notification.add(error.message?.message || "Salvataggio non riuscito", { type: "danger" });
+        }
+    }
+
+    async preview() {
+        const body = new FormData();
+        body.append("report_id", this.state.reportId);
+        body.append("res_id", this.state.recordId);
+        body.append("definition", JSON.stringify(cleanDefinition(this.state.definition)));
+        body.append("csrf_token", odoo.csrf_token);
+        const response = await fetch("/report_studio/preview", { method: "POST", body });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            this.notification.add(err.error || "Anteprima non riuscita", { type: "danger" });
+            return;
+        }
+        const blob = await response.blob();
+        if (this.state.previewUrl) URL.revokeObjectURL(this.state.previewUrl);
+        this.state.previewUrl = URL.createObjectURL(blob);
+    }
+
+    async restoreVersion(ev) {
+        const versionId = parseInt(ev.currentTarget.dataset.id);
+        await this.orm.call("rs.report", "restore_version_by_id", [[this.state.reportId], versionId]);
+        await this.selectReport(this.state.reportId);
+        this.notification.add("Versione ripristinata come nuova versione", { type: "success" });
+    }
+
+    async copyVersion(ev) {
+        const versionId = parseInt(ev.currentTarget.dataset.id);
+        const name = this.state.copyName || `${this.state.reportName} (copia)`;
+        const newId = await this.orm.call(
+            "rs.report", "copy_version_by_id", [[this.state.reportId], versionId, name]
+        );
+        this.state.copyName = "";
+        await this.loadReports();
+        await this.selectReport(newId);
+        this.notification.add("Nuovo report creato dalla copia", { type: "success" });
+    }
+
+    async archiveReport() {
+        await this.orm.write("rs.report", [this.state.reportId], { active: false });
+        this.state.reportId = false;
+        this.notification.add("Report archiviato", { type: "info" });
+        await this.loadReports();
+    }
+
+    async createReport() {
+        if (!this.state.newName || !this.state.newModel) return;
+        const [model] = await this.orm.searchRead(
+            "ir.model", [["model", "=", this.state.newModel]], ["id"]
+        );
+        if (!model) {
+            this.notification.add("Modello tecnico non trovato", { type: "danger" });
+            return;
+        }
+        const [newId] = await this.orm.create("rs.report", [
+            { name: this.state.newName, model_id: model.id },
+        ]);
+        this.state.newName = "";
+        this.state.newModel = "";
+        await this.loadReports();
+        await this.selectReport(newId);
+    }
+}
+
+registry.category("actions").add("report_studio.editor", ReportStudioEditor);
