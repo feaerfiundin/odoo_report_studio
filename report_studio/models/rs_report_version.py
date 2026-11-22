@@ -4,11 +4,11 @@ import json
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-IMMUTABLE_FIELDS = {"report_id", "version_no", "definition", "comment"}
+IMMUTABLE_FIELDS = {"report_id", "version_no", "definition", "comment", "arch", "view_id"}
 
 
 class RsReportVersion(models.Model):
-    """Snapshot immutabile della definizione di un report.
+    """Snapshot immutabile di un report: definizione JSON, template QWeb e vista.
 
     Una volta creata, la versione non può essere modificata: le modifiche
     producono una nuova versione tramite rs.report._create_version().
@@ -25,6 +25,16 @@ class RsReportVersion(models.Model):
     definition = fields.Text(
         required=True,
         help="Definizione JSON dei blocchi del report.",
+    )
+    arch = fields.Text(
+        readonly=True,
+        help="Template QWeb generato dalla definizione.",
+    )
+    view_id = fields.Many2one(
+        "ir.ui.view",
+        string="Vista QWeb",
+        readonly=True,
+        ondelete="restrict",
     )
     comment = fields.Char(string="Commento")
     user_id = fields.Many2one(
