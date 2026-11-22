@@ -86,9 +86,9 @@ class RsReport(models.Model):
         """Crea l'azione di stampa al primo uso, poi punta sempre alla versione attiva."""
         self.ensure_one()
         if self.action_id:
-            self.action_id.write({"report_name": report_key})
+            self.action_id.sudo().write({"report_name": report_key})
             return
-        action = self.env["ir.actions.report"].create({
+        action = self.env["ir.actions.report"].sudo().create({
             "name": self.name,
             "model": self.model_id.model,
             "report_type": "qweb-pdf",
@@ -101,6 +101,7 @@ class RsReport(models.Model):
     def _create_version(self, definition, comment=False):
         """Compila la definizione, crea una nuova versione immutabile e la rende attiva."""
         self.ensure_one()
+        self.check_access_rights("write")
         definition = definition or EMPTY_DEFINITION
         next_no = max(self.version_ids.mapped("version_no"), default=0) + 1
         report_key = "report_studio.rs_report_%s_v%s" % (self.id, next_no)
@@ -112,7 +113,7 @@ class RsReport(models.Model):
         except CompileError as exc:
             raise UserError(_("Definizione del report non valida: %s") % exc)
 
-        view = self.env["ir.ui.view"].create({
+        view = self.env["ir.ui.view"].sudo().create({
             "name": "%s - v%s" % (self.name, next_no),
             "type": "qweb",
             "key": report_key,

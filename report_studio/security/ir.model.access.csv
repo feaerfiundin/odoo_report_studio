@@ -1,3 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_rs_report_manager,rs.report manager,model_rs_report,base.group_system,1,1,1,1
-access_rs_report_version_manager,rs.report.version manager,model_rs_report_version,base.group_system,1,0,1,0
+access_rs_report_system,rs.report system,model_rs_report,base.group_system,1,1,1,1
+access_rs_report_version_system,rs.report.version system,model_rs_report_version,base.group_system,1,0,1,0
+access_rs_report_viewer,rs.report viewer,model_rs_report,group_rs_viewer,1,0,0,0
+access_rs_report_version_viewer,rs.report.version viewer,model_rs_report_version,group_rs_viewer,1,0,0,0
+access_rs_report_editor,rs.report editor,model_rs_report,group_rs_editor,1,1,1,0
+access_rs_report_version_editor,rs.report.version editor,model_rs_report_version,group_rs_editor,1,0,1,0

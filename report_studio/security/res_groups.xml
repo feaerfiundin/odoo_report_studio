@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Categoria di privilegio: compare come menu a tendina con voce vuota
+         nella scheda Diritti di accesso dell'utente. -->
+    <record id="module_category_report_studio" model="ir.module.category">
+        <field name="name">Report Studio</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <record id="privilege_report_studio" model="res.groups.privilege">
+        <field name="name">Report Studio</field>
+        <field name="category_id" ref="module_category_report_studio"/>
+        <field name="sequence">100</field>
+    </record>
+
+    <!-- Utente: può stampare i report, nessun accesso al designer. -->
+    <record id="group_rs_user" model="res.groups">
+        <field name="name">Utente</field>
+        <field name="privilege_id" ref="privilege_report_studio"/>
+    </record>
+
+    <!-- Visualizzatore: vede il designer, lo storico e l'anteprima, senza modificare. -->
+    <record id="group_rs_viewer" model="res.groups">
+        <field name="name">Visualizzatore</field>
+        <field name="privilege_id" ref="privilege_report_studio"/>
+        <field name="implied_ids" eval="[(4, ref('group_rs_user'))]"/>
+    </record>
+
+    <!-- Editor: crea report e nuove versioni, ripristina versioni precedenti. -->
+    <record id="group_rs_editor" model="res.groups">
+        <field name="name">Editor</field>
+        <field name="privilege_id" ref="privilege_report_studio"/>
+        <field name="implied_ids" eval="[(4, ref('group_rs_viewer'))]"/>
+    </record>
+
+    <!-- Amministratore: per ora gli stessi permessi dell'Editor; i compiti
+         specifici vanno ancora definiti. -->
+    <record id="group_rs_manager" model="res.groups">
+        <field name="name">Amministratore</field>
+        <field name="privilege_id" ref="privilege_report_studio"/>
+        <field name="implied_ids" eval="[(4, ref('group_rs_editor'))]"/>
+    </record>
+</odoo>
