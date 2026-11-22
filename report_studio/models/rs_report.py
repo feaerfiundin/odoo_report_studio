@@ -59,9 +59,26 @@ class RsReport(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         reports = super().create(vals_list)
+        definition = self.env.context.get("rs_initial_definition") or EMPTY_DEFINITION
+        comment = self.env.context.get("rs_initial_comment") or _("Versione iniziale")
         for report in reports:
-            report._create_version(EMPTY_DEFINITION, comment="Versione iniziale")
+            report._create_version(definition, comment=comment)
         return reports
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "active" in vals:
+            # Un report archiviato non deve comparire nei menu di stampa.
+            for report in self.filtered("action_id"):
+                report.action_id.sudo().binding_model_id = (
+                    report.model_id.id if report.active else False
+                )
+        return result
+
+    def _check_model_access(self):
+        """L'utente può lavorare sui report solo dei modelli che può leggere."""
+        self.ensure_one()
+        self.env[self.model_id.model].check_access_rights("read")
 
     def _resolve_field(self, model_name, path):
         """Ritorna (tipo, modello_relazione) per un percorso di campo, None se non valido."""
@@ -102,6 +119,7 @@ class RsReport(models.Model):
         """Compila la definizione, crea una nuova versione immutabile e la rende attiva."""
         self.ensure_one()
         self.check_access_rights("write")
+        self._check_model_access()
         definition = definition or EMPTY_DEFINITION
         next_no = max(self.version_ids.mapped("version_no"), default=0) + 1
         report_key = "report_studio.rs_report_%s_v%s" % (self.id, next_no)
@@ -170,6 +188,23 @@ class RsReport(models.Model):
         finally:
             action.unlink()
             view.unlink()
+
+    def action_copy_version_to_new_report(self, version, name=None):
+        """Crea un nuovo report con la definizione di una versione, senza storico.
+
+        Il nuovo report parte dalla versione 1 e non eredita le versioni
+        precedenti dell'originale.
+        """
+        self.ensure_one()
+        if version.report_id != self:
+            raise UserError(_("La versione non appartiene a questo report."))
+        return self.with_context(
+            rs_initial_definition=version.definition,
+            rs_initial_comment=_("Copia da %s, versione %s") % (self.name, version.version_no),
+        ).create({
+            "name": name or _("%s (copia)") % self.name,
+            "model_id": self.model_id.id,
+        })
 
     def action_restore_version(self, version):
         """Ripristina una versione creando una nuova versione copiata da essa."""
