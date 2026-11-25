@@ -160,7 +160,7 @@ export class ReportStudioApp extends Component {
         this.state.reports = await this.orm.searchRead(
             "rs.report",
             [["active", "=", true]],
-            ["name", "model_id", "mode", "write_date"],
+            ["name", "model_id", "report_mode", "write_date"],
             { order: "write_date desc" }
         );
     }
@@ -279,7 +279,7 @@ export class ReportStudioApp extends Component {
 
     async selectReport(reportId) {
         const [report] = await this.orm.read(
-            "rs.report", [reportId], ["name", "model_id", "current_version_id", "mode"]
+            "rs.report", [reportId], ["name", "model_id", "current_version_id", "report_mode"]
         );
         const [model] = await this.orm.searchRead(
             "ir.model", [["id", "=", report.model_id[0]]], ["model"]
@@ -287,7 +287,7 @@ export class ReportStudioApp extends Component {
         this.state.reportId = reportId;
         this.state.reportName = report.name;
         this.state.modelName = model.model;
-        this.state.mode = report.mode;
+        this.state.mode = report.report_mode;
         await this.loadFields(model.model);
         await this.loadVersions();
         const [version] = await this.orm.read(

@@ -25,7 +25,7 @@ class RsReport(models.Model):
 
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
-    mode = fields.Selection(
+    report_mode = fields.Selection(
         [("blocks", "Blocchi"), ("qweb", "QWeb libero")],
         default="blocks",
         required=True,
@@ -250,7 +250,7 @@ class RsReport(models.Model):
         model = self.env["ir.model"]._get(model_name)
         if not model:
             raise UserError(_("Modello %s non trovato.") % model_name)
-        return self.create({"name": name, "model_id": model.id, "mode": "blocks"}).id
+        return self.create({"name": name, "model_id": model.id, "report_mode": "blocks"}).id
 
     @api.model
     def create_from_source(self, name, source_key):
@@ -264,7 +264,7 @@ class RsReport(models.Model):
                 raise UserError(_("Report di partenza non trovato."))
             definition = source.current_version_id.definition
             model_name = source.model_id.model
-            mode = source.mode
+            mode = source.report_mode
             comment = _("Copia da %s") % source.name
         elif kind == "action":
             action = self.env["ir.actions.report"].browse(int(raw_id)).exists()
@@ -287,7 +287,7 @@ class RsReport(models.Model):
         return self.with_context(
             rs_initial_definition=definition,
             rs_initial_comment=comment,
-        ).create({"name": name, "model_id": model.id, "mode": mode}).id
+        ).create({"name": name, "model_id": model.id, "report_mode": mode}).id
 
     def action_copy_version_to_new_report(self, version, name=None):
         """Crea un nuovo report con la definizione di una versione, senza storico.
@@ -304,7 +304,7 @@ class RsReport(models.Model):
         ).create({
             "name": name or _("%s (copia)") % self.name,
             "model_id": self.model_id.id,
-            "mode": self.mode,
+            "report_mode": self.report_mode,
         })
 
     # ----- metodi pubblici chiamati dall'editor (restituiscono id) -----

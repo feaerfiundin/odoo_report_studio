@@ -55,7 +55,7 @@
                                 <tr class="o_rs_row" style="cursor:pointer" t-att-data-id="r.id" t-on-click="onOpenRow">
                                     <td><t t-esc="r.name"/></td>
                                     <td><t t-esc="r.model_id[1]"/></td>
-                                    <td><t t-if="r.mode === 'qweb'">QWeb libero</t><t t-else="">Blocchi</t></td>
+                                    <td><t t-if="r.report_mode === 'qweb'">QWeb libero</t><t t-else="">Blocchi</t></td>
                                     <td><t t-esc="r.write_date"/></td>
                                 </tr>
                             </t>
