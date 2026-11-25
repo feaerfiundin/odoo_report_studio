@@ -61,7 +61,8 @@ def _attr(value):
 
 
 def _css_attr(css_class):
-    if css_class is None:
+    # Nessuna classe: None oppure stringa vuota/solo spazi (default dell'editor).
+    if css_class is None or (isinstance(css_class, str) and not css_class.strip()):
         return ""
     if not isinstance(css_class, str) or not CSS_CLASS_RE.match(css_class):
         raise CompileError("Classe CSS non valida: %r" % (css_class,))

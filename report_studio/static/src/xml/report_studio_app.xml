@@ -169,7 +169,7 @@
                         <div class="o_rs_tree p-2 border-end overflow-auto">
                             <div class="fw-bold mb-1">Flusso</div>
                             <t t-foreach="state.definition.children" t-as="child" t-key="child._uid">
-                                <BlockNode node="child" selectedUid="state.selectedUid" onSelect="selectBlock"/>
+                                <BlockNode node="child" selectedUid="state.selectedUid" onSelect.bind="selectBlock"/>
                             </t>
                         </div>
 

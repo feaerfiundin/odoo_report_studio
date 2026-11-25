@@ -100,6 +100,19 @@ class TestCompiler(unittest.TestCase):
         }])
         self.assertIn("t-if=", xml)
 
+    def test_empty_css_class_means_no_class(self):
+        for empty in ("", "   "):
+            xml = compile_([
+                {"type": "text", "content": "x", "class": empty},
+                {"type": "section", "class": empty, "children": []},
+            ])
+            self.assertIn("<p>x</p>", xml)
+            self.assertNotIn('class=""', xml)
+
+    def test_invalid_css_class_rejected(self):
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "text", "content": "x", "class": '" onload="alert(1)'}])
+
     def test_invalid_path_rejected(self):
         with self.assertRaises(compiler.CompileError):
             compile_([{"type": "field", "path": "__import__"}])
