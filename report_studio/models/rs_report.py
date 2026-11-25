@@ -86,7 +86,7 @@ class RsReport(models.Model):
     def _check_model_access(self):
         """L'utente può lavorare sui report solo dei modelli che può leggere."""
         self.ensure_one()
-        self.env[self.model_id.model].check_access_rights("read")
+        self.env[self.model_id.model].check_access("read")
 
     def _can_edit_qweb(self):
         """Il QWeb libero può eseguire codice sul server: solo gli Amministratori."""
@@ -145,7 +145,7 @@ class RsReport(models.Model):
     def _create_version(self, definition, comment=False):
         """Compila la definizione, crea una nuova versione immutabile e la rende attiva."""
         self.ensure_one()
-        self.check_access_rights("write")
+        self.check_access("write")
         self._check_model_access()
         definition = definition or EMPTY_DEFINITION
         self._check_definition_permission(definition)

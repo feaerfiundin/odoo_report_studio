@@ -26,14 +26,12 @@ class ReportStudioPreview(http.Controller):
             return request.make_json_response({"error": "Report non trovato"}, status=404)
 
         try:
-            report.check_access_rights("read")
-            report.check_access_rule("read")
+            report.check_access("read")
 
             record = request.env[report.model_id.model].browse(res_id)
             if not record.exists():
                 return request.make_json_response({"error": "Record non trovato"}, status=404)
-            record.check_access_rights("read")
-            record.check_access_rule("read")
+            record.check_access("read")
 
             pdf = report._render_preview_pdf(definition, record.id)
         except (AccessError, UserError) as exc:
