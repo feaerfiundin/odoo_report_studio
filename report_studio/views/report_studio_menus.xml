@@ -5,9 +5,9 @@
         <field name="tag">report_studio.editor</field>
     </record>
 
+    <!-- Menu di primo livello: in questa installazione base.menu_reporting non esiste. -->
     <menuitem id="menu_report_studio_root"
               name="Report Studio"
-              parent="base.menu_reporting"
               action="action_report_studio_editor"
               sequence="90"
               groups="report_studio.group_rs_viewer"/>
