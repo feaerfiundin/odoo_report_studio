@@ -177,6 +177,21 @@ def _render_block(block, model, var, depth, ctx):
     raise CompileError("Tipo di blocco sconosciuto: %r" % (btype,))
 
 
+def _compile_qweb(definition, report_key):
+    """Modalità QWeb libero: il template è usato così com'è, con il nome cambiato.
+
+    Il template deve già contenere il proprio layout (es. web.external_layout),
+    come i documenti nativi copiati in Report Studio.
+    """
+    arch = definition.get("arch")
+    if not isinstance(arch, str) or not arch.strip():
+        raise CompileError("Il template QWeb è vuoto")
+    arch, count = re.subn(r't-name="[^"]*"', 't-name="%s"' % report_key, arch, count=1)
+    if count == 0:
+        arch = '<t t-name="%s">%s</t>' % (report_key, arch)
+    return arch
+
+
 def compile_definition(definition, model, report_key, resolver=None):
     """Compila una definizione in un template QWeb completo.
 
@@ -197,7 +212,10 @@ def compile_definition(definition, model, report_key, resolver=None):
     if not isinstance(definition, dict):
         raise CompileError("La definizione deve essere un oggetto JSON")
 
-    layout = definition.get("layout", "basic")
+    if definition.get("mode") == "qweb":
+        return _compile_qweb(definition, report_key)
+
+    layout = definition.get("layout", "external")
     if layout not in LAYOUTS:
         raise CompileError("Layout non ammesso: %r" % (layout,))
 

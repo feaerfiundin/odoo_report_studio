@@ -61,7 +61,7 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('t-name="report_studio.test_v1"', xml)
         self.assertIn('t-call="web.html_container"', xml)
         self.assertIn('t-foreach="docs" t-as="o"', xml)
-        self.assertIn("web.basic_layout", xml)
+        self.assertIn("web.external_layout", xml)  # layout predefinito: quello di Odoo
 
     def test_external_layout(self):
         self.assertIn("web.external_layout", compile_([], layout="external"))
@@ -148,6 +148,25 @@ class TestCompiler(unittest.TestCase):
             block = {"type": "section", "children": [block]}
         with self.assertRaises(compiler.CompileError):
             compile_([block])
+
+
+    def test_qweb_mode_rekeys_template(self):
+        arch = '<t t-name="sale.report_saleorder"><t t-call="web.html_container"/></t>'
+        xml = compiler.compile_definition(
+            {"mode": "qweb", "arch": arch}, "sale.order", "report_studio.test_q1",
+        )
+        self.assertIn('t-name="report_studio.test_q1"', xml)
+        self.assertNotIn("sale.report_saleorder", xml)
+
+    def test_qweb_mode_wraps_fragment(self):
+        xml = compiler.compile_definition(
+            {"mode": "qweb", "arch": "<div>x</div>"}, "sale.order", "report_studio.test_q2",
+        )
+        self.assertIn('<t t-name="report_studio.test_q2"><div>x</div></t>', xml)
+
+    def test_qweb_empty_rejected(self):
+        with self.assertRaises(compiler.CompileError):
+            compiler.compile_definition({"mode": "qweb", "arch": " "}, "sale.order", "report_studio.test_q3")
 
 
 if __name__ == "__main__":

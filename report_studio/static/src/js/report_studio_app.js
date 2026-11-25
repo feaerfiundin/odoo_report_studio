@@ -2,6 +2,7 @@
 import { Component, useState, onWillStart } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 
 const BLOCK_TYPES = [
     ["section", "Sezione"],
@@ -31,7 +32,7 @@ function defaultBlock(type) {
     return base;
 }
 
-// Aggiunge _uid a tutti i blocchi e alle colonne, per l'editor.
+// Aggiunge _uid ai blocchi e alle colonne, solo per l'editor.
 function withUids(block) {
     const copy = { ...block, _uid: nextUid() };
     if (Array.isArray(block.children)) copy.children = block.children.map(withUids);
@@ -41,7 +42,6 @@ function withUids(block) {
     return copy;
 }
 
-// Converte il testo di un valore di confronto in letterale scalare.
 function parseLiteral(text) {
     if (text === "" || text === null || text === undefined) return null;
     if (text === "true") return true;
@@ -51,7 +51,7 @@ function parseLiteral(text) {
     return String(text);
 }
 
-// Rimuove gli _uid e normalizza i valori prima dell'invio al server.
+// Toglie gli _uid e normalizza i valori prima dell'invio al server.
 function cleanBlock(block) {
     const { _uid, ...rest } = block;
     const out = { ...rest };
@@ -64,10 +64,9 @@ function cleanBlock(block) {
 }
 
 function cleanDefinition(definition) {
-    return { layout: definition.layout, children: definition.children.map(cleanBlock) };
+    return { layout: "external", children: definition.children.map(cleanBlock) };
 }
 
-// Cerca un blocco per _uid e ritorna il nodo, la lista che lo contiene e l'indice.
 function findNode(children, target) {
     for (let index = 0; index < children.length; index++) {
         const node = children[index];
@@ -80,7 +79,6 @@ function findNode(children, target) {
     return null;
 }
 
-// Nodo ricorsivo dell'albero dei blocchi.
 class BlockNode extends Component {
     static template = "report_studio.BlockNode";
     static props = { node: Object, selectedUid: { type: [Number, { value: null }] }, onSelect: Function };
@@ -109,21 +107,33 @@ class BlockNode extends Component {
 }
 BlockNode.components = { BlockNode };
 
-export class ReportStudioEditor extends Component {
-    static template = "report_studio.Editor";
+export class ReportStudioApp extends Component {
+    static template = "report_studio.App";
     static components = { BlockNode };
     static props = ["*"];
 
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
+        this.dialog = useService("dialog");
         this.blockTypes = BLOCK_TYPES;
         this.state = useState({
+            // list | new | edit
+            view: "list",
             reports: [],
+            // nuovo report
+            newName: "",
+            newModel: "",
+            newSource: "",
+            models: [],
+            sources: [],
+            // editor
             reportId: false,
             reportName: "",
             modelName: "",
-            definition: { layout: "basic", children: [] },
+            mode: "blocks",
+            qwebText: "",
+            definition: { children: [] },
             selectedUid: null,
             fieldCache: {},
             fields: [],
@@ -132,50 +142,108 @@ export class ReportStudioEditor extends Component {
             recordId: false,
             comment: "",
             copyName: "",
-            newName: "",
-            newModel: "",
             previewUrl: null,
             dirty: false,
         });
-        onWillStart(() => this.loadReports());
+        onWillStart(async () => {
+            await this.loadList();
+            const reportId = this.props.action?.params?.report_id;
+            if (reportId) {
+                await this.openEditor(reportId);
+            }
+        });
     }
 
-    // ----- caricamento -----
+    // ----- elenco -----
 
-    async loadReports() {
+    async loadList() {
         this.state.reports = await this.orm.searchRead(
-            "rs.report", [], ["name", "model_id", "current_version_id"], { order: "name" }
+            "rs.report",
+            [["active", "=", true]],
+            ["name", "model_id", "mode", "write_date"],
+            { order: "write_date desc" }
         );
-        if (!this.state.reportId && this.state.reports.length) {
-            await this.selectReport(this.state.reports[0].id);
+    }
+
+    showList() {
+        this.state.view = "list";
+        this.loadList();
+    }
+
+    async onOpenRow(ev) {
+        await this.openEditor(parseInt(ev.currentTarget.dataset.id));
+    }
+
+    // ----- nuovo report -----
+
+    async openNew() {
+        this.state.newName = "";
+        this.state.newModel = "";
+        this.state.newSource = "";
+        this.state.models = await this.orm.searchRead(
+            "ir.model", [["transient", "=", false]], ["model", "name"], { order: "model" }
+        );
+        this.state.sources = await this.orm.call("rs.report", "get_source_catalog", []);
+        this.state.view = "new";
+    }
+
+    get nativeSources() {
+        return this.state.sources.filter((s) => s.group === "Documenti Odoo");
+    }
+
+    get studioSources() {
+        return this.state.sources.filter((s) => s.group === "Report Studio");
+    }
+
+    onSourceChange(ev) {
+        this.state.newSource = ev.target.value;
+    }
+
+    onOpenVisualEditor() {
+        if (!this.state.newName) {
+            this.notification.add("Inserisci il nome del report", { type: "warning" });
+            return;
+        }
+        if (this.state.newSource) {
+            this.confirmCopy();
+        } else {
+            this.createNew();
         }
     }
 
-    async selectReport(reportId) {
-        if (!reportId) return;
-        const [report] = await this.orm.read(
-            "rs.report", [reportId], ["name", "model_id", "current_version_id"]
-        );
-        const [model] = await this.orm.searchRead(
-            "ir.model", [["id", "=", report.model_id[0]]], ["model"]
-        );
-        this.state.reportId = reportId;
-        this.state.reportName = report.name;
-        this.state.modelName = model.model;
-        await this.loadFields(model.model);
-        await this.loadVersions();
-        const [version] = await this.orm.read(
-            "rs.report.version", [report.current_version_id[0]], ["definition"]
-        );
-        const parsed = JSON.parse(version.definition);
-        this.state.definition = {
-            layout: parsed.layout || "basic",
-            children: (parsed.children || []).map(withUids),
-        };
-        this.state.selectedUid = null;
-        this.state.previewUrl = null;
-        this.state.dirty = false;
-        await this.loadRecords();
+    async createNew() {
+        if (!this.state.newModel) {
+            this.notification.add("Scegli il modello", { type: "warning" });
+            return;
+        }
+        const newId = await this.orm.call("rs.report", "create_new_report", [], {
+            name: this.state.newName,
+            model_name: this.state.newModel,
+        });
+        await this.openEditor(newId);
+    }
+
+    confirmCopy() {
+        this.dialog.add(ConfirmationDialog, {
+            title: "Crea copia editabile",
+            body: "Verrà creata una copia modificabile del documento selezionato, con il suo modello. L'originale non verrà modificato. Vuoi continuare?",
+            confirmLabel: "Crea copia",
+            confirm: async () => {
+                const newId = await this.orm.call("rs.report", "create_from_source", [], {
+                    name: this.state.newName,
+                    source_key: this.state.newSource,
+                });
+                await this.openEditor(newId);
+            },
+            cancel: () => {},
+        });
+    }
+
+    // ----- editor -----
+
+    async openEditor(reportId) {
+        await this.selectReport(reportId);
+        this.state.view = "edit";
     }
 
     async loadFields(model) {
@@ -209,7 +277,48 @@ export class ReportStudioEditor extends Component {
         }
     }
 
-    // ----- selezione e modifica -----
+    async selectReport(reportId) {
+        const [report] = await this.orm.read(
+            "rs.report", [reportId], ["name", "model_id", "current_version_id", "mode"]
+        );
+        const [model] = await this.orm.searchRead(
+            "ir.model", [["id", "=", report.model_id[0]]], ["model"]
+        );
+        this.state.reportId = reportId;
+        this.state.reportName = report.name;
+        this.state.modelName = model.model;
+        this.state.mode = report.mode;
+        await this.loadFields(model.model);
+        await this.loadVersions();
+        const [version] = await this.orm.read(
+            "rs.report.version", [report.current_version_id[0]], ["definition"]
+        );
+        const parsed = JSON.parse(version.definition);
+        if (parsed.mode === "qweb") {
+            this.state.mode = "qweb";
+            this.state.qwebText = parsed.arch || "";
+            this.state.definition = { children: [] };
+        } else {
+            this.state.definition = { children: (parsed.children || []).map(withUids) };
+        }
+        this.state.selectedUid = null;
+        this.state.previewUrl = null;
+        this.state.dirty = false;
+        await this.loadRecords();
+    }
+
+    backToList() {
+        this.state.view = "list";
+        this.state.previewUrl = null;
+        this.loadList();
+    }
+
+    currentDefinitionJson() {
+        if (this.state.mode === "qweb") {
+            return JSON.stringify({ mode: "qweb", arch: this.state.qwebText });
+        }
+        return JSON.stringify(cleanDefinition(this.state.definition));
+    }
 
     get selected() {
         if (!this.state.selectedUid) return null;
@@ -233,19 +342,13 @@ export class ReportStudioEditor extends Component {
         this.state.dirty = true;
     }
 
-    // Il nuovo blocco va nel contenitore selezionato, altrimenti alla radice.
     onAddBlock(ev) {
         const type = ev.currentTarget.dataset.type;
         const block = defaultBlock(type);
         let target = this.state.definition.children;
         const sel = this.selected;
         if (sel) {
-            if (sel.children) {
-                target = sel.children;
-            } else {
-                const found = findNode(this.state.definition.children, sel._uid);
-                target = found.list;
-            }
+            target = sel.children ? sel.children : findNode(this.state.definition.children, sel._uid).list;
         }
         target.push(block);
         this.state.selectedUid = block._uid;
@@ -296,12 +399,6 @@ export class ReportStudioEditor extends Component {
         this.markDirty();
     }
 
-    // ----- azioni sul report -----
-
-    async onReportChange(ev) {
-        await this.selectReport(parseInt(ev.target.value));
-    }
-
     async onRecordChange(ev) {
         this.state.recordId = parseInt(ev.target.value);
     }
@@ -309,7 +406,7 @@ export class ReportStudioEditor extends Component {
     async saveVersion() {
         try {
             await this.orm.call("rs.report", "action_save_version", [[this.state.reportId]], {
-                definition: JSON.stringify(cleanDefinition(this.state.definition)),
+                definition: this.currentDefinitionJson(),
                 comment: this.state.comment || false,
             });
             this.state.comment = "";
@@ -325,7 +422,7 @@ export class ReportStudioEditor extends Component {
         const body = new FormData();
         body.append("report_id", this.state.reportId);
         body.append("res_id", this.state.recordId);
-        body.append("definition", JSON.stringify(cleanDefinition(this.state.definition)));
+        body.append("definition", this.currentDefinitionJson());
         body.append("csrf_token", odoo.csrf_token);
         const response = await fetch("/report_studio/preview", { method: "POST", body });
         if (!response.ok) {
@@ -352,35 +449,15 @@ export class ReportStudioEditor extends Component {
             "rs.report", "copy_version_by_id", [[this.state.reportId], versionId, name]
         );
         this.state.copyName = "";
-        await this.loadReports();
-        await this.selectReport(newId);
+        await this.openEditor(newId);
         this.notification.add("Nuovo report creato dalla copia", { type: "success" });
     }
 
     async archiveReport() {
         await this.orm.write("rs.report", [this.state.reportId], { active: false });
-        this.state.reportId = false;
         this.notification.add("Report archiviato", { type: "info" });
-        await this.loadReports();
-    }
-
-    async createReport() {
-        if (!this.state.newName || !this.state.newModel) return;
-        const [model] = await this.orm.searchRead(
-            "ir.model", [["model", "=", this.state.newModel]], ["id"]
-        );
-        if (!model) {
-            this.notification.add("Modello tecnico non trovato", { type: "danger" });
-            return;
-        }
-        const [newId] = await this.orm.create("rs.report", [
-            { name: this.state.newName, model_id: model.id },
-        ]);
-        this.state.newName = "";
-        this.state.newModel = "";
-        await this.loadReports();
-        await this.selectReport(newId);
+        this.backToList();
     }
 }
 
-registry.category("actions").add("report_studio.editor", ReportStudioEditor);
+registry.category("actions").add("report_studio.editor", ReportStudioApp);

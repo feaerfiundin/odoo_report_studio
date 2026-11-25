@@ -15,8 +15,8 @@ class RsReport(models.Model):
 
     Il record contiene l'identità del report, il modello Odoo di riferimento,
     l'azione di stampa collegata e il puntatore alla versione attiva.
-    Il contenuto vive nelle versioni (rs.report.version), ciascuna con il
-    proprio template QWeb.
+    Il contenuto vive nelle versioni (rs.report.version): in modalità a blocchi
+    è una definizione JSON, in modalità QWeb libero è un template QWeb.
     """
 
     _name = "rs.report"
@@ -25,6 +25,12 @@ class RsReport(models.Model):
 
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
+    mode = fields.Selection(
+        [("blocks", "Blocchi"), ("qweb", "QWeb libero")],
+        default="blocks",
+        required=True,
+        string="Modalità",
+    )
     model_id = fields.Many2one(
         "ir.model",
         string="Modello Odoo",
@@ -75,10 +81,29 @@ class RsReport(models.Model):
                 )
         return result
 
+    # ----- permessi -----
+
     def _check_model_access(self):
         """L'utente può lavorare sui report solo dei modelli che può leggere."""
         self.ensure_one()
         self.env[self.model_id.model].check_access_rights("read")
+
+    def _can_edit_qweb(self):
+        """Il QWeb libero può eseguire codice sul server: solo gli Amministratori."""
+        return (
+            self.env.user.has_group("report_studio.group_rs_manager")
+            or self.env.user.has_group("base.group_system")
+        )
+
+    def _check_definition_permission(self, definition):
+        try:
+            parsed = json.loads(definition)
+        except (TypeError, ValueError):
+            return
+        if isinstance(parsed, dict) and parsed.get("mode") == "qweb" and not self._can_edit_qweb():
+            raise UserError(_("Solo gli Amministratori di Report Studio possono modificare il QWeb libero."))
+
+    # ----- risoluzione campi e azione di stampa -----
 
     def _resolve_field(self, model_name, path):
         """Ritorna (tipo, modello_relazione) per un percorso di campo, None se non valido."""
@@ -115,12 +140,15 @@ class RsReport(models.Model):
         })
         self.action_id = action
 
+    # ----- versioni -----
+
     def _create_version(self, definition, comment=False):
         """Compila la definizione, crea una nuova versione immutabile e la rende attiva."""
         self.ensure_one()
         self.check_access_rights("write")
         self._check_model_access()
         definition = definition or EMPTY_DEFINITION
+        self._check_definition_permission(definition)
         next_no = max(self.version_ids.mapped("version_no"), default=0) + 1
         report_key = "report_studio.rs_report_%s_v%s" % (self.id, next_no)
         try:
@@ -159,10 +187,12 @@ class RsReport(models.Model):
         di lettura sul record.
         """
         self.ensure_one()
+        definition = definition or EMPTY_DEFINITION
+        self._check_definition_permission(definition)
         key = "report_studio.preview_%s_%s" % (self.id, uuid.uuid4().hex)
         try:
             arch = compile_definition(
-                definition or EMPTY_DEFINITION,
+                definition,
                 self.model_id.model,
                 key,
                 resolver=self._resolve_field,
@@ -189,6 +219,76 @@ class RsReport(models.Model):
             action.unlink()
             view.unlink()
 
+    # ----- creazione: nuovo report, copia di versione, copia di documento -----
+
+    @api.model
+    def get_source_catalog(self):
+        """Documenti di partenza: documenti nativi di Odoo/moduli e report Studio."""
+        items = []
+        actions = self.env["ir.actions.report"].search(
+            [("report_type", "=", "qweb-pdf")], order="name"
+        )
+        for action in actions:
+            if not action.model or (action.report_name or "").startswith("report_studio."):
+                continue
+            items.append({
+                "key": "action:%s" % action.id,
+                "label": "%s (%s)" % (action.name, action.model),
+                "group": "Documenti Odoo",
+            })
+        for report in self.search([]):
+            items.append({
+                "key": "report:%s" % report.id,
+                "label": "%s (%s)" % (report.name, report.model_id.model),
+                "group": "Report Studio",
+            })
+        return items
+
+    @api.model
+    def create_new_report(self, name, model_name):
+        """Nuovo report a blocchi, vuoto, sul modello indicato."""
+        model = self.env["ir.model"]._get(model_name)
+        if not model:
+            raise UserError(_("Modello %s non trovato.") % model_name)
+        return self.create({"name": name, "model_id": model.id, "mode": "blocks"}).id
+
+    @api.model
+    def create_from_source(self, name, source_key):
+        """Crea un report modificabile da un documento Odoo o da un report Studio."""
+        kind, _sep, raw_id = (source_key or "").partition(":")
+        if not raw_id.isdigit():
+            raise UserError(_("Documento di partenza non valido."))
+        if kind == "report":
+            source = self.browse(int(raw_id)).exists()
+            if not source:
+                raise UserError(_("Report di partenza non trovato."))
+            definition = source.current_version_id.definition
+            model_name = source.model_id.model
+            mode = source.mode
+            comment = _("Copia da %s") % source.name
+        elif kind == "action":
+            action = self.env["ir.actions.report"].browse(int(raw_id)).exists()
+            if not action:
+                raise UserError(_("Documento di partenza non trovato."))
+            view = self.env["ir.ui.view"].sudo().search(
+                [("key", "=", action.report_name), ("type", "=", "qweb")], limit=1
+            )
+            if not view:
+                raise UserError(_("Template QWeb del documento %s non trovato.") % action.name)
+            definition = json.dumps({"mode": "qweb", "arch": view.arch_db})
+            model_name = action.model
+            mode = "qweb"
+            comment = _("Copia del documento Odoo %s") % action.name
+        else:
+            raise UserError(_("Documento di partenza non valido."))
+        model = self.env["ir.model"]._get(model_name)
+        if not model:
+            raise UserError(_("Modello %s non trovato.") % model_name)
+        return self.with_context(
+            rs_initial_definition=definition,
+            rs_initial_comment=comment,
+        ).create({"name": name, "model_id": model.id, "mode": mode}).id
+
     def action_copy_version_to_new_report(self, version, name=None):
         """Crea un nuovo report con la definizione di una versione, senza storico.
 
@@ -204,9 +304,10 @@ class RsReport(models.Model):
         ).create({
             "name": name or _("%s (copia)") % self.name,
             "model_id": self.model_id.id,
+            "mode": self.mode,
         })
 
-    # Metodi pubblici chiamati dall'editor (ORM call, restituiscono id).
+    # ----- metodi pubblici chiamati dall'editor (restituiscono id) -----
 
     def action_save_version(self, definition, comment=False):
         self.ensure_one()

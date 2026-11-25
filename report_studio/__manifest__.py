@@ -15,8 +15,8 @@
     ],
     "assets": {
         "web.assets_backend": [
-            "report_studio/static/src/js/report_studio_editor.js",
-            "report_studio/static/src/xml/report_studio_editor.xml",
+            "report_studio/static/src/js/report_studio_app.js",
+            "report_studio/static/src/xml/report_studio_app.xml",
             "report_studio/static/src/scss/editor.scss",
         ],
     },
