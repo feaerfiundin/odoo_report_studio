@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="report_studio.BlockNode">
+        <div t-attf-class="o_rs_block {{ props.node._uid === props.selectedUid ? 'o_rs_selected' : '' }}"
+             t-on-click="onClick">
+            <div class="o_rs_block_label"><t t-esc="label"/></div>
+            <t t-if="props.node.children">
+                <div class="o_rs_children">
+                    <t t-foreach="props.node.children" t-as="child" t-key="child._uid">
+                        <BlockNode node="child" selectedUid="props.selectedUid" onSelect="props.onSelect"/>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="report_studio.Editor">
+        <div class="o_rs_editor d-flex flex-column h-100">
+
+            <div class="o_rs_topbar d-flex flex-wrap gap-2 p-2 border-bottom align-items-center">
+                <select class="form-select w-auto" t-on-change="onReportChange">
+                    <t t-foreach="state.reports" t-as="r" t-key="r.id">
+                        <option t-att-value="r.id" t-att-selected="r.id === state.reportId">
+                            <t t-esc="r.name"/>
+                        </option>
+                    </t>
+                </select>
+                <button class="btn btn-primary" t-on-click="saveVersion" t-att-disabled="!state.reportId">
+                    Salva versione
+                </button>
+                <input class="form-control w-auto" placeholder="Commento versione" t-model="state.comment"/>
+                <select class="form-select w-auto" t-on-change="onRecordChange">
+                    <t t-foreach="state.records" t-as="rec" t-key="rec.id">
+                        <option t-att-value="rec.id" t-att-selected="rec.id === state.recordId">
+                            <t t-esc="rec.display_name"/>
+                        </option>
+                    </t>
+                </select>
+                <button class="btn btn-secondary" t-on-click="preview" t-att-disabled="!state.recordId">
+                    Anteprima
+                </button>
+                <button class="btn btn-outline-secondary" t-on-click="archiveReport" t-att-disabled="!state.reportId">
+                    Archivia
+                </button>
+                <span t-if="state.dirty" class="text-warning">Modifiche non salvate</span>
+            </div>
+
+            <div class="d-flex flex-grow-1 min-h-0">
+
+                <!-- Palette blocchi -->
+                <div class="o_rs_palette p-2 border-end d-flex flex-column gap-1">
+                    <div class="fw-bold mb-1">Blocchi</div>
+                    <t t-foreach="blockTypes" t-as="bt" t-key="bt[0]">
+                        <button class="btn btn-sm btn-outline-primary" t-att-data-type="bt[0]" t-on-click="onAddBlock">
+                            <t t-esc="bt[1]"/>
+                        </button>
+                    </t>
+                </div>
+
+                <!-- Albero del flusso -->
+                <div class="o_rs_tree p-2 border-end overflow-auto">
+                    <div class="fw-bold mb-1">Flusso</div>
+                    <t t-foreach="state.definition.children" t-as="child" t-key="child._uid">
+                        <BlockNode node="child" selectedUid="state.selectedUid" onSelect="selectBlock"/>
+                    </t>
+                </div>
+
+                <!-- Proprietà -->
+                <div class="o_rs_props p-2 border-end overflow-auto" style="width: 320px">
+                    <t t-if="selected">
+                        <div class="fw-bold mb-2">Proprietà: <t t-esc="selected.type"/></div>
+
+                        <t t-if="selected.type === 'section'">
+                            <label class="form-label">Classe CSS</label>
+                            <input class="form-control" t-model="selected.class" t-on-input="markDirty"/>
+                        </t>
+
+                        <t t-if="selected.type === 'text'">
+                            <label class="form-label">Testo</label>
+                            <textarea class="form-control" rows="4" t-model="selected.content" t-on-input="markDirty"/>
+                        </t>
+
+                        <t t-if="selected.type === 'field'">
+                            <label class="form-label">Campo</label>
+                            <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
+                            <datalist id="rs_fields">
+                                <t t-foreach="state.fields" t-as="f" t-key="f.name">
+                                    <option t-att-value="f.name"/>
+                                </t>
+                            </datalist>
+                        </t>
+
+                        <t t-if="selected.type === 'table'">
+                            <label class="form-label">Sorgente (one2many / many2many)</label>
+                            <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onSourceChange"/>
+                            <datalist id="rs_fields">
+                                <t t-foreach="state.fields" t-as="f" t-key="f.name">
+                                    <option t-att-value="f.name"/>
+                                </t>
+                            </datalist>
+                            <div class="fw-bold mt-3 mb-1">Colonne</div>
+                            <t t-foreach="selected.columns" t-as="col" t-key="col._uid">
+                                <div class="d-flex gap-1 mb-1">
+                                    <input class="form-control form-control-sm" list="rs_cols" placeholder="campo"
+                                           t-model="col.path" t-on-input="markDirty"/>
+                                    <input class="form-control form-control-sm" placeholder="etichetta"
+                                           t-model="col.label" t-on-input="markDirty"/>
+                                    <button class="btn btn-sm btn-outline-danger" t-att-data-uid="col._uid"
+                                            t-on-click="onRemoveColumn">×</button>
+                                </div>
+                            </t>
+                            <datalist id="rs_cols">
+                                <t t-foreach="tableColumnFields" t-as="cf" t-key="cf.name">
+                                    <option t-att-value="cf.name"/>
+                                </t>
+                            </datalist>
+                            <button class="btn btn-sm btn-outline-primary" t-on-click="onAddColumn">+ colonna</button>
+                        </t>
+
+                        <t t-if="selected.type === 'if'">
+                            <label class="form-label">Campo</label>
+                            <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
+                            <datalist id="rs_fields">
+                                <t t-foreach="state.fields" t-as="f" t-key="f.name">
+                                    <option t-att-value="f.name"/>
+                                </t>
+                            </datalist>
+                            <label class="form-label mt-2">Operatore</label>
+                            <select class="form-select" t-model="selected.op" t-on-change="markDirty">
+                                <option value="==">uguale a</option>
+                                <option value="!=">diverso da</option>
+                                <option value=">">maggiore di</option>
+                                <option value="&lt;">minore di</option>
+                                <option value=">=">maggiore o uguale</option>
+                                <option value="&lt;=">minore o uguale</option>
+                            </select>
+                            <label class="form-label mt-2">Valore</label>
+                            <input class="form-control" t-model="selected.value" t-on-input="markDirty"/>
+                        </t>
+
+                        <div class="mt-3 d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-secondary" data-dir="-1" t-on-click="onMove">↑</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-dir="1" t-on-click="onMove">↓</button>
+                            <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Elimina blocco</button>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="text-muted">Seleziona un blocco nel flusso per modificarne le proprietà.</div>
+                    </t>
+
+                    <hr/>
+                    <div class="fw-bold mb-1">Versioni</div>
+                    <t t-foreach="state.versions" t-as="v" t-key="v.id">
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                            <span class="flex-grow-1">
+                                v<t t-esc="v.version_no"/>
+                                <t t-if="v.is_active"><span class="badge bg-success ms-1">attiva</span></t>
+                                <small class="text-muted d-block"><t t-esc="v.comment"/></small>
+                            </span>
+                            <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Ripristina</button>
+                            <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copia</button>
+                        </div>
+                    </t>
+                    <input class="form-control form-control-sm mt-1" placeholder="Nome della copia" t-model="state.copyName"/>
+
+                    <hr/>
+                    <div class="fw-bold mb-1">Nuovo report</div>
+                    <input class="form-control form-control-sm mb-1" placeholder="Nome" t-model="state.newName"/>
+                    <input class="form-control form-control-sm mb-1" placeholder="Modello tecnico (es. sale.order)" t-model="state.newModel"/>
+                    <button class="btn btn-sm btn-primary" t-on-click="createReport">Crea</button>
+                </div>
+
+                <!-- Anteprima -->
+                <div class="o_rs_preview flex-grow-1 min-w-0">
+                    <iframe t-if="state.previewUrl" t-att-src="state.previewUrl" class="w-100 h-100 border-0"/>
+                    <div t-else="" class="p-3 text-muted">Premi "Anteprima" per vedere il PDF su un record.</div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

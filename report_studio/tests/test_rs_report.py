@@ -56,3 +56,21 @@ class TestRsReport(TransactionCase):
         bad = {"type": "page", "children": [{"type": "field", "path": "campo_inesistente"}]}
         with self.assertRaises(UserError):
             self.report._render_preview_pdf(json.dumps(bad), res_id=1)
+
+    def test_copy_version_creates_report_without_history(self):
+        definition = {"type": "page", "children": [{"type": "text", "content": "Copia"}]}
+        self.report._create_version(json.dumps(definition), comment="v2")
+        source_version = self.report.current_version_id
+        copy = self.report.action_copy_version_to_new_report(source_version, name="Nuovo")
+        self.assertEqual(copy.name, "Nuovo")
+        self.assertEqual(copy.version_count, 1)
+        self.assertEqual(copy.current_version_id.version_no, 1)
+        self.assertEqual(copy.current_version_id.definition, source_version.definition)
+        self.assertEqual(self.report.version_count, 2)
+
+    def test_archive_removes_print_binding(self):
+        self.assertTrue(self.report.action_id.binding_model_id)
+        self.report.active = False
+        self.assertFalse(self.report.action_id.binding_model_id)
+        self.report.active = True
+        self.assertEqual(self.report.action_id.binding_model_id, self.report.model_id)
