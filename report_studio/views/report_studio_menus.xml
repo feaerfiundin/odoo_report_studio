@@ -5,10 +5,12 @@
         <field name="tag">report_studio.editor</field>
     </record>
 
-    <!-- Menu di primo livello: in questa installazione base.menu_reporting non esiste. -->
+    <!-- Menu di primo livello: in questa installazione base.menu_reporting non esiste.
+         Visibile ai ruoli Report Studio e agli amministratori di sistema, che hanno
+         già pieno accesso ai report (ACL) anche senza un ruolo Report Studio. -->
     <menuitem id="menu_report_studio_root"
               name="Report Studio"
               action="action_report_studio_editor"
               sequence="90"
-              groups="report_studio.group_rs_viewer"/>
+              groups="report_studio.group_rs_viewer,base.group_system"/>
 </odoo>

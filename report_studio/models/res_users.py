@@ -4,7 +4,7 @@ from odoo.exceptions import AccessError
 
 RS_MANAGER = "report_studio.group_rs_manager"
 
-# Ruoli dal più alto al più basso: ogni ruolo include i precedenti.
+# Ruoli dal più alto al più basso: ogni gruppo implica i successivi (implied_ids).
 RS_ROLES = [
     ("manager", "report_studio.group_rs_manager"),
     ("editor", "report_studio.group_rs_editor"),
@@ -33,39 +33,34 @@ class ResUsers(models.Model):
         help="Ruolo di Report Studio. Vuoto = nessun accesso.",
     )
 
-    def _rs_group_ids(self):
-        """Id di tutti i gruppi Report Studio."""
-        ids = set()
-        for _role, xmlid in RS_ROLES:
+    def _rs_role_groups(self):
+        """{ruolo: gruppo} dal più alto al più basso, solo per i gruppi esistenti."""
+        roles = {}
+        for role, xmlid in RS_ROLES:
             group = self.env.ref(xmlid, raise_if_not_found=False)
             if group:
-                ids.add(group.id)
-        return ids
+                roles[role] = group
+        return roles
 
     @api.depends(GROUPS_FIELD)
     def _compute_report_studio_role(self):
+        roles = self._rs_role_groups()
         for user in self:
-            role = "none"
-            for name, xmlid in RS_ROLES:
-                group = self.env.ref(xmlid, raise_if_not_found=False)
-                if group and group in user[GROUPS_FIELD]:
-                    role = name
-                    break
-            user.report_studio_role = role
+            user_groups = user[GROUPS_FIELD]
+            user.report_studio_role = next(
+                (role for role, group in roles.items() if group in user_groups), "none"
+            )
 
     def _inverse_report_studio_role(self):
-        rs_groups = self._rs_group_ids()
+        roles = self._rs_role_groups()
+        rs_group_ids = {group.id for group in roles.values()}
         for user in self:
-            # Rimuove tutti i gruppi Report Studio, poi aggiunge quelli del ruolo scelto.
-            commands = [(3, gid) for gid in rs_groups & set(user[GROUPS_FIELD].ids)]
-            role = user.report_studio_role
-            if role and role != "none":
-                for name, xmlid in RS_ROLES:
-                    group = self.env.ref(xmlid, raise_if_not_found=False)
-                    if group:
-                        commands.append((4, group.id))
-                    if name == role:
-                        break
+            # Toglie tutti i gruppi Report Studio, poi aggiunge solo il gruppo del
+            # ruolo scelto: i ruoli inferiori arrivano dagli implied_ids.
+            commands = [(3, gid) for gid in rs_group_ids & set(user[GROUPS_FIELD].ids)]
+            group = roles.get(user.report_studio_role)
+            if group:
+                commands.append((4, group.id))
             if commands:
                 user.write({GROUPS_FIELD: commands})
 
@@ -79,11 +74,11 @@ class ResUsers(models.Model):
         ):
             return super().write(vals)
 
-        rs_groups = self._rs_group_ids()
-        before = {user.id: set(user[GROUPS_FIELD].ids) & rs_groups for user in self}
+        rs_group_ids = {group.id for group in self._rs_role_groups().values()}
+        before = {user.id: set(user[GROUPS_FIELD].ids) & rs_group_ids for user in self}
         result = super().write(vals)
         for user in self:
-            if (set(user[GROUPS_FIELD].ids) & rs_groups) != before[user.id]:
+            if (set(user[GROUPS_FIELD].ids) & rs_group_ids) != before[user.id]:
                 raise AccessError(
                     _("Solo un Amministratore di Report Studio può modificare i ruoli Report Studio.")
                 )

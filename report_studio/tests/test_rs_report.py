@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 
-from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.exceptions import AccessError, UserError
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 
 @tagged("post_install", "-at_install")
@@ -74,3 +74,78 @@ class TestRsReport(TransactionCase):
         self.assertFalse(self.report.action_id.binding_model_id)
         self.report.active = True
         self.assertEqual(self.report.action_id.binding_model_id, self.report.model_id)
+
+    def _sale_order(self):
+        partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
+        return self.env["sale.order"].create({"partner_id": partner.id})
+
+    def test_preview_renders_definition(self):
+        order = self._sale_order()
+        definition = {"children": [{"type": "text", "content": "Testo anteprima"},
+                                   {"type": "field", "path": "name"}]}
+        # In modalità test Odoo restituisce l'HTML del report invece del PDF.
+        html = self.report._render_preview_pdf(json.dumps(definition), order.id)
+        self.assertIn(b"Testo anteprima", html)
+        self.assertIn(order.name.encode(), html)
+
+    def test_preview_respects_record_access(self):
+        """L'anteprima non deve leggere i dati in sudo."""
+        order = self._sale_order()
+        viewer = new_test_user(
+            self.env, login="rs_viewer_no_sales",
+            groups="base.group_user,report_studio.group_rs_viewer",
+        )
+        definition = {"children": [{"type": "field", "path": "name"}]}
+        with self.assertRaises(AccessError):
+            self.report.with_user(viewer)._render_preview_pdf(json.dumps(definition), order.id)
+
+    def test_model_name_is_stored(self):
+        self.assertEqual(self.report.model_name, "sale.order")
+
+    def test_rename_updates_print_action(self):
+        self.report.name = "Nuovo nome"
+        self.assertEqual(self.report.action_id.name, "Nuovo nome")
+
+    def test_unlink_removes_views_and_action(self):
+        self.report._create_version(json.dumps({"children": []}))
+        views = self.report.version_ids.view_id
+        action = self.report.action_id
+        self.assertEqual(len(views), 2)
+        self.report.unlink()
+        self.assertFalse(views.exists())
+        self.assertFalse(action.exists())
+
+    def test_version_of_other_report_is_rejected(self):
+        other = self.env["rs.report"].create({"name": "Altro", "model_id": self.model.id})
+        with self.assertRaises(UserError):
+            self.report.restore_version_by_id(other.current_version_id.id)
+        with self.assertRaises(UserError):
+            self.report.copy_version_by_id(other.current_version_id.id)
+        with self.assertRaises(UserError):
+            self.report.restore_version_by_id(999999999)
+
+    def test_create_from_studio_report(self):
+        definition = {"layout": "basic", "children": [{"type": "text", "content": "Origine"}]}
+        self.report._create_version(json.dumps(definition))
+        new_id = self.env["rs.report"].create_from_source("Copia", "report:%s" % self.report.id)
+        copy = self.env["rs.report"].browse(new_id)
+        self.assertEqual(copy.model_name, "sale.order")
+        self.assertEqual(copy.report_mode, "blocks")
+        self.assertEqual(json.loads(copy.current_version_id.definition), definition)
+
+    def test_create_from_odoo_document(self):
+        action = self.env.ref("sale.action_report_saleorder")
+        new_id = self.env["rs.report"].create_from_source("Ordine", "action:%s" % action.id)
+        copy = self.env["rs.report"].browse(new_id)
+        self.assertEqual(copy.report_mode, "qweb")
+        self.assertEqual(copy.model_name, "sale.order")
+        self.assertIn(copy.action_id.report_name, copy.current_version_id.arch)
+
+    def test_create_from_invalid_source(self):
+        for key in ("", "report:abc", "altro:1", "report:999999999"):
+            with self.assertRaises(UserError):
+                self.env["rs.report"].create_from_source("X", key)
+
+    def test_layout_is_kept_in_compiled_template(self):
+        version = self.report._create_version(json.dumps({"layout": "basic", "children": []}))
+        self.assertIn("web.basic_layout", version.arch)

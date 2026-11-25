@@ -2,12 +2,12 @@
 <templates xml:space="preserve">
 
     <t t-name="report_studio.BlockNode">
-        <div t-attf-class="o_rs_block {{ props.node._uid === props.selectedUid ? 'o_rs_selected' : '' }}"
+        <div t-attf-class="o_rs_block {{ node._uid === props.selectedUid ? 'o_rs_selected' : '' }}"
              t-on-click="onClick">
             <div class="o_rs_block_label"><t t-esc="label"/></div>
-            <t t-if="props.node.children">
+            <t t-if="node.children">
                 <div class="o_rs_children">
-                    <t t-foreach="props.node.children" t-as="child" t-key="child._uid">
+                    <t t-foreach="node.children" t-as="child" t-key="child._uid">
                         <BlockNode node="child" selectedUid="props.selectedUid" onSelect="props.onSelect"/>
                     </t>
                 </div>
@@ -54,7 +54,7 @@
                             <t t-foreach="state.reports" t-as="r" t-key="r.id">
                                 <tr class="o_rs_row" style="cursor:pointer" t-att-data-id="r.id" t-on-click="onOpenRow">
                                     <td><t t-esc="r.name"/></td>
-                                    <td><t t-esc="r.model_id[1]"/></td>
+                                    <td><t t-esc="r.model_name"/></td>
                                     <td><t t-if="r.report_mode === 'qweb'">QWeb libero</t><t t-else="">Blocchi</t></td>
                                     <td><t t-esc="r.write_date"/></td>
                                 </tr>
@@ -93,14 +93,14 @@
                     <div class="row mb-3 align-items-center">
                         <label class="col-3 col-form-label">Documento di partenza</label>
                         <div class="col-9">
-                            <select class="form-select" t-on-change="onSourceChange">
+                            <select class="form-select" t-on-change="onNewSourceChange">
                                 <option value="">— nessuno: report vuoto a blocchi —</option>
-                                <optgroup label="Documenti Odoo">
+                                <optgroup t-if="nativeSources.length" label="Documenti Odoo">
                                     <t t-foreach="nativeSources" t-as="s" t-key="s.key">
                                         <option t-att-value="s.key"><t t-esc="s.label"/></option>
                                     </t>
                                 </optgroup>
-                                <optgroup label="Report Studio">
+                                <optgroup t-if="studioSources.length" label="Report Studio">
                                     <t t-foreach="studioSources" t-as="s" t-key="s.key">
                                         <option t-att-value="s.key"><t t-esc="s.label"/></option>
                                     </t>
@@ -194,7 +194,7 @@
 
                                 <t t-if="selected.type === 'table'">
                                     <label class="form-label">Sorgente (one2many / many2many)</label>
-                                    <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onSourceChange"/>
+                                    <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onTableSourceChange"/>
                                     <div class="fw-bold mt-3 mb-1">Colonne</div>
                                     <t t-foreach="selected.columns" t-as="col" t-key="col._uid">
                                         <div class="d-flex gap-1 mb-1">

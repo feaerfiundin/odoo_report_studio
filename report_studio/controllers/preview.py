@@ -1,7 +1,15 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import http
 from odoo.exceptions import AccessError, UserError
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
+
+
+def _error(message, status):
+    return request.make_json_response({"error": message}, status=status)
 
 
 class ReportStudioPreview(http.Controller):
@@ -14,28 +22,31 @@ class ReportStudioPreview(http.Controller):
           report_id  - id di rs.report
           res_id     - id del record del modello del report
           definition - definizione JSON dei blocchi
+
+        Errori: JSON {"error": messaggio} con stato 400 (dati o permessi),
+        404 (report o record inesistente) o 500 (errore di rendering).
         """
         try:
             report_id = int(report_id)
             res_id = int(res_id)
         except (TypeError, ValueError):
-            return request.make_json_response({"error": "Parametri non validi"}, status=400)
+            return _error("Parametri non validi", 400)
 
         report = request.env["rs.report"].browse(report_id)
-        if not report.exists():
-            return request.make_json_response({"error": "Report non trovato"}, status=404)
-
         try:
+            if not report.exists():
+                return _error("Report non trovato", 404)
             report.check_access("read")
-
-            record = request.env[report.model_id.model].browse(res_id)
+            record = request.env[report.model_name].browse(res_id)
             if not record.exists():
-                return request.make_json_response({"error": "Record non trovato"}, status=404)
+                return _error("Record non trovato", 404)
             record.check_access("read")
-
             pdf = report._render_preview_pdf(definition, record.id)
         except (AccessError, UserError) as exc:
-            return request.make_json_response({"error": str(exc)}, status=400)
+            return _error(str(exc), 400)
+        except Exception as exc:  # errori QWeb o di wkhtmltopdf: messaggio all'editor
+            _logger.exception("Anteprima Report Studio non riuscita (report %s, record %s)", report_id, res_id)
+            return _error("Errore durante il rendering dell'anteprima: %s" % exc, 500)
 
         return request.make_response(
             pdf,

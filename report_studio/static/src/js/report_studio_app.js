@@ -64,7 +64,15 @@ function cleanBlock(block) {
 }
 
 function cleanDefinition(definition) {
-    return { layout: "external", children: definition.children.map(cleanBlock) };
+    return {
+        layout: definition.layout || "external",
+        children: definition.children.map(cleanBlock),
+    };
+}
+
+// Messaggio leggibile da un errore RPC di Odoo (UserError, ValidationError...).
+function errorMessage(error, fallback) {
+    return error?.data?.message || (typeof error?.message === "string" && error.message) || fallback;
 }
 
 function findNode(children, target) {
@@ -83,8 +91,15 @@ class BlockNode extends Component {
     static template = "report_studio.BlockNode";
     static props = { node: Object, selectedUid: { type: [Number, { value: null }] }, onSelect: Function };
 
+    setup() {
+        // Il nodo viene osservato da questo componente: senza, le modifiche fatte
+        // nel pannello Proprietà ridisegnano solo il padre e l'etichetta resta vecchia.
+        // L'istanza è legata al nodo dal t-key (_uid), quindi il nodo non cambia.
+        this.node = useState(this.props.node);
+    }
+
     get label() {
-        const n = this.props.node;
+        const n = this.node;
         switch (n.type) {
             case "section":
                 return "Sezione";
@@ -102,7 +117,7 @@ class BlockNode extends Component {
 
     onClick(ev) {
         ev.stopPropagation();
-        this.props.onSelect(this.props.node._uid);
+        this.props.onSelect(this.node._uid);
     }
 }
 BlockNode.components = { BlockNode };
@@ -160,7 +175,7 @@ export class ReportStudioApp extends Component {
         this.state.reports = await this.orm.searchRead(
             "rs.report",
             [["active", "=", true]],
-            ["name", "model_id", "report_mode", "write_date"],
+            ["name", "model_name", "report_mode", "write_date"],
             { order: "write_date desc" }
         );
     }
@@ -180,9 +195,7 @@ export class ReportStudioApp extends Component {
         this.state.newName = "";
         this.state.newModel = "";
         this.state.newSource = "";
-        this.state.models = await this.orm.searchRead(
-            "ir.model", [["transient", "=", false]], ["model", "name"], { order: "model" }
-        );
+        this.state.models = await this.orm.call("rs.report", "get_model_options", []);
         this.state.sources = await this.orm.call("rs.report", "get_source_catalog", []);
         this.state.view = "new";
     }
@@ -195,7 +208,7 @@ export class ReportStudioApp extends Component {
         return this.state.sources.filter((s) => s.group === "Report Studio");
     }
 
-    onSourceChange(ev) {
+    onNewSourceChange(ev) {
         this.state.newSource = ev.target.value;
     }
 
@@ -246,13 +259,23 @@ export class ReportStudioApp extends Component {
         this.state.view = "edit";
     }
 
-    async loadFields(model) {
+    // Campi di un modello, letti una sola volta e tenuti in cache.
+    async fetchFields(model) {
         if (!this.state.fieldCache[model]) {
-            this.state.fieldCache[model] = await this.orm.searchRead(
-                "ir.model.fields", [["model", "=", model]], ["name", "ttype", "relation"]
-            );
+            this.state.fieldCache[model] = await this.orm.call("rs.report", "get_model_fields", [model]);
         }
-        this.state.fields = this.state.fieldCache[model];
+        return this.state.fieldCache[model];
+    }
+
+    // Carica i campi dei modelli collegati alle tabelle, per suggerire le colonne.
+    async loadTableFields(blocks) {
+        for (const block of blocks) {
+            if (block.type === "table") {
+                const relation = this.state.fields.find((f) => f.name === block.source)?.relation;
+                if (relation) await this.fetchFields(relation).catch(() => {});
+            }
+            if (block.children) await this.loadTableFields(block.children);
+        }
     }
 
     async loadVersions() {
@@ -279,16 +302,13 @@ export class ReportStudioApp extends Component {
 
     async selectReport(reportId) {
         const [report] = await this.orm.read(
-            "rs.report", [reportId], ["name", "model_id", "current_version_id", "report_mode"]
-        );
-        const [model] = await this.orm.searchRead(
-            "ir.model", [["id", "=", report.model_id[0]]], ["model"]
+            "rs.report", [reportId], ["name", "model_name", "current_version_id", "report_mode"]
         );
         this.state.reportId = reportId;
         this.state.reportName = report.name;
-        this.state.modelName = model.model;
+        this.state.modelName = report.model_name;
         this.state.mode = report.report_mode;
-        await this.loadFields(model.model);
+        this.state.fields = await this.fetchFields(report.model_name);
         await this.loadVersions();
         const [version] = await this.orm.read(
             "rs.report.version", [report.current_version_id[0]], ["definition"]
@@ -299,7 +319,11 @@ export class ReportStudioApp extends Component {
             this.state.qwebText = parsed.arch || "";
             this.state.definition = { children: [] };
         } else {
-            this.state.definition = { children: (parsed.children || []).map(withUids) };
+            this.state.definition = {
+                layout: parsed.layout,
+                children: (parsed.children || []).map(withUids),
+            };
+            await this.loadTableFields(this.state.definition.children);
         }
         this.state.selectedUid = null;
         this.state.previewUrl = null;
@@ -355,13 +379,13 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    onSourceChange(ev) {
+    onTableSourceChange(ev) {
         const sel = this.selected;
         if (!sel) return;
         sel.source = ev.target.value;
         const field = this.state.fields.find((f) => f.name === sel.source);
         if (field && field.relation) {
-            this.loadFields(field.relation).catch(() => {});
+            this.fetchFields(field.relation).catch(() => {});
         }
         this.markDirty();
     }
@@ -414,7 +438,7 @@ export class ReportStudioApp extends Component {
             await this.loadVersions();
             this.notification.add("Versione salvata", { type: "success" });
         } catch (error) {
-            this.notification.add(error.message?.message || "Salvataggio non riuscito", { type: "danger" });
+            this.notification.add(errorMessage(error, "Salvataggio non riuscito"), { type: "danger" });
         }
     }
 

@@ -71,9 +71,8 @@ class RsReportVersion(models.Model):
                 )
 
     def write(self, vals):
-        if not self.env.context.get("rs_internal_write") and (
-            IMMUTABLE_FIELDS & set(vals)
-        ):
+        # Nessuna eccezione via contesto: il contesto arriva anche dai client RPC.
+        if IMMUTABLE_FIELDS & set(vals):
             raise UserError(
                 _("Le versioni dei report sono immutabili. "
                   "Crea una nuova versione per modificarne il contenuto.")
