@@ -149,6 +149,23 @@ class TestRsReport(TransactionCase):
         self.assertIn("Interruzione di pagina", html)
         self.assertIn(order.name, html)
 
+    def test_text_alignment_child_wins(self):
+        order = self._sale_order()
+        definition = json.dumps({"children": [
+            {"type": "section", "align": "right", "children": [
+                {"type": "text", "content": "Centrato", "align": "center"},
+                {"type": "field", "path": "name"},
+            ]},
+            {"type": "table", "source": "order_line", "align": "center",
+             "columns": [{"path": "name", "label": "Descrizione", "align": "left"}]},
+        ]})
+        version = self.report._create_version(definition)
+        self.assertIn('<div class="page" style="text-align: left">', version.arch)
+        self.assertIn('<div style="text-align: right">', version.arch)
+        self.assertIn('<p style="text-align: center">Centrato</p>', version.arch)
+        self.assertIn('<th style="text-align: left">Descrizione</th>', version.arch)
+        self.assertIn("Centrato", self.report.render_canvas(definition, order.id))
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
         return self.env["sale.order"].create({"partner_id": partner.id})

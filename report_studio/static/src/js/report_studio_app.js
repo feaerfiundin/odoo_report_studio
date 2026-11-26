@@ -51,6 +51,23 @@ const MARGIN_SIDES = [
     ["left", "Sinistra"],
 ];
 const COLUMN_COUNTS = [2, 3, 4];
+// Allineamento del testo: vuoto = come il contenitore (il documento è a sinistra).
+const ALIGN_TYPES = ["text", "section", "columns", "column", "table"];
+const ALIGNMENTS = [
+    ["left", "Sinistra", "fa-align-left"],
+    ["center", "Centro", "fa-align-center"],
+    ["right", "Destra", "fa-align-right"],
+    ["justify", "Giustificato", "fa-align-justify"],
+];
+
+// Proprietà facoltative sempre presenti nell'editor (reattività dei pannelli).
+function ensureEditorKeys(block) {
+    if (ALIGN_TYPES.includes(block.type) && block.align === undefined) block.align = "";
+    for (const column of block.type === "table" ? block.columns || [] : []) {
+        if (column.align === undefined) column.align = "";
+    }
+    return block;
+}
 const SEPARATOR_STYLES = [
     ["solid", "Continua"],
     ["dashed", "Tratteggiata"],
@@ -61,6 +78,7 @@ const zeroMargins = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
 const newColumn = () => ({
     _uid: nextUid(),
     type: "column",
+    align: "",
     margins: { top: 0, right: 2, bottom: 0, left: 2 },
     children: [],
 });
@@ -86,6 +104,10 @@ let uidCounter = 0;
 const nextUid = () => ++uidCounter;
 
 function defaultBlock(type) {
+    return ensureEditorKeys(baseBlock(type));
+}
+
+function baseBlock(type) {
     const base = { _uid: nextUid(), type };
     switch (type) {
         case "section":
@@ -130,7 +152,7 @@ function withUids(block) {
     }
     if (block.type === "field" && copy.label === undefined) copy.label = "";
     if (MARGIN_TYPES.includes(block.type)) copy.margins = { ...zeroMargins(), ...(block.margins || {}) };
-    return copy;
+    return ensureEditorKeys(copy);
 }
 
 // Solo le proprietà carattere impostate; undefined se nessuna.
@@ -158,8 +180,12 @@ function cleanBlock(block) {
     const out = { ...rest };
     if (Array.isArray(block.children)) out.children = block.children.map(cleanBlock);
     if (Array.isArray(block.columns)) {
-        out.columns = block.columns.map(({ _uid: _c, ...col }) => col);
+        out.columns = block.columns.map(({ _uid: _c, ...col }) => {
+            if (!col.align) delete col.align;
+            return col;
+        });
     }
+    if (!out.align) delete out.align;
     if (block.type === "if") out.value = parseLiteral(block.value);
     for (const key of FONT_KEYS[block.type] || []) {
         const font = cleanFont(block[key]);
@@ -269,6 +295,7 @@ export class ReportStudioApp extends Component {
         this.marginSides = MARGIN_SIDES;
         this.columnCounts = COLUMN_COUNTS;
         this.separatorStyles = SEPARATOR_STYLES;
+        this.alignments = ALIGNMENTS;
         this.totalWidth = totalWidth;
         this.canvasRef = useRef("canvas");
         this.canvasTimer = null;
@@ -664,7 +691,7 @@ export class ReportStudioApp extends Component {
     onAddColumn() {
         const sel = this.selected;
         if (!sel || sel.type !== "table") return;
-        addColumn(sel.columns, { _uid: nextUid(), path: "", label: "" });
+        addColumn(sel.columns, { _uid: nextUid(), path: "", label: "", align: "" });
         this.markDirty();
     }
 
@@ -716,6 +743,19 @@ export class ReportStudioApp extends Component {
             const removed = sel.children.splice(count);
             sel.children[count - 1].children.push(...removed.flatMap((c) => c.children));
         }
+        this.markDirty();
+    }
+
+    // Secondo clic sul pulsante attivo: torna a "come il contenitore".
+    setAlign(target, value) {
+        target.align = target.align === value ? "" : value;
+        this.markDirty();
+    }
+
+    onColumnAlign(uid, ev) {
+        const column = this.selected?.columns?.find((c) => c._uid === uid);
+        if (!column) return;
+        column.align = ev.target.value;
         this.markDirty();
     }
 

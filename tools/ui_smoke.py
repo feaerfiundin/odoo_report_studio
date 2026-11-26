@@ -395,6 +395,42 @@ with sync_playwright() as p:
         expect(canvas.locator("text=Interruzione di pagina").count() == 1, "interruzione di pagina non visibile")
         return f"pagina: {tail}"
 
+    def alignment():
+        """Sezione a destra, testo centrato: il figlio vince, il resto segue la sezione."""
+        align = lambda target: page.click(f".o_rs_props .o_rs_align button[data-align={target}]")
+        computed = lambda loc: loc.first.evaluate("el => getComputedStyle(el).textAlign")
+        canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Testo')")
+        align("center")
+        select_parent()
+        page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
+        align("right")
+        page.wait_for_selector(".o_rs_props .o_rs_align button.active[data-align=right]", timeout=3000)
+        # Tabella centrata, prima colonna a sinistra.
+        canvas.locator("[data-rs-type=table]").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
+        align("center")
+        page.select_option(".o_rs_props .o_rs_col_align >> nth=0", "left")
+        # Prima colonna del blocco Colonne giustificata.
+        canvas.locator("td[data-rs-type=column]").first.click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Colonna')")
+        align("justify")
+        wait_canvas()
+        text = computed(canvas.locator("p", has_text="Riga 1"))
+        field = computed(canvas.locator("[data-rs-type=field]").locator("xpath=.."))
+        head = canvas.locator("[data-rs-type=table] th").evaluate_all("els => els.map(e => getComputedStyle(e).textAlign)")
+        column = computed(canvas.locator("td[data-rs-type=column]"))
+        outside = computed(canvas.locator("[data-rs-type=columns]"))
+        expect(text == "center", f"testo: {text}")
+        expect(field == "right", f"campo nella sezione: {field}")
+        expect(head[0] == "left" and set(head[1:]) == {"center"}, f"intestazioni: {head}")
+        expect(column == "justify", f"colonna: {column}")
+        expect(outside in ("left", "start"), f"fuori dalla sezione: {outside}")
+        # Secondo clic sul pulsante attivo: torna a "come il contenitore".
+        align("justify")
+        page.wait_for_selector(".o_rs_props .o_rs_align :text('come il contenitore')", timeout=3000)
+        return f"testo {text}, campo {field}, intestazioni {head}, colonna {column}, resto {outside}"
+
     def save_version():
         page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")
         page.click(f"{topbar} .o_rs_btn_save")
@@ -555,6 +591,7 @@ with sync_playwright() as p:
         step(page, "carattere_ed_etichetta", fonts_and_label)
         step(page, "larghezze_colonne", column_widths)
         step(page, "blocchi_impaginazione", layout_blocks)
+        step(page, "allineamento", alignment)
         step(page, "salva_versione", save_version)
         step(page, "anteprima_pdf", preview_pdf)
         step(page, "errore_server_leggibile", invalid_save_shows_server_message)

@@ -47,6 +47,22 @@
         </div>
     </t>
 
+    <!-- Allineamento del testo. Parametro: target (blocco). Nessun pulsante attivo =
+         come il contenitore; il blocco più interno vince. -->
+    <t t-name="report_studio.AlignControls">
+        <div class="o_rs_align mt-2">
+            <label class="form-label small text-muted mb-1 d-block">Allineamento</label>
+            <div class="btn-group btn-group-sm" role="group">
+                <t t-foreach="alignments" t-as="al" t-key="al[0]">
+                    <button type="button" t-att-title="al[1]" t-att-data-align="al[0]"
+                            t-attf-class="btn btn-outline-secondary {{ target.align === al[0] ? 'active' : '' }}"
+                            t-on-click="() => this.setAlign(target, al[0])"><i t-attf-class="fa {{ al[2] }}"/></button>
+                </t>
+            </div>
+            <small class="text-muted ms-2" t-if="!target.align">come il contenitore</small>
+        </div>
+    </t>
+
     <!-- Margini interni in mm. Parametro: margins (oggetto del blocco). -->
     <t t-name="report_studio.MarginControls">
         <div class="o_rs_margins mt-3">
@@ -255,6 +271,7 @@
                                 <t t-if="selected.type === 'section'">
                                     <label class="form-label">Classe CSS</label>
                                     <input class="form-control" t-model="selected.class" t-on-input="markDirty"/>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
@@ -270,6 +287,7 @@
                                                t-model="selected.divider" t-on-change="markDirty"/>
                                         <label class="form-check-label" for="o_rs_divider">Riga verticale tra le colonne</label>
                                     </div>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <div class="small text-muted mt-2">
                                         Per aggiungere blocchi o impostare i margini di una colonna, clicca dentro la colonna nella pagina.
                                     </div>
@@ -278,6 +296,7 @@
 
                                 <t t-if="selected.type === 'column'">
                                     <div class="small text-muted">I blocchi aggiunti dalla colonna di sinistra vanno in questa colonna.</div>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
@@ -309,6 +328,7 @@
                                 <t t-if="selected.type === 'text'">
                                     <label class="form-label">Testo</label>
                                     <textarea class="form-control" rows="4" t-model="selected.content" t-on-input="markDirty"/>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="'Carattere'"/>
                                     </t>
@@ -331,6 +351,7 @@
                                 <t t-if="selected.type === 'table'">
                                     <label class="form-label">Sorgente (one2many / many2many)</label>
                                     <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onTableSourceChange"/>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.head_font"/><t t-set="title" t-value="'Carattere intestazione'"/>
                                     </t>
@@ -367,6 +388,16 @@
                                                            t-on-change="(ev) => this.onColumnLock(col._uid, ev)"/>
                                                     <label class="form-check-label small" t-att-for="'o_rs_lock_' + col._uid">blocca</label>
                                                 </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1 mt-1">
+                                                <small class="text-muted">Allineamento</small>
+                                                <select class="form-select form-select-sm o_rs_col_align"
+                                                        t-on-change="(ev) => this.onColumnAlign(col._uid, ev)">
+                                                    <option value="" t-att-selected="!col.align">Come la tabella</option>
+                                                    <t t-foreach="alignments" t-as="al" t-key="al[0]">
+                                                        <option t-att-value="al[0]" t-att-selected="col.align === al[0]"><t t-esc="al[1]"/></option>
+                                                    </t>
+                                                </select>
                                             </div>
                                         </div>
                                     </t>

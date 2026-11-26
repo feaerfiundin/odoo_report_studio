@@ -345,6 +345,44 @@ class TestCompiler(unittest.TestCase):
         self.assertIn("Interruzione di pagina", arch)
 
 
+    # ----- allineamento del testo -----
+
+    def test_document_is_left_aligned(self):
+        self.assertIn('<div class="page" style="text-align: left">', compile_([]))
+
+    def test_align_on_text_section_columns(self):
+        cols = self._cols(2, align="right")
+        cols["children"][0]["align"] = "justify"
+        xml = compile_([{"type": "section", "align": "left", "children": [
+            {"type": "text", "content": "Titolo", "align": "center", "font": {"bold": True}},
+            {"type": "text", "content": "Normale"},
+            cols,
+        ]}])
+        self.assertIn('<div style="text-align: left">', xml)
+        self.assertIn('<p style="text-align: center; font-weight: bold">Titolo</p>', xml)
+        self.assertIn("<p>Normale</p>", xml)  # eredita dalla sezione
+        self.assertIn('<div style="text-align: right">', xml)
+        self.assertIn("vertical-align: top; text-align: justify", xml)
+
+    def test_table_and_column_align(self):
+        xml = compile_([{"type": "table", "source": "order_line", "align": "center", "columns": [
+            {"path": "name", "label": "Descrizione", "align": "left"},
+            {"path": "product_uom_qty", "label": "Qtà"},
+        ]}])
+        self.assertIn('<table class="table table-sm" style="text-align: center">', xml)
+        self.assertIn('<th style="text-align: left">Descrizione</th>', xml)
+        self.assertIn('<td style="text-align: left"><span t-field="line_1.name"/></td>', xml)
+        self.assertIn('<th style="text-align: center">Qtà</th>', xml)  # come la tabella
+
+    def test_invalid_align_rejected(self):
+        for block in ({"type": "text", "content": "x", "align": "middle"},
+                      {"type": "section", "align": 1, "children": []},
+                      {"type": "table", "source": "order_line",
+                       "columns": [{"path": "name", "align": "top"}]}):
+            with self.assertRaises(compiler.CompileError, msg=block):
+                compile_([block])
+
+
 def etree_ok(arch):
     """Il template annotato è XML ben formato."""
     import xml.dom.minidom

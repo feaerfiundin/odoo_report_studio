@@ -40,6 +40,12 @@ La Sezione accetta anche ``"margins": <margini>``. Margini (mm, tutti facoltativ
 
     {"top": 0, "right": 2, "bottom": 0, "left": 2}
 
+Allineamento del testo (facoltativo, ``"align"``): ``left``, ``center``,
+``right``, ``justify``. Vale per Testo, Sezione, Colonne, singola Colonna,
+Tabella e singola colonna di tabella (intestazione e righe). Il documento è
+allineato a sinistra; un blocco senza allineamento eredita quello del
+contenitore e il più interno vince (ereditarietà di ``text-align`` in CSS).
+
 Il blocco Colonne ha da 2 a 4 colonne, tutte di tipo ``column``; una colonna
 può stare solo dentro un blocco Colonne. Nel PDF le colonne sono una tabella
 senza bordi: il motore PDF di Odoo (wkhtmltopdf) non gestisce bene flexbox.
@@ -76,6 +82,7 @@ SPACER_RANGE = (1, 200)    # mm
 SEPARATOR_STYLES = ("solid", "dashed", "dotted")
 SEPARATOR_THICKNESS = (1, 5)  # px
 COLUMNS_RANGE = (2, 4)
+ALIGNS = ("left", "center", "right", "justify")
 TABLE_TYPES = ("one2many", "many2many")
 
 
@@ -141,6 +148,15 @@ def _number(value, low, high, what):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
         raise CompileError("%s non valido: %r (da %g a %g)" % (what, value, low, high))
     return value
+
+
+def _align_css(align):
+    """text-align da un allineamento validato ("" se assente: eredita)."""
+    if align in (None, ""):
+        return ""
+    if align not in ALIGNS:
+        raise CompileError("Allineamento non ammesso: %r" % (align,))
+    return "text-align: %s" % align
 
 
 def _margins_css(margins):
@@ -241,7 +257,10 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         )
         children = children or _empty_placeholder(children, ctx, "Sezione vuota: selezionala e aggiungi blocchi")
         return (
-            ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(_margins_css(block.get("margins"))))]
+            ["<div%s%s>" % (
+                _css_attr(block.get("class")),
+                _style_attr(_margins_css(block.get("margins")), _align_css(block.get("align"))),
+            )]
             + children
             + ["</div>"]
         )
@@ -275,7 +294,7 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
             raise CompileError("'content' deve essere una stringa")
         return ["<p%s%s>%s</p>" % (
             _css_attr(block.get("class")),
-            _style_attr(_font_css(block.get("font"))),
+            _style_attr(_align_css(block.get("align")), _font_css(block.get("font"))),
             escape(content),
         )]
 
@@ -316,10 +335,17 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
             label = column.get("label", cpath)
             width = _column_width(column)
             widths.append(width)
-            heads.append("<th%s>%s</th>" % (_style_attr(width, head_css), escape(str(label))))
-            cells.append('<td%s><span t-field="%s.%s"/></td>' % (_style_attr(body_css), line, cpath))
+            # Le celle ricevono l'allineamento esplicito (colonna, altrimenti tabella):
+            # il CSS dei report Odoo imposta quello delle intestazioni, che quindi
+            # non lo erediterebbero dalla tabella.
+            align = _align_css(column.get("align") or block.get("align"))
+            heads.append("<th%s>%s</th>" % (_style_attr(width, align, head_css), escape(str(label))))
+            cells.append('<td%s><span t-field="%s.%s"/></td>' % (_style_attr(align, body_css), line, cpath))
         # Con larghezze impostate la tabella le rispetta (layout fisso).
-        table_style = _style_attr("table-layout: fixed; width: 100%" if any(widths) else "")
+        table_style = _style_attr(
+            "table-layout: fixed; width: 100%" if any(widths) else "",
+            _align_css(block.get("align")),
+        )
         return [
             '<table class="table table-sm"%s>' % table_style,
             "<thead><tr>%s</tr></thead>" % "".join(heads),
@@ -377,7 +403,8 @@ def _render_columns(block, model, var, depth, ctx, tree_path):
         if not isinstance(column, dict) or column.get("type") != "column":
             raise CompileError("Il blocco Colonne può contenere solo colonne")
         column_path = "%s.%d" % (tree_path, index) if tree_path else str(index)
-        css = ["width: %.4g%%" % width, "vertical-align: top", _margins_css(column.get("margins"))]
+        css = ["width: %.4g%%" % width, "vertical-align: top", _margins_css(column.get("margins")),
+               _align_css(column.get("align"))]
         if divider and index:
             css.append("border-left: 1px solid #333")
         marks = ""
@@ -390,7 +417,7 @@ def _render_columns(block, model, var, depth, ctx, tree_path):
         children = children or _empty_placeholder(children, ctx, "Colonna vuota")
         cells.extend(["<td%s%s>" % (marks, _style_attr(*css))] + children + ["</td>"])
     return (
-        ["<div%s>" % _style_attr(_margins_css(block.get("margins"))),
+        ["<div%s>" % _style_attr(_margins_css(block.get("margins")), _align_css(block.get("align"))),
          '<table style="width: 100%; table-layout: fixed; border-collapse: collapse"><tr>']
         + cells
         + ["</tr></table>", "</div>"]
@@ -448,7 +475,8 @@ def compile_definition(definition, model, report_key, resolver=None, annotate=Fa
         '<t t-call="web.html_container">',
         '<t t-foreach="docs" t-as="o">',
         '<t t-call="%s">' % LAYOUTS[layout],
-        '<div class="page">',
+        # Allineamento di base del documento: a sinistra.
+        '<div class="page" style="text-align: left">',
     ]
     lines.extend(body)
     lines.extend(["</div>", "</t>", "</t>", "</t>", "</t>"])
