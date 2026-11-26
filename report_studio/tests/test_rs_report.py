@@ -3,6 +3,7 @@ import json
 
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
+from odoo.tools.safe_eval import safe_eval
 
 
 @tagged("post_install", "-at_install")
@@ -74,6 +75,21 @@ class TestRsReport(TransactionCase):
         self.assertFalse(self.report.action_id.binding_model_id)
         self.report.active = True
         self.assertEqual(self.report.action_id.binding_model_id, self.report.model_id)
+
+    def test_saved_layouts_list_shows_archived(self):
+        action = self.env.ref("report_studio.action_rs_report_list")
+        self.assertEqual(self.env.ref("report_studio.menu_report_studio_root").action, action)
+        context = safe_eval(action.context)
+        self.assertIs(context.get("active_test"), False)
+        self.report.active = False
+        Report = self.env["rs.report"].with_context(context)
+        self.assertIn(self.report, Report.search([]))
+        self.assertIn(self.report, Report.search([("active", "=", False)]))
+        # Elenco e ricerca si caricano; Attivo segue Ultima modifica.
+        views = Report.get_views([(action.view_id.id, "list"), (action.search_view_id.id, "search")])
+        arch = views["views"]["list"]["arch"]
+        self.assertIn('js_class="rs_report_list"', arch)
+        self.assertLess(arch.index('name="write_date"'), arch.index('name="active"'))
 
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})

@@ -11,11 +11,13 @@
         "security/res_groups.xml",
         "security/ir.model.access.csv",
         "views/res_users_views.xml",
+        "views/rs_report_views.xml",
         "views/report_studio_menus.xml",
     ],
     "assets": {
         "web.assets_backend": [
             "report_studio/static/src/js/report_studio_app.js",
+            "report_studio/static/src/js/rs_report_list.js",
             "report_studio/static/src/xml/report_studio_app.xml",
             "report_studio/static/src/scss/editor.scss",
         ],

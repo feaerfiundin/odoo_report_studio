@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Elenco Saved Layouts: vista standard di Odoo, così ricerca, filtri,
+         raggruppamenti, preferiti e ordinamento per colonna sono quelli nativi.
+         js_class apre l'editor (azione client) al posto del form. -->
+    <record id="rs_report_view_list" model="ir.ui.view">
+        <field name="name">rs.report.list</field>
+        <field name="model">rs.report</field>
+        <field name="arch" type="xml">
+            <list string="Saved Layouts" js_class="rs_report_list" default_order="write_date desc"
+                  decoration-muted="not active">
+                <field name="name" string="Report"/>
+                <field name="model_name" string="Modello"/>
+                <field name="report_mode" string="Modalità"/>
+                <field name="write_uid" string="Modificato da" optional="hide"/>
+                <field name="write_date" string="Ultima modifica"/>
+                <!-- Chi può modificare i report attiva/disattiva dall'elenco;
+                     il visualizzatore vede solo lo stato. -->
+                <field name="active" string="Attivo" widget="boolean_toggle"
+                       groups="report_studio.group_rs_editor,base.group_system"/>
+                <field name="active" string="Attivo" readonly="1"
+                       groups="!report_studio.group_rs_editor,!base.group_system"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="rs_report_view_search" model="ir.ui.view">
+        <field name="name">rs.report.search</field>
+        <field name="model">rs.report</field>
+        <field name="arch" type="xml">
+            <search string="Saved Layouts">
+                <field name="name" string="Report"/>
+                <field name="model_name" string="Modello (nome tecnico)"/>
+                <field name="model_id" string="Modello"/>
+                <field name="report_mode" string="Modalità"/>
+                <field name="write_uid" string="Modificato da"/>
+                <field name="create_uid" string="Creato da"/>
+                <filter name="filter_active" string="Attivi" domain="[('active', '=', True)]"/>
+                <filter name="filter_archived" string="Archiviati" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="filter_blocks" string="Blocchi" domain="[('report_mode', '=', 'blocks')]"/>
+                <filter name="filter_qweb" string="QWeb libero" domain="[('report_mode', '=', 'qweb')]"/>
+                <separator/>
+                <filter name="filter_write_date" string="Ultima modifica" date="write_date"/>
+                <filter name="filter_mine" string="Modificati da me" domain="[('write_uid', '=', uid)]"/>
+                <group>
+                    <filter name="group_model" string="Modello" context="{'group_by': 'model_name'}"/>
+                    <filter name="group_mode" string="Modalità" context="{'group_by': 'report_mode'}"/>
+                    <filter name="group_active" string="Attivo" context="{'group_by': 'active'}"/>
+                    <filter name="group_write_uid" string="Modificato da" context="{'group_by': 'write_uid'}"/>
+                    <filter name="group_write_date" string="Ultima modifica" context="{'group_by': 'write_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- active_test=False: i report archiviati restano in elenco (colonna Attivo)
+         e si isolano con i filtri Attivi / Archiviati. -->
+    <record id="action_rs_report_list" model="ir.actions.act_window">
+        <field name="name">Saved Layouts</field>
+        <field name="res_model">rs.report</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="rs_report_view_list"/>
+        <field name="search_view_id" ref="rs_report_view_search"/>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nessun report</p>
+            <p>Premi "Nuovo" per crearne uno.</p>
+        </field>
+    </record>
+</odoo>

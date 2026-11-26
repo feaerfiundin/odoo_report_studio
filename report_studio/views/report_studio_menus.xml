@@ -10,7 +10,7 @@
          già pieno accesso ai report (ACL) anche senza un ruolo Report Studio. -->
     <menuitem id="menu_report_studio_root"
               name="Report Studio"
-              action="action_report_studio_editor"
+              action="action_rs_report_list"
               sequence="90"
               groups="report_studio.group_rs_viewer,base.group_system"/>
 </odoo>

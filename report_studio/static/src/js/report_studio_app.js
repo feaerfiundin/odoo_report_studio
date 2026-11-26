@@ -131,11 +131,11 @@ export class ReportStudioApp extends Component {
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.dialog = useService("dialog");
+        this.action = useService("action");
         this.blockTypes = BLOCK_TYPES;
         this.state = useState({
-            // list | new | edit
-            view: "list",
-            reports: [],
+            // new | edit (l'elenco è la vista standard action_rs_report_list)
+            view: "new",
             // nuovo report
             newName: "",
             newModel: "",
@@ -161,32 +161,38 @@ export class ReportStudioApp extends Component {
             dirty: false,
         });
         onWillStart(async () => {
-            await this.loadList();
-            const reportId = this.props.action?.params?.report_id;
-            if (reportId) {
-                await this.openEditor(reportId);
+            const params = this.props.action?.params || {};
+            if (params.report_id) {
+                await this.openEditor(params.report_id);
+            } else if (params.new) {
+                await this.openNew();
+            } else {
+                // Aperta senza parametri (vecchio menu, URL ricaricato): va all'elenco.
+                this.goToList();
             }
         });
     }
 
     // ----- elenco -----
 
-    async loadList() {
-        this.state.reports = await this.orm.searchRead(
-            "rs.report",
-            [["active", "=", true]],
-            ["name", "model_name", "report_mode", "write_date"],
-            { order: "write_date desc" }
-        );
+    // Torna all'elenco Saved Layouts: ripristina quello da cui si è arrivati
+    // (con ricerca, filtri e raggruppamenti), altrimenti lo apre da capo.
+    async goToList() {
+        const stack = this.env.config?.breadcrumbs || [];
+        if (stack.length > 1) {
+            try {
+                await this.action.restore();
+                return;
+            } catch {
+                // nessun controller precedente: apre l'elenco da capo
+            }
+        }
+        await this.action.doAction("report_studio.action_rs_report_list", { clearBreadcrumbs: true });
     }
 
     showList() {
-        this.state.view = "list";
-        this.loadList();
-    }
-
-    async onOpenRow(ev) {
-        await this.openEditor(parseInt(ev.currentTarget.dataset.id));
+        this.state.previewUrl = null;
+        return this.goToList();
     }
 
     // ----- nuovo report -----
@@ -332,9 +338,7 @@ export class ReportStudioApp extends Component {
     }
 
     backToList() {
-        this.state.view = "list";
-        this.state.previewUrl = null;
-        this.loadList();
+        return this.showList();
     }
 
     currentDefinitionJson() {

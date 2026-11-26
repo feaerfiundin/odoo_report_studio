@@ -111,6 +111,8 @@ with sync_playwright() as p:
 
     app = ".o_rs_app"
     topbar = ".o_rs_topbar"
+    lst = ".o_list_view"
+    row = f"{lst} .o_data_row"
 
     def wait_list_reload(action):
         with page.expect_response(lambda r: "rs.report/search_read" in r.url):
@@ -124,11 +126,15 @@ with sync_playwright() as p:
         modal = page.locator(".o_dialog")
         if modal.count():
             modal.locator("button.btn-primary").click()
-        page.wait_for_selector(".o_rs_row")
-        page.wait_for_timeout(1500)
+        page.wait_for_selector(row)
+        page.wait_for_timeout(1000)
 
     def list_names():
-        return page.locator(".o_rs_row td:first-child").all_inner_texts()
+        return [t.strip() for t in page.locator(f"{row} td[name=name]").all_inner_texts()]
+
+    def click_new():
+        page.click(".o_control_panel .o_list_button_add")
+        page.wait_for_selector("text=Open Visual Editor")
 
     def notification_text():
         page.wait_for_selector(".o_notification", timeout=15000)
@@ -159,14 +165,46 @@ with sync_playwright() as p:
     def open_from_menu():
         page.click(".o_navbar_apps_menu button")
         page.locator(".o_app", has_text="Report Studio").first.click()
-        page.wait_for_selector(app, timeout=30000)
+        page.wait_for_selector(lst, timeout=30000)
         brand = page.locator(".o_menu_brand").inner_text().strip()
         expect(brand == "Report Studio", f"titolo della barra: {brand!r}")
-        return f"barra: {brand}, report in elenco: {page.locator('.o_rs_row').count()}"
+        return f"barra: {brand}, report in elenco: {page.locator(row).count()}"
+
+    def list_layout():
+        """Nuovo a sinistra del titolo, barra di ricerca, colonna Attivo dopo Ultima modifica."""
+        new_box = page.locator(".o_control_panel .o_list_button_add").bounding_box()
+        title_box = page.locator(".o_control_panel .o_breadcrumb").bounding_box()
+        expect(new_box["x"] < title_box["x"], "Nuovo non è a sinistra di Saved Layouts")
+        expect(page.locator(".o_control_panel .o_searchview").count() == 1, "barra di ricerca assente")
+        headers = [h.strip() for h in page.locator(f"{lst} thead th").all_inner_texts() if h.strip()]
+        expect("Attivo" in headers and headers.index("Attivo") == headers.index("Ultima modifica") + 1,
+               f"intestazioni: {headers}")
+        return f"colonne: {headers}"
+
+    def sort_by_name():
+        page.locator(f"{lst} thead th[data-name=name]").click()
+        page.wait_for_timeout(800)
+        names = list_names()
+        expect(names == sorted(names, key=str.casefold) or names == sorted(names, key=str.lower),
+               f"non ordinato: {names[:5]}")
+        page.locator(f"{lst} thead th[data-name=name]").click()
+        page.wait_for_timeout(800)
+        desc = list_names()
+        expect(desc[0] == names[-1] or desc != names, "secondo clic non inverte l'ordine")
+        return f"primo: {names[0]!r}, dopo il secondo clic: {desc[0]!r}"
+
+    def search_by_name():
+        page.fill(".o_searchview_input", f"Copia {STAMP}")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(1000)
+        names = list_names()
+        expect(names == [f"Copia {STAMP}"], f"ricerca: {names}")
+        page.locator(".o_searchview .o_facet_remove").last.click()
+        page.wait_for_timeout(1000)
+        return "trovato solo il report cercato"
 
     def new_blank_report():
-        page.click(f"{app} button:has-text('Nuovo')")
-        page.wait_for_selector("text=Open Visual Editor")
+        click_new()
         page.fill(f"{app} input[placeholder='Nome del report']", f"Smoke {STAMP}")
         page.select_option(f"{app} select.form-select >> nth=0", args.model)
         page.click("button:has-text('Open Visual Editor')")
@@ -272,7 +310,7 @@ with sync_playwright() as p:
         return f"report in elenco: {len(names)}"
 
     def new_from_studio_report():
-        page.click(f"{app} button:has-text('Nuovo')")
+        click_new()
         page.fill(f"{app} input[placeholder='Nome del report']", f"Da studio {STAMP}")
         source = page.locator(f"{app} select.form-select >> nth=1")
         value = source.locator("optgroup[label='Report Studio'] option", has_text=f"Smoke {STAMP}").first.get_attribute("value")
@@ -290,7 +328,7 @@ with sync_playwright() as p:
 
     def new_from_odoo_document():
         go_list()
-        page.click(f"{app} button:has-text('Nuovo')")
+        click_new()
         page.fill(f"{app} input[placeholder='Nome del report']", f"Da Odoo {STAMP}")
         source = page.locator(f"{app} select.form-select >> nth=1")
         if not source.locator("optgroup[label='Documenti Odoo']").count():
@@ -310,7 +348,7 @@ with sync_playwright() as p:
         return preview_pdf()
 
     def open_from_list(name):
-        page.locator(".o_rs_row", has_text=name).first.click()
+        page.locator(f"{row} td[name=name]", has_text=name).first.click()
         page.wait_for_selector(topbar)
 
     def archive():
@@ -319,19 +357,42 @@ with sync_playwright() as p:
         modal = page.locator(".o_dialog")
         if modal.count():
             modal.locator("button.btn-primary").click()
-        page.wait_for_selector(".o_rs_row")
-        page.wait_for_timeout(1500)
+        page.wait_for_selector(row)
+        page.wait_for_timeout(1000)
+        # Gli archiviati restano in elenco con Attivo spento.
+        cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] input")
+        expect(cell.count() == 1 and not cell.is_checked(), "archiviato non visibile o ancora attivo")
+        return "archiviato, visibile con Attivo spento"
+
+    def filter_archived():
+        page.click(".o_searchview_dropdown_toggler")
+        page.locator(".o_filter_menu .o-dropdown-item", has_text="Archiviati").click()
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(1000)
         names = list_names()
-        expect(archived["name"] not in names, f"ancora in elenco: {names}")
-        return "archiviato"
+        expect(archived["name"] in names, f"filtro Archiviati: {names}")
+        page.locator(".o_searchview .o_facet_remove").last.click()
+        page.wait_for_timeout(800)
+        return f"archiviati: {len(names)}"
+
+    def reactivate_toggle():
+        cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] .o_field_boolean_toggle label, td[name=active] input").first
+        cell.click()
+        page.wait_for_timeout(1200)
+        inp = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] input")
+        expect(inp.is_checked(), "toggle Attivo non riattiva")
+        return "riattivato dall'elenco"
 
     def open_by_url():
-        page.goto(f"{args.base}/odoo/action-report_studio.action_report_studio_editor")
-        page.wait_for_selector(app, timeout=30000)
+        page.goto(f"{args.base}/odoo/action-report_studio.action_rs_report_list")
+        page.wait_for_selector(lst, timeout=30000)
 
     ok = step(page, "login", login)
     if ok and not step(page, "menu_report_studio", open_from_menu):
         ok = step(page, "apri_da_url", open_by_url)
+    if ok:
+        step(page, "layout_elenco", list_layout)
+        step(page, "ordina_per_nome", sort_by_name)
     if ok and step(page, "nuovo_report_vuoto", new_blank_report):
         step(page, "blocchi", build_blocks)
         step(page, "salva_versione", save_version)
@@ -340,6 +401,7 @@ with sync_playwright() as p:
         step(page, "ripristina_versioni", restore_versions)
         step(page, "copia_versione", copy_version)
         step(page, "torna_elenco", back_to_list)
+        step(page, "ricerca", search_by_name)
         step(page, "nuovo_da_report_studio", new_from_studio_report)
         archived["name"] = f"Da Odoo {STAMP}"
         if step(page, "nuovo_da_documento_odoo", new_from_odoo_document):
@@ -348,7 +410,9 @@ with sync_playwright() as p:
                 step(page, "apri_da_elenco", lambda: open_from_list(archived["name"]))
             else:
                 step(page, "anteprima_qweb", preview_qweb)
-            step(page, "archivia", archive)
+            if step(page, "archivia", archive):
+                step(page, "filtro_archiviati", filter_archived)
+                step(page, "riattiva_da_elenco", reactivate_toggle)
 
     browser.close()
 
