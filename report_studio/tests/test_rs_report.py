@@ -153,8 +153,9 @@ class TestRsReport(TransactionCase):
         order = self._sale_order()
         definition = json.dumps({"children": [
             {"type": "section", "align": "right", "children": [
-                {"type": "text", "content": "Centrato", "align": "center"},
+                {"type": "text", "content": "Centrato\nSeconda riga", "align": "center"},
                 {"type": "field", "path": "name"},
+                {"type": "field", "path": "name", "label": "N.", "align": "center"},
             ]},
             {"type": "table", "source": "order_line", "align": "center",
              "columns": [{"path": "name", "label": "Descrizione", "align": "left"}]},
@@ -162,8 +163,9 @@ class TestRsReport(TransactionCase):
         version = self.report._create_version(definition)
         self.assertIn('<div class="page" style="text-align: left">', version.arch)
         self.assertIn('<div style="text-align: right">', version.arch)
-        self.assertIn('<p style="text-align: center">Centrato</p>', version.arch)
+        self.assertIn('<p style="text-align: center">Centrato<br/>Seconda riga</p>', version.arch)
         self.assertIn('<th style="text-align: left">Descrizione</th>', version.arch)
+        self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">N.</span>', version.arch)
         self.assertIn("Centrato", self.report.render_canvas(definition, order.id))
 
     def _sale_order(self):

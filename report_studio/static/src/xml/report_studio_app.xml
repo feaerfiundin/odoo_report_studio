@@ -340,6 +340,7 @@
                                     <label class="form-label mt-2">Etichetta</label>
                                     <input class="form-control o_rs_field_label" placeholder="es. DDT num:"
                                            t-model="selected.label" t-on-input="markDirty"/>
+                                    <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.label_font"/><t t-set="title" t-value="'Carattere etichetta'"/>
                                     </t>

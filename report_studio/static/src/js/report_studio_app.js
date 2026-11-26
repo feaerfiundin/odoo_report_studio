@@ -52,7 +52,7 @@ const MARGIN_SIDES = [
 ];
 const COLUMN_COUNTS = [2, 3, 4];
 // Allineamento del testo: vuoto = come il contenitore (il documento è a sinistra).
-const ALIGN_TYPES = ["text", "section", "columns", "column", "table"];
+const ALIGN_TYPES = ["text", "field", "section", "columns", "column", "table"];
 const ALIGNMENTS = [
     ["left", "Sinistra", "fa-align-left"],
     ["center", "Centro", "fa-align-center"],

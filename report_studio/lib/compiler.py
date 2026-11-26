@@ -228,7 +228,8 @@ def _empty_placeholder(children, ctx, text):
 def _render_annotated(block, model, var, depth, ctx, tree_path):
     """Blocco per la vista visuale: avvolto e marcato, errori come segnaposto."""
     btype = block.get("type") if isinstance(block, dict) else None
-    tag = "span" if btype == "field" else "div"
+    # Un campo è in linea, salvo quando ha un allineamento proprio (diventa un blocco).
+    tag = "span" if btype == "field" and not block.get("align") else "div"
     btype_attr = _attr(btype) if isinstance(btype, str) else "unknown"
     try:
         inner = _render_block(block, model, var, depth, ctx, tree_path)
@@ -292,10 +293,12 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         content = block.get("content", "")
         if not isinstance(content, str):
             raise CompileError("'content' deve essere una stringa")
+        # Ogni a capo del testo diventa un <br/> nel documento.
+        lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         return ["<p%s%s>%s</p>" % (
             _css_attr(block.get("class")),
             _style_attr(_align_css(block.get("align")), _font_css(block.get("font"))),
-            escape(content),
+            "<br/>".join(escape(line) for line in lines),
         )]
 
     if btype == "field":
@@ -305,12 +308,17 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         label = block.get("label") or ""
         if not isinstance(label, str) or len(label) > MAX_LABEL:
             raise CompileError("Etichetta del campo non valida")
-        if not label.strip():
-            return [value]
-        # Etichetta + spazio indivisibile + valore, sulla stessa riga.
-        return ['<span><span class="o_rs_label"%s>%s</span>&#160;%s</span>' % (
-            _style_attr(_font_css(block.get("label_font"))), escape(label), value,
-        )]
+        if label.strip():
+            # Etichetta + spazio indivisibile + valore, sulla stessa riga.
+            value = '<span><span class="o_rs_label"%s>%s</span>&#160;%s</span>' % (
+                _style_attr(_font_css(block.get("label_font"))), escape(label), value,
+            )
+        # text-align non vale su un elemento in linea: con un allineamento
+        # proprio il campo va su una riga a sé, allineata.
+        align = _align_css(block.get("align"))
+        if align:
+            value = '<div style="%s">%s</div>' % (align, value)
+        return [value]
 
     if btype == "table":
         source = block.get("source")

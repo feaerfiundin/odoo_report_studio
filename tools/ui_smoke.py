@@ -422,6 +422,8 @@ with sync_playwright() as p:
         column = computed(canvas.locator("td[data-rs-type=column]"))
         outside = computed(canvas.locator("[data-rs-type=columns]"))
         expect(text == "center", f"testo: {text}")
+        breaks = canvas.locator("p", has_text="Riga 1").locator("br").count()
+        expect(breaks == 1, f"a capo del testo non riportato nella pagina: {breaks} <br>")
         expect(field == "right", f"campo nella sezione: {field}")
         expect(head[0] == "left" and set(head[1:]) == {"center"}, f"intestazioni: {head}")
         expect(column == "justify", f"colonna: {column}")
@@ -429,7 +431,14 @@ with sync_playwright() as p:
         # Secondo clic sul pulsante attivo: torna a "come il contenitore".
         align("justify")
         page.wait_for_selector(".o_rs_props .o_rs_align :text('come il contenitore')", timeout=3000)
-        return f"testo {text}, campo {field}, intestazioni {head}, colonna {column}, resto {outside}"
+        # Campo con allineamento proprio: vince sulla sezione a destra.
+        canvas.locator("[data-rs-type=field]").first.click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Campo')")
+        align("center")
+        wait_canvas()
+        own = computed(canvas.locator("div[data-rs-type=field] > div"))
+        expect(own == "center", f"campo con allineamento proprio: {own}")
+        return f"testo {text}, campo {field} -> {own}, intestazioni {head}, colonna {column}, resto {outside}"
 
     def save_version():
         page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")

@@ -374,6 +374,27 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('<td style="text-align: left"><span t-field="line_1.name"/></td>', xml)
         self.assertIn('<th style="text-align: center">Qtà</th>', xml)  # come la tabella
 
+    def test_text_line_breaks(self):
+        xml = compile_([{"type": "text", "content": "Riga 1\nRiga <2>\r\nRiga 3"}])
+        self.assertIn("<p>Riga 1<br/>Riga &lt;2&gt;<br/>Riga 3</p>", xml)
+        self.assertIn("<p>Una riga</p>", compile_([{"type": "text", "content": "Una riga"}]))
+
+    def test_field_align(self):
+        # Senza allineamento il campo resta in linea, come prima.
+        self.assertIn('<span t-field="o.name"/>', compile_([{"type": "field", "path": "name"}]))
+        xml = compile_([
+            {"type": "field", "path": "name", "align": "right"},
+            {"type": "field", "path": "name", "label": "Ordine n.", "align": "center"},
+        ])
+        self.assertIn('<div style="text-align: right"><span t-field="o.name"/></div>', xml)
+        self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">Ordine n.</span>', xml)
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "field", "path": "name", "align": "middle"}])
+        canvas = self._annotated([{"type": "field", "path": "name", "align": "right"},
+                               {"type": "field", "path": "name"}])
+        self.assertIn('<div class="o_rs_cv_block o_rs_cv_field" data-rs-path="0"', canvas)
+        self.assertIn('<span class="o_rs_cv_block o_rs_cv_field" data-rs-path="1"', canvas)
+
     def test_invalid_align_rejected(self):
         for block in ({"type": "text", "content": "x", "align": "middle"},
                       {"type": "section", "align": 1, "children": []},
