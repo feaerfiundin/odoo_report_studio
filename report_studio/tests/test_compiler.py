@@ -284,6 +284,67 @@ class TestCompiler(unittest.TestCase):
                            "columns": [{"path": "name", "width": width}]}])
 
 
+    # ----- separatore, spaziatore, interruzione, colonne, margini -----
+
+    def _cols(self, n, **extra):
+        return dict({"type": "columns", "children": [
+            {"type": "column", "children": [{"type": "text", "content": "C%d" % i}]} for i in range(n)
+        ]}, **extra)
+
+    def test_separator_spacer_page_break(self):
+        xml = compile_([
+            {"type": "separator", "style": "dashed", "thickness": 2},
+            {"type": "spacer", "height": 15},
+            {"type": "page_break"},
+        ])
+        self.assertIn("border-top: 2px dashed #333", xml)
+        self.assertIn('<div style="height: 15mm"></div>', xml)
+        self.assertIn("page-break-after: always", xml)
+        self.assertNotIn("Interruzione di pagina", xml)  # etichetta solo nell'editor
+
+    def test_separator_and_spacer_validation(self):
+        for block in ({"type": "separator", "style": "double"}, {"type": "separator", "thickness": 9},
+                      {"type": "spacer", "height": 0}, {"type": "spacer", "height": "10"}):
+            with self.assertRaises(compiler.CompileError, msg=block):
+                compile_([block])
+
+    def test_columns_table_with_divider_and_margins(self):
+        block = self._cols(3, divider=True, margins={"top": 5})
+        block["children"][1]["margins"] = {"left": 3, "right": 3}
+        xml = compile_([block])
+        self.assertIn('<div style="padding: 5mm 0mm 0mm 0mm">', xml)
+        self.assertEqual(xml.count("<td "), 3)
+        self.assertIn("width: 33.33%; vertical-align: top; padding: 0mm 3mm 0mm 3mm; border-left: 1px solid #333", xml)
+        self.assertNotIn("width: 33.33%; vertical-align: top; border-left", xml.split("<td")[1])  # prima colonna senza riga
+        self.assertIn("C2", xml)
+
+    def test_columns_count_and_content_validated(self):
+        for block in (self._cols(1), self._cols(5), self._cols(2, divider="si"),
+                      {"type": "columns", "children": [{"type": "text", "content": "x"}] * 2},
+                      {"type": "column", "children": []}):
+            with self.assertRaises(compiler.CompileError, msg=block):
+                compile_([block])
+
+    def test_section_margins(self):
+        xml = compile_([{"type": "section", "margins": {"left": 10, "top": 0}, "children": []}])
+        self.assertIn('<div style="padding: 0mm 0mm 0mm 10mm">', xml)
+        self.assertIn("<div>", compile_([{"type": "section", "margins": {"left": 0}, "children": []}]))
+        for margins in ({"left": -1}, {"left": 500}, {"middle": 1}, "5"):
+            with self.assertRaises(compiler.CompileError, msg=margins):
+                compile_([{"type": "section", "margins": margins, "children": []}])
+
+    def test_annotate_columns_are_selectable(self):
+        arch = self._annotated([{"type": "section", "children": [self._cols(2)]}])
+        self.assertIn('data-rs-path="0.0" data-rs-type="columns"', arch)
+        self.assertIn('class="o_rs_cv_block o_rs_cv_column" data-rs-path="0.0.1" data-rs-type="column"', arch)
+        self.assertIn('data-rs-path="0.0.1.0" data-rs-type="text"', arch)
+        etree_ok(arch)
+
+    def test_annotate_page_break_label(self):
+        arch = self._annotated([{"type": "page_break"}])
+        self.assertIn("Interruzione di pagina", arch)
+
+
 def etree_ok(arch):
     """Il template annotato è XML ben formato."""
     import xml.dom.minidom

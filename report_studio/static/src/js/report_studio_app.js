@@ -30,13 +30,40 @@ const BLOCK_GROUPS = [
         label: "Impaginazione",
         items: [
             { type: "section", label: "Sezione", icon: "fa-square-o" },
+            { type: "columns", label: "Colonne", icon: "fa-columns" },
             { type: "if", label: "Condizione", icon: "fa-code-fork" },
+            { type: "separator", label: "Separatore", icon: "fa-minus" },
+            { type: "spacer", label: "Spaziatore", icon: "fa-arrows-v" },
+            { type: "page_break", label: "Interruzione di pagina", icon: "fa-file-o" },
         ],
     },
 ];
-const BLOCK_LABELS = Object.fromEntries(
-    BLOCK_GROUPS.flatMap((g) => g.items.map((i) => [i.type, i.label]))
-);
+const BLOCK_LABELS = {
+    ...Object.fromEntries(BLOCK_GROUPS.flatMap((g) => g.items.map((i) => [i.type, i.label]))),
+    column: "Colonna",
+};
+// Blocchi con i 4 margini interni (mm).
+const MARGIN_TYPES = ["section", "columns", "column"];
+const MARGIN_SIDES = [
+    ["top", "Sopra"],
+    ["right", "Destra"],
+    ["bottom", "Sotto"],
+    ["left", "Sinistra"],
+];
+const COLUMN_COUNTS = [2, 3, 4];
+const SEPARATOR_STYLES = [
+    ["solid", "Continua"],
+    ["dashed", "Tratteggiata"],
+    ["dotted", "Puntinata"],
+];
+const zeroMargins = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
+// Nuova colonna: un po' di margine ai lati, così il testo non tocca la riga verticale.
+const newColumn = () => ({
+    _uid: nextUid(),
+    type: "column",
+    margins: { top: 0, right: 2, bottom: 0, left: 2 },
+    children: [],
+});
 
 // Stile iniettato nella vista visuale (iframe): contorni, selezione, segnaposto.
 const CANVAS_STYLE = `
@@ -44,11 +71,13 @@ const CANVAS_STYLE = `
 [data-rs-path]:hover { outline: 1px dashed rgba(113, 75, 103, .8); }
 .o_rs_cv_selected, .o_rs_cv_selected:hover { outline: 2px solid #714B67 !important; background: rgba(113, 75, 103, .06); }
 span.o_rs_cv_block { display: inline-block; min-width: 1em; }
-.o_rs_cv_section > div:empty, .o_rs_cv_if:not(:has(> :not(.o_rs_cv_if_label, .o_rs_cv_if_false))) { min-height: 2.2em; }
-.o_rs_cv_section > div:empty::before { content: "Sezione vuota: seleziona e aggiungi blocchi"; color: #999; font-style: italic; font-size: 12px; }
+.o_rs_cv_empty { color: #999; font-style: italic; font-size: 12px; padding: 4px 0; }
 .o_rs_cv_invalid { background: #fff3cd; color: #856404; padding: 2px 6px; font-size: 12px; }
 .o_rs_cv_if_label { font-size: 11px; color: #714B67; }
 .o_rs_cv_if_false { font-size: 11px; color: #999; font-style: italic; }
+td.o_rs_cv_column { outline-offset: -2px; }
+.o_rs_cv_page_break { border-top: 2px dashed #714B67; color: #714B67; font-size: 11px; text-align: center; }
+.o_rs_cv_spacer { background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(113, 75, 103, .06) 4px, rgba(113, 75, 103, .06) 8px); }
 `;
 
 const CANVAS_DELAY = 400;
@@ -60,7 +89,15 @@ function defaultBlock(type) {
     const base = { _uid: nextUid(), type };
     switch (type) {
         case "section":
-            return { ...base, class: "", children: [] };
+            return { ...base, class: "", margins: zeroMargins(), children: [] };
+        case "columns":
+            return { ...base, divider: false, margins: zeroMargins(), children: [newColumn(), newColumn()] };
+        case "separator":
+            return { ...base, style: "solid", thickness: 1 };
+        case "spacer":
+            return { ...base, height: 10 };
+        case "page_break":
+            return base;
         case "text":
             return { ...base, content: "Testo", class: "", font: {} };
         case "field":
@@ -92,6 +129,7 @@ function withUids(block) {
         copy[key] = { ...(block[key] || {}) };
     }
     if (block.type === "field" && copy.label === undefined) copy.label = "";
+    if (MARGIN_TYPES.includes(block.type)) copy.margins = { ...zeroMargins(), ...(block.margins || {}) };
     return copy;
 }
 
@@ -129,6 +167,13 @@ function cleanBlock(block) {
         else delete out[key];
     }
     if (block.type === "field" && !block.label?.trim()) delete out.label;
+    if (MARGIN_TYPES.includes(block.type)) {
+        const margins = Object.fromEntries(
+            MARGIN_SIDES.map(([side]) => [side, Number(block.margins?.[side]) || 0])
+        );
+        if (Object.values(margins).some((v) => v)) out.margins = margins;
+        else delete out.margins;
+    }
     return out;
 }
 
@@ -221,6 +266,9 @@ export class ReportStudioApp extends Component {
         this.blockGroups = BLOCK_GROUPS;
         this.blockLabels = BLOCK_LABELS;
         this.fontSizes = FONT_SIZES;
+        this.marginSides = MARGIN_SIDES;
+        this.columnCounts = COLUMN_COUNTS;
+        this.separatorStyles = SEPARATOR_STYLES;
         this.totalWidth = totalWidth;
         this.canvasRef = useRef("canvas");
         this.canvasTimer = null;
@@ -586,11 +634,18 @@ export class ReportStudioApp extends Component {
         const type = ev.currentTarget.dataset.type;
         const block = defaultBlock(type);
         let target = this.state.definition.children;
+        let index = null;
         const sel = this.selected;
-        if (sel) {
-            target = sel.children ? sel.children : findNode(this.state.definition.children, sel._uid).list;
+        if (sel && sel.children && sel.type !== "columns") {
+            target = sel.children; // dentro Sezione, Condizione, Colonna
+        } else if (sel) {
+            // dopo il blocco selezionato (un blocco Colonne accetta solo colonne)
+            const found = findNode(this.state.definition.children, sel._uid);
+            target = found.list;
+            index = found.index + 1;
         }
-        target.push(block);
+        if (index === null) target.push(block);
+        else target.splice(index, 0, block);
         this.state.selectedUid = block._uid;
         this.markDirty();
     }
@@ -651,7 +706,28 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
+    // Numero di colonne: i blocchi delle colonne tolte passano nell'ultima rimasta.
+    onColumnsCount(ev) {
+        const sel = this.selected;
+        if (!sel || sel.type !== "columns") return;
+        const count = parseInt(ev.target.value);
+        while (sel.children.length < count) sel.children.push(newColumn());
+        if (sel.children.length > count) {
+            const removed = sel.children.splice(count);
+            sel.children[count - 1].children.push(...removed.flatMap((c) => c.children));
+        }
+        this.markDirty();
+    }
+
+    onMargin(margins, side, ev) {
+        const value = Math.min(Math.max(Number(ev.target.value) || 0, 0), 100);
+        margins[side] = value;
+        ev.target.value = value;
+        this.markDirty();
+    }
+
     onMove(ev) {
+        if (this.selected?.type === "column") return;
         const direction = parseInt(ev.currentTarget.dataset.dir);
         const found = findNode(this.state.definition.children, this.state.selectedUid);
         if (!found) return;
@@ -662,6 +738,7 @@ export class ReportStudioApp extends Component {
     }
 
     onDelete() {
+        if (this.selected?.type === "column") return;
         const found = findNode(this.state.definition.children, this.state.selectedUid);
         if (!found) return;
         found.list.splice(found.index, 1);

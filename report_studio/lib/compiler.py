@@ -30,6 +30,19 @@ Carattere (tutte le chiavi facoltative; assente o vuoto = quello del layout)::
 ``size`` è in punti (6-72); ``width`` delle colonne è in percentuale (0-100].
     {"type": "if", "path": "amount_total", "op": ">", "value": 0,
      "children": [...]}
+    {"type": "separator", "style": "solid" | "dashed" | "dotted", "thickness": 1}
+    {"type": "spacer", "height": 10}
+    {"type": "page_break"}
+    {"type": "columns", "divider": true, "margins": <margini>,
+     "children": [{"type": "column", "margins": <margini>, "children": [...]}, ...]}
+
+La Sezione accetta anche ``"margins": <margini>``. Margini (mm, tutti facoltativi)::
+
+    {"top": 0, "right": 2, "bottom": 0, "left": 2}
+
+Il blocco Colonne ha da 2 a 4 colonne, tutte di tipo ``column``; una colonna
+può stare solo dentro un blocco Colonne. Nel PDF le colonne sono una tabella
+senza bordi: il motore PDF di Odoo (wkhtmltopdf) non gestisce bene flexbox.
 
 Non vengono mai accettate espressioni Python libere: i confronti passano
 solo da percorsi di campo validati e da letterali scalari.
@@ -57,6 +70,12 @@ FONT_SIZE_RANGE = (6, 72)
 FONT_FLAGS = (("bold", "font-weight: bold"), ("italic", "font-style: italic"),
               ("underline", "text-decoration: underline"))
 MAX_LABEL = 200
+MARGIN_SIDES = ("top", "right", "bottom", "left")
+MAX_MARGIN = 100           # mm
+SPACER_RANGE = (1, 200)    # mm
+SEPARATOR_STYLES = ("solid", "dashed", "dotted")
+SEPARATOR_THICKNESS = (1, 5)  # px
+COLUMNS_RANGE = (2, 4)
 TABLE_TYPES = ("one2many", "many2many")
 
 
@@ -118,6 +137,27 @@ def _style_attr(*declarations):
     return ' style="%s"' % _attr(css) if css else ""
 
 
+def _number(value, low, high, what):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
+        raise CompileError("%s non valido: %r (da %g a %g)" % (what, value, low, high))
+    return value
+
+
+def _margins_css(margins):
+    """padding dai margini in mm ("" se assenti o tutti a zero)."""
+    if margins is None:
+        return ""
+    if not isinstance(margins, dict) or set(margins) - set(MARGIN_SIDES):
+        raise CompileError("Margini non validi: %r" % (margins,))
+    values = [
+        _number(margins.get(side) or 0, 0, MAX_MARGIN, "Margine (%s, mm)" % side)
+        for side in MARGIN_SIDES
+    ]
+    if not any(values):
+        return ""
+    return "padding: %s" % " ".join("%gmm" % v for v in values)
+
+
 def _column_width(column):
     width = column.get("width")
     if width is None:
@@ -162,6 +202,13 @@ def _render_children(children, model, var, depth, ctx, tree_path=""):
     return lines
 
 
+def _empty_placeholder(children, ctx, text):
+    """Nell'editor un contenitore vuoto mostra un invito ad aggiungere blocchi."""
+    if ctx.annotate and not children:
+        return ['<div class="o_rs_cv_empty">%s</div>' % escape(text)]
+    return []
+
+
 def _render_annotated(block, model, var, depth, ctx, tree_path):
     """Blocco per la vista visuale: avvolto e marcato, errori come segnaposto."""
     btype = block.get("type") if isinstance(block, dict) else None
@@ -192,11 +239,35 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         children = _render_children(
             block.get("children", []), model, var, depth + 1, ctx, tree_path
         )
+        children = children or _empty_placeholder(children, ctx, "Sezione vuota: selezionala e aggiungi blocchi")
         return (
-            ["<div%s>" % _css_attr(block.get("class"))]
+            ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(_margins_css(block.get("margins"))))]
             + children
             + ["</div>"]
         )
+
+    if btype == "separator":
+        style = block.get("style", "solid")
+        if style not in SEPARATOR_STYLES:
+            raise CompileError("Stile del separatore non ammesso: %r" % (style,))
+        thickness = _number(block.get("thickness", 1), *SEPARATOR_THICKNESS, what="Spessore del separatore (px)")
+        return ['<div style="border-top: %gpx %s #333; margin: 2mm 0; height: 0"></div>' % (thickness, style)]
+
+    if btype == "spacer":
+        height = _number(block.get("height", 10), *SPACER_RANGE, what="Altezza dello spaziatore (mm)")
+        return ['<div style="height: %gmm"></div>' % height]
+
+    if btype == "page_break":
+        lines = ['<div style="page-break-after: always; break-after: page"></div>']
+        if ctx.annotate:
+            lines.insert(0, '<div class="o_rs_cv_page_break">Interruzione di pagina</div>')
+        return lines
+
+    if btype == "columns":
+        return _render_columns(block, model, var, depth, ctx, tree_path)
+
+    if btype == "column":
+        raise CompileError("Una colonna può stare solo dentro un blocco Colonne")
 
     if btype == "text":
         content = block.get("content", "")
@@ -289,6 +360,41 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         )
 
     raise CompileError("Tipo di blocco sconosciuto: %r" % (btype,))
+
+
+def _render_columns(block, model, var, depth, ctx, tree_path):
+    """Blocco Colonne: tabella senza bordi a larghezze uguali, riga verticale facoltativa."""
+    columns = block.get("children")
+    low, high = COLUMNS_RANGE
+    if not isinstance(columns, list) or not low <= len(columns) <= high:
+        raise CompileError("Il blocco Colonne deve avere da %d a %d colonne" % (low, high))
+    divider = block.get("divider", False)
+    if not isinstance(divider, bool):
+        raise CompileError("'divider' deve essere vero o falso")
+    width = 100.0 / len(columns)
+    cells = []
+    for index, column in enumerate(columns):
+        if not isinstance(column, dict) or column.get("type") != "column":
+            raise CompileError("Il blocco Colonne può contenere solo colonne")
+        column_path = "%s.%d" % (tree_path, index) if tree_path else str(index)
+        css = ["width: %.4g%%" % width, "vertical-align: top", _margins_css(column.get("margins"))]
+        if divider and index:
+            css.append("border-left: 1px solid #333")
+        marks = ""
+        if ctx.annotate:
+            # La colonna è selezionabile nell'editor (contenitore dei blocchi).
+            marks = ' class="o_rs_cv_block o_rs_cv_column" data-rs-path="%s" data-rs-type="column"' % column_path
+        children = _render_children(
+            column.get("children", []), model, var, depth + 2, ctx, column_path
+        )
+        children = children or _empty_placeholder(children, ctx, "Colonna vuota")
+        cells.extend(["<td%s%s>" % (marks, _style_attr(*css))] + children + ["</td>"])
+    return (
+        ["<div%s>" % _style_attr(_margins_css(block.get("margins"))),
+         '<table style="width: 100%; table-layout: fixed; border-collapse: collapse"><tr>']
+        + cells
+        + ["</tr></table>", "</div>"]
+    )
 
 
 def _compile_qweb(definition, report_key):

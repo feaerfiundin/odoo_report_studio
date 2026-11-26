@@ -141,7 +141,9 @@ with sync_playwright() as p:
         return " | ".join(page.locator(".o_notification").all_inner_texts())
 
     canvas = page.frame_locator(".o_rs_canvas_frame")
-    block_labels = {"section": "Sezione", "text": "Testo", "field": "Campo", "table": "Tabella", "if": "Condizione"}
+    block_labels = {"section": "Sezione", "text": "Testo", "field": "Campo", "table": "Tabella", "if": "Condizione",
+                    "columns": "Colonne", "separator": "Separatore", "spacer": "Spaziatore",
+                    "page_break": "Interruzione di pagina"}
 
     def wait_canvas():
         """Aspetta che la pagina centrale sia ridisegnata dopo le ultime modifiche."""
@@ -344,6 +346,55 @@ with sync_playwright() as p:
         expect(th == ["60%", "25%", "15%"], f"larghezze nella pagina: {th}")
         return f"34/33/33 -> 50/25/25 -> blocco 2a -> 60/25/15; pagina {th}"
 
+    def layout_blocks():
+        # Nessuna selezione: clic su una zona della pagina fuori dai blocchi.
+        canvas.locator("body").click(position={"x": 3, "y": 3})
+        page.wait_for_selector(".o_rs_props :text('Seleziona un blocco')")
+        add_block("columns")
+        page.select_option(".o_rs_props .o_rs_columns_count", "3")
+        page.check(".o_rs_props .o_rs_columns_divider")
+        page.fill(".o_rs_props .o_rs_margins input[data-side=top]", "5")
+        page.locator(".o_rs_props .o_rs_margins input[data-side=top]").press("Tab")
+        wait_canvas()
+        cols = canvas.locator("td[data-rs-type=column]")
+        expect(cols.count() == 3, f"colonne nella pagina: {cols.count()}")
+        # Testo nella terza colonna, con margine sinistro della colonna.
+        cols.nth(2).click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Colonna')")
+        expect(page.locator(".o_rs_props button:has-text('Elimina blocco')").count() == 0, "una colonna si può eliminare")
+        page.fill(".o_rs_props .o_rs_margins input[data-side=left]", "4")
+        page.locator(".o_rs_props .o_rs_margins input[data-side=left]").press("Tab")
+        add_block("text")
+        page.fill(".o_rs_props textarea", "In colonna")
+        # Da 3 a 2 colonne: il testo passa nell'ultima colonna rimasta.
+        select_parent()
+        page.wait_for_selector(".o_rs_props_title:text-is('Colonna')")
+        select_parent()
+        page.wait_for_selector(".o_rs_props_title:text-is('Colonne')")
+        page.select_option(".o_rs_props .o_rs_columns_count", "2")
+        # Dopo il blocco Colonne: separatore, spaziatore, interruzione di pagina.
+        add_block("separator")
+        page.select_option(".o_rs_props .o_rs_separator_style", "dashed")
+        page.select_option(".o_rs_props .o_rs_separator_thickness", "3")
+        add_block("spacer")
+        page.fill(".o_rs_props .o_rs_spacer_height", "15")
+        page.locator(".o_rs_props .o_rs_spacer_height").press("Tab")
+        add_block("page_break")
+        types = canvas_types()
+        tail = types[types.index("columns"):]
+        expect(tail == ["columns", "column", "column", "text", "separator", "spacer", "page_break"], f"pagina: {tail}")
+        cols = canvas.locator("td[data-rs-type=column]")
+        expect(cols.nth(1).locator("text=In colonna").count() == 1, "il testo non è passato nell'ultima colonna")
+        expect("border-left: 1px solid" in (cols.nth(1).get_attribute("style") or ""), "riga verticale assente")
+        expect("padding: 5mm" in (canvas.locator("[data-rs-type=columns] > div").first.get_attribute("style") or ""),
+               "margine del blocco Colonne assente")
+        sep = canvas.locator("[data-rs-type=separator] > div").first.get_attribute("style") or ""
+        expect("3px dashed" in sep, f"separatore: {sep!r}")
+        spacer = canvas.locator("[data-rs-type=spacer] > div").first.get_attribute("style") or ""
+        expect("15mm" in spacer, f"spaziatore: {spacer!r}")
+        expect(canvas.locator("text=Interruzione di pagina").count() == 1, "interruzione di pagina non visibile")
+        return f"pagina: {tail}"
+
     def save_version():
         page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")
         page.click(f"{topbar} .o_rs_btn_save")
@@ -503,6 +554,7 @@ with sync_playwright() as p:
         step(page, "larghezze_logica", width_logic)
         step(page, "carattere_ed_etichetta", fonts_and_label)
         step(page, "larghezze_colonne", column_widths)
+        step(page, "blocchi_impaginazione", layout_blocks)
         step(page, "salva_versione", save_version)
         step(page, "anteprima_pdf", preview_pdf)
         step(page, "errore_server_leggibile", invalid_save_shows_server_message)

@@ -127,6 +127,28 @@ class TestRsReport(TransactionCase):
         self.assertIn("Ordine n.", html)
         self.assertIn(order.name, html)
 
+    def test_layout_blocks_save_and_canvas(self):
+        order = self._sale_order()
+        definition = json.dumps({"children": [
+            {"type": "section", "margins": {"left": 10}, "children": [
+                {"type": "columns", "divider": True, "children": [
+                    {"type": "column", "margins": {"right": 2}, "children": [{"type": "field", "path": "name"}]},
+                    {"type": "column", "children": []},
+                ]},
+            ]},
+            {"type": "separator", "style": "dotted", "thickness": 2},
+            {"type": "spacer", "height": 20},
+            {"type": "page_break"},
+        ]})
+        version = self.report._create_version(definition)
+        self.assertIn("border-left: 1px solid #333", version.arch)
+        self.assertIn("page-break-after: always", version.arch)
+        html = self.report.render_canvas(definition, order.id)
+        self.assertIn('data-rs-path="0.0.1" data-rs-type="column"', html)
+        self.assertIn("Colonna vuota", html)
+        self.assertIn("Interruzione di pagina", html)
+        self.assertIn(order.name, html)
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
         return self.env["sale.order"].create({"partner_id": partner.id})

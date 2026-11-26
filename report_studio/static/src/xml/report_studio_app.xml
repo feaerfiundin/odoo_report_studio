@@ -47,6 +47,23 @@
         </div>
     </t>
 
+    <!-- Margini interni in mm. Parametro: margins (oggetto del blocco). -->
+    <t t-name="report_studio.MarginControls">
+        <div class="o_rs_margins mt-3">
+            <div class="fw-bold mb-1"><i class="fa fa-arrows-alt me-1"/>Margini (mm)</div>
+            <div class="row g-1">
+                <t t-foreach="marginSides" t-as="side" t-key="side[0]">
+                    <div class="col-6">
+                        <label class="form-label small text-muted mb-0"><t t-esc="side[1]"/></label>
+                        <input type="number" min="0" max="100" step="0.5" class="form-control form-control-sm"
+                               t-att-data-side="side[0]" t-att-value="margins[side[0]]"
+                               t-on-change="(ev) => this.onMargin(margins, side[0], ev)"/>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
     <t t-name="report_studio.PreviewDialog">
         <Dialog title="'Anteprima PDF'" size="'xl'" bodyClass="'o_rs_preview_dialog'">
             <div class="d-flex align-items-center gap-2 mb-2">
@@ -199,7 +216,7 @@
                                 </t>
                             </t>
                             <div class="small text-muted mt-2">
-                                Il blocco va dentro quello selezionato (Sezione, Condizione) oppure dopo di esso.
+                                Il blocco va dentro quello selezionato (Sezione, Colonna, Condizione) oppure dopo di esso.
                             </div>
                         </div>
                         <div t-attf-class="o_rs_versions overflow-auto p-2 {{ state.mode !== 'qweb' ? 'border-top' : 'flex-grow-1' }}">
@@ -238,6 +255,55 @@
                                 <t t-if="selected.type === 'section'">
                                     <label class="form-label">Classe CSS</label>
                                     <input class="form-control" t-model="selected.class" t-on-input="markDirty"/>
+                                    <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
+                                </t>
+
+                                <t t-if="selected.type === 'columns'">
+                                    <label class="form-label">Numero di colonne</label>
+                                    <select class="form-select o_rs_columns_count" t-on-change="onColumnsCount">
+                                        <t t-foreach="columnCounts" t-as="n" t-key="n">
+                                            <option t-att-value="n" t-att-selected="selected.children.length === n"><t t-esc="n"/></option>
+                                        </t>
+                                    </select>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input o_rs_columns_divider" type="checkbox" id="o_rs_divider"
+                                               t-model="selected.divider" t-on-change="markDirty"/>
+                                        <label class="form-check-label" for="o_rs_divider">Riga verticale tra le colonne</label>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        Per aggiungere blocchi o impostare i margini di una colonna, clicca dentro la colonna nella pagina.
+                                    </div>
+                                    <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
+                                </t>
+
+                                <t t-if="selected.type === 'column'">
+                                    <div class="small text-muted">I blocchi aggiunti dalla colonna di sinistra vanno in questa colonna.</div>
+                                    <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
+                                </t>
+
+                                <t t-if="selected.type === 'separator'">
+                                    <label class="form-label">Stile della riga</label>
+                                    <select class="form-select o_rs_separator_style" t-model="selected.style" t-on-change="markDirty">
+                                        <t t-foreach="separatorStyles" t-as="st" t-key="st[0]">
+                                            <option t-att-value="st[0]"><t t-esc="st[1]"/></option>
+                                        </t>
+                                    </select>
+                                    <label class="form-label mt-2">Spessore</label>
+                                    <select class="form-select o_rs_separator_thickness" t-model.number="selected.thickness" t-on-change="markDirty">
+                                        <t t-foreach="[1, 2, 3, 4, 5]" t-as="px" t-key="px">
+                                            <option t-att-value="px"><t t-esc="px"/> px</option>
+                                        </t>
+                                    </select>
+                                </t>
+
+                                <t t-if="selected.type === 'spacer'">
+                                    <label class="form-label">Altezza (mm)</label>
+                                    <input type="number" min="1" max="200" step="1" class="form-control o_rs_spacer_height"
+                                           t-model.number="selected.height" t-on-change="markDirty"/>
+                                </t>
+
+                                <t t-if="selected.type === 'page_break'">
+                                    <div class="text-muted">Nel PDF il contenuto successivo inizia su una nuova pagina.</div>
                                 </t>
 
                                 <t t-if="selected.type === 'text'">
@@ -328,7 +394,7 @@
                                     <input class="form-control" t-model="selected.value" t-on-input="markDirty"/>
                                 </t>
 
-                                <div class="mt-3 d-flex gap-1">
+                                <div class="mt-3 d-flex gap-1" t-if="selected.type !== 'column'">
                                     <button class="btn btn-sm btn-outline-secondary" data-dir="-1" t-on-click="onMove">↑</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-dir="1" t-on-click="onMove">↓</button>
                                     <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Elimina blocco</button>
