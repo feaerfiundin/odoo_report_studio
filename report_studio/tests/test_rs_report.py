@@ -117,12 +117,14 @@ class TestRsReport(TransactionCase):
             {"type": "text", "content": "Titolo", "font": {"size": 18, "bold": True}},
             {"type": "field", "path": "name", "label": "Ordine n.", "label_font": {"italic": True}},
             {"type": "table", "source": "order_line", "head_font": {"underline": True},
+             "margins": {"left": 4},
              "columns": [{"path": "name", "label": "Descrizione", "width": 75, "locked": True},
                          {"path": "product_uom_qty", "label": "Qtà", "width": 25}]},
         ]})
         version = self.report._create_version(definition)
         self.assertIn("font-size: 18pt; font-weight: bold", version.arch)
         self.assertIn("width: 75%", version.arch)
+        self.assertIn('<div style="padding: 0mm 0mm 0mm 4mm">', version.arch)
         html = self.report.render_canvas(definition, order.id)
         self.assertIn("Ordine n.", html)
         self.assertIn(order.name, html)

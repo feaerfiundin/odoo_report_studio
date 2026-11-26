@@ -36,7 +36,7 @@ Carattere (tutte le chiavi facoltative; assente o vuoto = quello del layout)::
     {"type": "columns", "divider": true, "margins": <margini>,
      "children": [{"type": "column", "margins": <margini>, "children": [...]}, ...]}
 
-La Sezione accetta anche ``"margins": <margini>``. Margini (mm, tutti facoltativi)::
+Sezione e Tabella accettano anche ``"margins": <margini>``. Margini (mm, tutti facoltativi)::
 
     {"top": 0, "right": 2, "bottom": 0, "left": 2}
 
@@ -354,7 +354,7 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
             "table-layout: fixed; width: 100%" if any(widths) else "",
             _align_css(block.get("align")),
         )
-        return [
+        table = [
             '<table class="table table-sm"%s>' % table_style,
             "<thead><tr>%s</tr></thead>" % "".join(heads),
             "<tbody>",
@@ -364,6 +364,11 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
             "</tbody>",
             "</table>",
         ]
+        # Margini: la tabella sta in un contenitore con padding.
+        padding = _margins_css(block.get("margins"))
+        if padding:
+            table = ['<div style="%s">' % padding] + table + ["</div>"]
+        return table
 
     if btype == "if":
         path = block.get("path")

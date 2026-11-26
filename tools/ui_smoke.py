@@ -344,7 +344,24 @@ with sync_playwright() as p:
         wait_canvas()
         th = canvas.locator("[data-rs-type=table] th").evaluate_all("els => els.map(e => e.style.width)")
         expect(th == ["60%", "25%", "15%"], f"larghezze nella pagina: {th}")
-        return f"34/33/33 -> 50/25/25 -> blocco 2a -> 60/25/15; pagina {th}"
+        # Ogni colonna su una sola riga: tutti i controlli alla stessa altezza.
+        tops = page.locator(".o_rs_props .o_rs_column").first.evaluate(
+            "row => [...row.children].map(c => Math.round(c.getBoundingClientRect().top + c.offsetHeight / 2))")
+        expect(max(tops) - min(tops) <= 4, f"controlli della colonna su più righe: {tops}")
+        # Margini della tabella.
+        page.locator(".o_rs_props .o_rs_margins input[data-side=left]").fill("6")
+        page.locator(".o_rs_props .o_rs_margins input[data-side=left]").press("Tab")
+        wait_canvas()
+        pad = canvas.locator("[data-rs-type=table] > div").first.get_attribute("style") or ""
+        expect("6mm" in pad, f"margine della tabella: {pad!r}")
+        # Pannello proprietà con scorrimento verticale.
+        scroll = page.locator(".o_rs_props").evaluate(
+            "el => [getComputedStyle(el).overflowY, el.scrollHeight > el.clientHeight, el.clientHeight <= window.innerHeight]")
+        expect(scroll[0] == "auto" and scroll[2], f"scorrimento proprietà: {scroll}")
+        if scroll[1]:
+            page.locator(".o_rs_props").evaluate("el => el.scrollTop = el.scrollHeight")
+            expect(page.locator(".o_rs_props").evaluate("el => el.scrollTop") > 0, "il pannello non scorre")
+        return f"34/33/33 -> 50/25/25 -> blocco 2a -> 60/25/15; pagina {th}; riga unica; margine {pad}; scorre {scroll[1]}"
 
     def layout_blocks():
         # Nessuna selezione: clic su una zona della pagina fuori dai blocchi.
@@ -619,6 +636,21 @@ with sync_playwright() as p:
             if step(page, "archivia", archive):
                 step(page, "filtro_archiviati", filter_archived)
                 step(page, "riattiva_da_elenco", reactivate_toggle)
+
+    # Pulizia: i report creati da questo giro (nome con STAMP) vengono eliminati,
+    # così l'elenco non cresce a ogni esecuzione. Non è un passo del test.
+    try:
+        removed = page.evaluate("""async (stamp) => {
+            const call = (method, args) => fetch(`/web/dataset/call_kw/rs.report/${method}`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({jsonrpc: '2.0', params: {model: 'rs.report', method, args,
+                    kwargs: {context: {active_test: false}}}})}).then((r) => r.json());
+            const ids = (await call('search', [[['name', 'like', stamp]]])).result || [];
+            if (ids.length) await call('unlink', [ids]);
+            return ids.length; }""", STAMP)
+        print(f"Report di prova eliminati: {removed}")
+    except Exception as exc:  # noqa
+        print(f"Pulizia non riuscita: {exc}")
 
     browser.close()
 

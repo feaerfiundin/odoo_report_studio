@@ -379,6 +379,14 @@ class TestCompiler(unittest.TestCase):
         self.assertIn("<p>Riga 1<br/>Riga &lt;2&gt;<br/>Riga 3</p>", xml)
         self.assertIn("<p>Una riga</p>", compile_([{"type": "text", "content": "Una riga"}]))
 
+    def test_table_margins(self):
+        table = {"type": "table", "source": "order_line", "columns": [{"path": "name"}]}
+        self.assertNotIn("padding", compile_([dict(table, margins={"top": 0})]))
+        xml = compile_([dict(table, margins={"top": 2, "left": 5})])
+        self.assertIn('<div style="padding: 2mm 0mm 0mm 5mm">\n<table class="table table-sm">', xml)
+        with self.assertRaises(compiler.CompileError):
+            compile_([dict(table, margins={"top": 500})])
+
     def test_field_align(self):
         # Senza allineamento il campo resta in linea, come prima.
         self.assertIn('<span t-field="o.name"/>', compile_([{"type": "field", "path": "name"}]))

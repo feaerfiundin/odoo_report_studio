@@ -43,7 +43,7 @@ const BLOCK_LABELS = {
     column: "Colonna",
 };
 // Blocchi con i 4 margini interni (mm).
-const MARGIN_TYPES = ["section", "columns", "column"];
+const MARGIN_TYPES = ["section", "columns", "column", "table"];
 const MARGIN_SIDES = [
     ["top", "Sopra"],
     ["right", "Destra"],
@@ -130,6 +130,7 @@ function baseBlock(type) {
                 source: "",
                 head_font: {},
                 body_font: {},
+                margins: zeroMargins(),
                 columns: [{ _uid: nextUid(), path: "", label: "", width: 100, locked: false }],
             };
         case "if":
