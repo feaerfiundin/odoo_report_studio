@@ -5,6 +5,16 @@ import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
 import { user } from "@web/core/user";
+import { addColumn, ensureWidths, removeColumn, setWidth, totalWidth } from "./column_widths";
+
+// Dimensioni del carattere proposte (pt); vuoto = quella del layout.
+const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36];
+// Proprietà carattere per tipo di blocco.
+const FONT_KEYS = {
+    text: ["font"],
+    field: ["label_font", "font"],
+    table: ["head_font", "body_font"],
+};
 
 // Cassetta degli strumenti (colonna sinistra), per gruppi.
 const BLOCK_GROUPS = [
@@ -52,25 +62,47 @@ function defaultBlock(type) {
         case "section":
             return { ...base, class: "", children: [] };
         case "text":
-            return { ...base, content: "Testo", class: "" };
+            return { ...base, content: "Testo", class: "", font: {} };
         case "field":
-            return { ...base, path: "" };
+            return { ...base, path: "", label: "", label_font: {}, font: {} };
         case "table":
-            return { ...base, source: "", columns: [{ _uid: nextUid(), path: "", label: "" }] };
+            return {
+                ...base,
+                source: "",
+                head_font: {},
+                body_font: {},
+                columns: [{ _uid: nextUid(), path: "", label: "", width: 100, locked: false }],
+            };
         case "if":
             return { ...base, path: "", op: "==", value: "", children: [] };
     }
     return base;
 }
 
-// Aggiunge _uid ai blocchi e alle colonne, solo per l'editor.
+// Aggiunge _uid ai blocchi e alle colonne, solo per l'editor, e completa i
+// blocchi salvati prima dei controlli carattere e delle larghezze.
 function withUids(block) {
     const copy = { ...block, _uid: nextUid() };
     if (Array.isArray(block.children)) copy.children = block.children.map(withUids);
     if (Array.isArray(block.columns)) {
         copy.columns = block.columns.map((c) => ({ ...c, _uid: nextUid() }));
+        ensureWidths(copy.columns);
     }
+    for (const key of FONT_KEYS[block.type] || []) {
+        copy[key] = { ...(block[key] || {}) };
+    }
+    if (block.type === "field" && copy.label === undefined) copy.label = "";
     return copy;
+}
+
+// Solo le proprietà carattere impostate; undefined se nessuna.
+function cleanFont(font) {
+    const out = {};
+    if (font?.size) out.size = Number(font.size);
+    for (const key of ["bold", "italic", "underline"]) {
+        if (font?.[key]) out[key] = true;
+    }
+    return Object.keys(out).length ? out : undefined;
 }
 
 function parseLiteral(text) {
@@ -91,6 +123,12 @@ function cleanBlock(block) {
         out.columns = block.columns.map(({ _uid: _c, ...col }) => col);
     }
     if (block.type === "if") out.value = parseLiteral(block.value);
+    for (const key of FONT_KEYS[block.type] || []) {
+        const font = cleanFont(block[key]);
+        if (font) out[key] = font;
+        else delete out[key];
+    }
+    if (block.type === "field" && !block.label?.trim()) delete out.label;
     return out;
 }
 
@@ -182,6 +220,8 @@ export class ReportStudioApp extends Component {
         this.action = useService("action");
         this.blockGroups = BLOCK_GROUPS;
         this.blockLabels = BLOCK_LABELS;
+        this.fontSizes = FONT_SIZES;
+        this.totalWidth = totalWidth;
         this.canvasRef = useRef("canvas");
         this.canvasTimer = null;
         this.state = useState({
@@ -569,7 +609,7 @@ export class ReportStudioApp extends Component {
     onAddColumn() {
         const sel = this.selected;
         if (!sel || sel.type !== "table") return;
-        sel.columns.push({ _uid: nextUid(), path: "", label: "" });
+        addColumn(sel.columns, { _uid: nextUid(), path: "", label: "" });
         this.markDirty();
     }
 
@@ -577,7 +617,37 @@ export class ReportStudioApp extends Component {
         const sel = this.selected;
         if (!sel || sel.type !== "table") return;
         const uid = parseInt(ev.currentTarget.dataset.uid);
-        sel.columns = sel.columns.filter((c) => c._uid !== uid);
+        const column = sel.columns.find((c) => c._uid === uid);
+        if (column) removeColumn(sel.columns, column);
+        this.markDirty();
+    }
+
+    // Larghezza in %: le altre colonne libere si ricalcolano in proporzione.
+    onColumnWidth(uid, ev) {
+        const sel = this.selected;
+        const column = sel?.columns?.find((c) => c._uid === uid);
+        if (!column) return;
+        setWidth(sel.columns, column, ev.target.value);
+        ev.target.value = column.width; // mostra il valore effettivo (limitato)
+        this.markDirty();
+    }
+
+    onColumnLock(uid, ev) {
+        const column = this.selected?.columns?.find((c) => c._uid === uid);
+        if (!column) return;
+        column.locked = ev.target.checked;
+        this.markDirty();
+    }
+
+    // ----- controlli carattere -----
+
+    onFontSize(font, ev) {
+        font.size = ev.target.value ? Number(ev.target.value) : null;
+        this.markDirty();
+    }
+
+    toggleFont(font, key) {
+        font[key] = !font[key];
         this.markDirty();
     }
 

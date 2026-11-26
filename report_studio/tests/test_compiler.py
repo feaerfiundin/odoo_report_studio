@@ -232,6 +232,58 @@ class TestCompiler(unittest.TestCase):
             )
 
 
+    # ----- carattere, etichetta del campo, larghezza colonne -----
+
+    def test_text_font(self):
+        xml = compile_([{"type": "text", "content": "Ciao",
+                         "font": {"size": 14, "bold": True, "italic": True, "underline": True}}])
+        self.assertIn('<p style="font-size: 14pt; font-weight: bold; font-style: italic; '
+                      'text-decoration: underline">Ciao</p>', xml)
+
+    def test_empty_font_adds_no_style(self):
+        xml = compile_([{"type": "text", "content": "Ciao", "font": {"size": None, "bold": False}}])
+        self.assertIn("<p>Ciao</p>", xml)
+
+    def test_invalid_font_rejected(self):
+        for font in ({"size": 200}, {"size": "12"}, {"bold": "si"}, {"color": "red"}, "grassetto"):
+            with self.assertRaises(compiler.CompileError, msg=font):
+                compile_([{"type": "text", "content": "x", "font": font}])
+
+    def test_field_label_and_fonts(self):
+        xml = compile_([{"type": "field", "path": "name", "label": "DDT <num>:",
+                         "label_font": {"bold": True}, "font": {"size": 10}}])
+        self.assertIn('<span class="o_rs_label" style="font-weight: bold">DDT &lt;num&gt;:</span>&#160;'
+                      '<span t-field="o.name" style="font-size: 10pt"/>', xml)
+
+    def test_field_without_label_unchanged(self):
+        xml = compile_([{"type": "field", "path": "name", "label": "  "}])
+        self.assertIn('<span t-field="o.name"/>', xml)
+        self.assertNotIn("o_rs_label", xml)
+
+    def test_table_fonts_and_widths(self):
+        xml = compile_([{
+            "type": "table", "source": "order_line",
+            "head_font": {"bold": True}, "body_font": {"size": 9},
+            "columns": [{"path": "name", "label": "Descrizione", "width": 70, "locked": True},
+                        {"path": "product_uom_qty", "label": "Qtà", "width": 30}],
+        }])
+        self.assertIn('<table class="table table-sm" style="table-layout: fixed; width: 100%">', xml)
+        self.assertIn('<th style="width: 70%; font-weight: bold">Descrizione</th>', xml)
+        self.assertIn('<td style="font-size: 9pt"><span t-field="line_1.product_uom_qty"/></td>', xml)
+
+    def test_table_without_widths_unchanged(self):
+        xml = compile_([{"type": "table", "source": "order_line",
+                         "columns": [{"path": "name", "label": "Descrizione"}]}])
+        self.assertIn('<table class="table table-sm">', xml)
+        self.assertIn("<th>Descrizione</th>", xml)
+
+    def test_invalid_width_rejected(self):
+        for width in (0, 120, "50", True):
+            with self.assertRaises(compiler.CompileError, msg=width):
+                compile_([{"type": "table", "source": "order_line",
+                           "columns": [{"path": "name", "width": width}]}])
+
+
 def etree_ok(arch):
     """Il template annotato è XML ben formato."""
     import xml.dom.minidom

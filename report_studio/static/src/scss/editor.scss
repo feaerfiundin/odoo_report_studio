@@ -128,3 +128,14 @@
 .o_rs_preview_dialog .o_rs_preview_frame {
     height: 75vh;
 }
+
+.o_rs_app {
+    .o_rs_font_size {
+        width: auto;
+        flex: 1 1 auto;
+    }
+
+    .o_rs_width {
+        width: 6.5rem;
+    }
+}

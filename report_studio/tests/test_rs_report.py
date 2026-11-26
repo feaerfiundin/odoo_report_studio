@@ -111,6 +111,22 @@ class TestRsReport(TransactionCase):
         with self.assertRaises(UserError):
             self.report.render_canvas(definition, 0)
 
+    def test_fonts_label_and_widths_in_pdf_template(self):
+        order = self._sale_order()
+        definition = json.dumps({"children": [
+            {"type": "text", "content": "Titolo", "font": {"size": 18, "bold": True}},
+            {"type": "field", "path": "name", "label": "Ordine n.", "label_font": {"italic": True}},
+            {"type": "table", "source": "order_line", "head_font": {"underline": True},
+             "columns": [{"path": "name", "label": "Descrizione", "width": 75, "locked": True},
+                         {"path": "product_uom_qty", "label": "Qtà", "width": 25}]},
+        ]})
+        version = self.report._create_version(definition)
+        self.assertIn("font-size: 18pt; font-weight: bold", version.arch)
+        self.assertIn("width: 75%", version.arch)
+        html = self.report.render_canvas(definition, order.id)
+        self.assertIn("Ordine n.", html)
+        self.assertIn(order.name, html)
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
         return self.env["sale.order"].create({"partner_id": partner.id})

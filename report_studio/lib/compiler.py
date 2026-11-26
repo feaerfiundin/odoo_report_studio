@@ -16,10 +16,18 @@ Schema della definizione::
 Blocchi::
 
     {"type": "section", "class": "...", "children": [...]}
-    {"type": "text", "content": "testo statico", "class": "..."}
-    {"type": "field", "path": "partner_id.name"}
+    {"type": "text", "content": "testo statico", "class": "...", "font": <font>}
+    {"type": "field", "path": "partner_id.name",
+     "label": "DDT num:", "label_font": <font>, "font": <font>}
     {"type": "table", "source": "order_line",
-     "columns": [{"path": "name", "label": "Descrizione"}]}
+     "head_font": <font>, "body_font": <font>,
+     "columns": [{"path": "name", "label": "Descrizione", "width": 50, "locked": false}]}
+
+Carattere (tutte le chiavi facoltative; assente o vuoto = quello del layout)::
+
+    {"size": 12, "bold": true, "italic": false, "underline": false}
+
+``size`` è in punti (6-72); ``width`` delle colonne è in percentuale (0-100].
     {"type": "if", "path": "amount_total", "op": ">", "value": 0,
      "children": [...]}
 
@@ -45,6 +53,10 @@ REPORT_KEY_RE = re.compile(r"^[a-z0-9_.]+$")
 CSS_CLASS_RE = re.compile(r"^[A-Za-z0-9_\- ]{1,100}$")
 OPERATORS = ("==", "!=", ">", "<", ">=", "<=")
 LAYOUTS = {"basic": "web.basic_layout", "external": "web.external_layout"}
+FONT_SIZE_RANGE = (6, 72)
+FONT_FLAGS = (("bold", "font-weight: bold"), ("italic", "font-style: italic"),
+              ("underline", "text-decoration: underline"))
+MAX_LABEL = 200
 TABLE_TYPES = ("one2many", "many2many")
 
 
@@ -74,6 +86,47 @@ def _css_attr(css_class):
     if not isinstance(css_class, str) or not CSS_CLASS_RE.match(css_class):
         raise CompileError("Classe CSS non valida: %r" % (css_class,))
     return ' class="%s"' % css_class
+
+
+def _font_css(font):
+    """Dichiarazioni CSS da un oggetto carattere validato ("" se nessuna)."""
+    if font is None:
+        return ""
+    if not isinstance(font, dict):
+        raise CompileError("Il carattere deve essere un oggetto")
+    unknown = set(font) - {"size", "bold", "italic", "underline"}
+    if unknown:
+        raise CompileError("Proprietà del carattere non ammesse: %s" % ", ".join(sorted(unknown)))
+    rules = []
+    size = font.get("size")
+    if size is not None:
+        low, high = FONT_SIZE_RANGE
+        if isinstance(size, bool) or not isinstance(size, (int, float)) or not low <= size <= high:
+            raise CompileError("Dimensione del carattere non valida: %r (da %d a %d pt)" % (size, low, high))
+        rules.append("font-size: %gpt" % size)
+    for key, css in FONT_FLAGS:
+        value = font.get(key, False)
+        if not isinstance(value, bool):
+            raise CompileError("Valore non valido per %s: %r" % (key, value))
+        if value:
+            rules.append(css)
+    return "; ".join(rules)
+
+
+def _style_attr(*declarations):
+    css = "; ".join(d for d in declarations if d)
+    return ' style="%s"' % _attr(css) if css else ""
+
+
+def _column_width(column):
+    width = column.get("width")
+    if width is None:
+        return ""
+    if isinstance(width, bool) or not isinstance(width, (int, float)) or not 0 < width <= 100:
+        raise CompileError("Larghezza della colonna non valida: %r (in %%, da 0 a 100)" % (width,))
+    if not isinstance(column.get("locked", False), bool):
+        raise CompileError("'locked' della colonna deve essere vero o falso")
+    return "width: %g%%" % width
 
 
 def _check_path(path, model, ctx):
@@ -149,12 +202,25 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         content = block.get("content", "")
         if not isinstance(content, str):
             raise CompileError("'content' deve essere una stringa")
-        return ["<p%s>%s</p>" % (_css_attr(block.get("class")), escape(content))]
+        return ["<p%s%s>%s</p>" % (
+            _css_attr(block.get("class")),
+            _style_attr(_font_css(block.get("font"))),
+            escape(content),
+        )]
 
     if btype == "field":
         path = block.get("path")
         _check_path(path, model, ctx)
-        return ['<span t-field="%s.%s"/>' % (var, path)]
+        value = '<span t-field="%s.%s"%s/>' % (var, path, _style_attr(_font_css(block.get("font"))))
+        label = block.get("label") or ""
+        if not isinstance(label, str) or len(label) > MAX_LABEL:
+            raise CompileError("Etichetta del campo non valida")
+        if not label.strip():
+            return [value]
+        # Etichetta + spazio indivisibile + valore, sulla stessa riga.
+        return ['<span><span class="o_rs_label"%s>%s</span>&#160;%s</span>' % (
+            _style_attr(_font_css(block.get("label_font"))), escape(label), value,
+        )]
 
     if btype == "table":
         source = block.get("source")
@@ -168,17 +234,23 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         if not isinstance(columns, list) or not columns or len(columns) > MAX_COLUMNS:
             raise CompileError("'columns' deve essere una lista non vuota")
         line = ctx.new_var()
-        heads, cells = [], []
+        head_css = _font_css(block.get("head_font"))
+        body_css = _font_css(block.get("body_font"))
+        heads, cells, widths = [], [], []
         for column in columns:
             if not isinstance(column, dict):
                 raise CompileError("Ogni colonna deve essere un oggetto")
             cpath = column.get("path")
             _check_path(cpath, comodel, ctx)
             label = column.get("label", cpath)
-            heads.append("<th>%s</th>" % escape(str(label)))
-            cells.append('<td><span t-field="%s.%s"/></td>' % (line, cpath))
+            width = _column_width(column)
+            widths.append(width)
+            heads.append("<th%s>%s</th>" % (_style_attr(width, head_css), escape(str(label))))
+            cells.append('<td%s><span t-field="%s.%s"/></td>' % (_style_attr(body_css), line, cpath))
+        # Con larghezze impostate la tabella le rispetta (layout fisso).
+        table_style = _style_attr("table-layout: fixed; width: 100%" if any(widths) else "")
         return [
-            '<table class="table table-sm">',
+            '<table class="table table-sm"%s>' % table_style,
             "<thead><tr>%s</tr></thead>" % "".join(heads),
             "<tbody>",
             '<t t-foreach="%s.%s" t-as="%s">' % (var, source, line),

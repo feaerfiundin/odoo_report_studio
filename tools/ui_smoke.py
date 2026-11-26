@@ -256,6 +256,94 @@ with sync_playwright() as p:
         page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
         return f"pagina: {types}"
 
+    def width_logic():
+        """Funzioni di column_widths.js, eseguite nel browser dal caricatore di Odoo."""
+        res = page.evaluate("""() => {
+            const m = odoo.loader.modules.get("@report_studio/js/column_widths");
+            const cols = (ws, locked = []) => ws.map((w, i) => ({ width: w, locked: locked.includes(i) }));
+            const ws = (cs) => cs.map((c) => c.width);
+            const out = {};
+            let c = cols([0, 0, 0]); m.ensureWidths(c); out.ensure3 = ws(c);
+            m.setWidth(c, c[0], 50); out.set50 = ws(c);
+            c[1].locked = true; m.setWidth(c, c[0], 60); out.lockedSet60 = ws(c);
+            m.setWidth(c, c[0], 99); out.clamp = ws(c);
+            c = cols([100]); m.addColumn(c, {}); out.add2 = ws(c);
+            m.addColumn(c, {}); out.add3 = ws(c);
+            c = cols([70, 30]); m.addColumn(c, {}); out.addKeepsRatio = ws(c);
+            c = cols([50, 25, 25]); m.removeColumn(c, c[2]); out.remove = ws(c);
+            c = cols([50, 25, 25], [0]); m.setWidth(c, c[2], 10); out.lockedFirst = ws(c);
+            return out;
+        }""")
+        expect(res["ensure3"] == [34, 33, 33], res)
+        expect(res["set50"] == [50, 25, 25], res)
+        expect(res["lockedSet60"] == [60, 25, 15], res)
+        expect(res["clamp"] == [74, 25, 1], res)
+        expect(res["add2"] == [50, 50] and res["add3"] == [34, 33, 33], res)
+        expect(res["addKeepsRatio"] == [47, 20, 33], res)
+        expect(res["remove"] == [66, 34], res)
+        expect(res["lockedFirst"] == [50, 40, 10], res)
+        return json.dumps(res)
+
+    def fonts_and_label():
+        # Testo: 14 pt grassetto.
+        canvas.locator("[data-rs-type=text]", has_text="Totale positivo").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Testo')")
+        font = ".o_rs_props .o_rs_font[data-font='Carattere']"
+        page.select_option(f"{font} select", "14")
+        page.click(f"{font} button[data-style=bold]")
+        # Campo: etichetta in corsivo, valore sottolineato.
+        canvas.locator("[data-rs-type=field]").first.click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Campo')")
+        page.fill(".o_rs_props .o_rs_field_label", "Ordine n.")
+        page.click(".o_rs_props .o_rs_font[data-font='Carattere etichetta'] button[data-style=italic]")
+        page.click(".o_rs_props .o_rs_font[data-font='Carattere valore'] button[data-style=underline]")
+        # Tabella: intestazione grassetto, righe 9 pt.
+        canvas.locator("[data-rs-type=table]").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
+        page.click(".o_rs_props .o_rs_font[data-font='Carattere intestazione'] button[data-style=bold]")
+        page.select_option(".o_rs_props .o_rs_font[data-font='Carattere righe'] select", "9")
+        wait_canvas()
+        style = lambda loc: loc.first.get_attribute("style") or ""
+        text_style = style(canvas.locator("p", has_text="Totale positivo"))
+        expect("font-size: 14pt" in text_style and "bold" in text_style, f"testo: {text_style!r}")
+        label = canvas.locator(".o_rs_label", has_text="Ordine n.")
+        expect(label.count() == 1 and "italic" in style(label), f"etichetta: {style(label)!r}")
+        value_style = style(canvas.locator("[data-rs-type=field] span[style*=underline]"))
+        expect("underline" in value_style, "valore del campo non sottolineato")
+        expect("bold" in style(canvas.locator("th")), f"intestazione: {style(canvas.locator('th'))!r}")
+        expect("9pt" in style(canvas.locator("tbody td")), "righe della tabella senza 9 pt")
+        # Il pulsante attivo resta evidenziato nel pannello.
+        expect(page.locator(".o_rs_props .o_rs_font[data-font='Carattere intestazione'] button[data-style=bold].active").count() == 1,
+               "pulsante grassetto non evidenziato")
+        return "testo 14pt grassetto, etichetta corsivo, valore sottolineato, tabella grassetto/9pt"
+
+    def column_widths():
+        page.click(".o_rs_props button:has-text('+ colonna')")
+        page.click(".o_rs_props button:has-text('+ colonna')")
+        paths = ["name", "product_uom_qty", "price_unit"]
+        for i, path in enumerate(paths):
+            page.fill(f".o_rs_props .o_rs_column >> nth={i} >> input[placeholder=campo]", path)
+        widths = lambda: [int(v) for v in page.locator(".o_rs_props .o_rs_width_input").evaluate_all("els => els.map(e => e.value)")]
+        expect(widths() == [34, 33, 33], f"dopo 3 colonne: {widths()}")
+        first = page.locator(".o_rs_props .o_rs_width_input").nth(0)
+        first.fill("50")
+        first.press("Tab")
+        page.wait_for_timeout(300)  # ridisegno del pannello
+        expect(widths() == [50, 25, 25], f"dopo 50%: {widths()}")
+        page.locator(".o_rs_props .o_rs_width_lock").nth(1).check()
+        page.wait_for_timeout(300)
+        expect(page.locator(".o_rs_props .o_rs_width_input").nth(1).is_disabled(), "colonna bloccata modificabile")
+        first.fill("60")
+        first.press("Tab")
+        page.wait_for_timeout(300)  # ridisegno del pannello
+        expect(widths() == [60, 25, 15], f"con la seconda bloccata: {widths()}")
+        total = page.locator(".o_rs_props .o_rs_width_total").inner_text()
+        expect("100%" in total, total)
+        wait_canvas()
+        th = canvas.locator("[data-rs-type=table] th").evaluate_all("els => els.map(e => e.style.width)")
+        expect(th == ["60%", "25%", "15%"], f"larghezze nella pagina: {th}")
+        return f"34/33/33 -> 50/25/25 -> blocco 2a -> 60/25/15; pagina {th}"
+
     def save_version():
         page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")
         page.click(f"{topbar} .o_rs_btn_save")
@@ -412,6 +500,9 @@ with sync_playwright() as p:
         step(page, "ordina_per_nome", sort_by_name)
     if ok and step(page, "nuovo_report_vuoto", new_blank_report):
         step(page, "blocchi", build_blocks)
+        step(page, "larghezze_logica", width_logic)
+        step(page, "carattere_ed_etichetta", fonts_and_label)
+        step(page, "larghezze_colonne", column_widths)
         step(page, "salva_versione", save_version)
         step(page, "anteprima_pdf", preview_pdf)
         step(page, "errore_server_leggibile", invalid_save_shows_server_message)
