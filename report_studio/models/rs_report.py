@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import uuid
+from contextlib import contextmanager
 
 from odoo import _, api, fields, models
 from odoo.addons.base.models.ir_qweb import QWebException
@@ -162,12 +163,13 @@ class RsReport(models.Model):
                 current = comodel
         return ftype, comodel
 
-    def _compile(self, definition, report_key):
+    def _compile(self, definition, report_key, annotate=False):
         """Compila la definizione nel template QWeb; errori come UserError."""
         self.ensure_one()
         try:
             return compile_definition(
-                definition, self.model_name, report_key, resolver=self._resolve_field
+                definition, self.model_name, report_key,
+                resolver=self._resolve_field, annotate=annotate,
             )
         except CompileError as exc:
             raise UserError(_("Definizione del report non valida: %s") % exc) from exc
@@ -230,18 +232,18 @@ class RsReport(models.Model):
             raise UserError(_("La versione non appartiene a questo report."))
         return version
 
-    def _render_preview_pdf(self, definition, res_id):
-        """Renderizza un PDF di anteprima da una definizione non ancora salvata.
+    @contextmanager
+    def _temporary_report(self, definition, annotate=False):
+        """Vista QWeb e azione di stampa temporanee per una definizione non salvata.
 
-        Crea vista e azione temporanee e le elimina sempre al termine, anche
-        in caso di errore. Il rendering avviene con l'utente corrente: il
-        chiamante verifica comunque i permessi di lettura sul record.
+        Restituisce la chiave del template; vista e azione vengono eliminate
+        sempre all'uscita, anche in caso di errore.
         """
         self.ensure_one()
         definition = definition or EMPTY_DEFINITION
         self._check_definition_permission(definition)
         key = "report_studio.preview_%s_%s" % (self.id, uuid.uuid4().hex)
-        arch = self._compile(definition, key)
+        arch = self._compile(definition, key, annotate=annotate)
         view = self._create_qweb_view("%s - anteprima" % self.name, key, arch)
         action = self.env["ir.actions.report"].sudo().create({
             "name": "%s - anteprima" % self.name,
@@ -250,10 +252,7 @@ class RsReport(models.Model):
             "report_name": key,
         })
         try:
-            # Non in sudo: l'anteprima deve rispettare i diritti di lettura
-            # sui record e sui campi collegati.
-            pdf, _fmt = self.env["ir.actions.report"]._render_qweb_pdf(key, res_ids=[res_id])
-            return pdf
+            yield key
         except QWebException as exc:
             # Permessi e errori utente sollevati durante il rendering arrivano
             # avvolti in QWebException: li riporta come tali al chiamante.
@@ -263,6 +262,34 @@ class RsReport(models.Model):
         finally:
             action.unlink()
             view.unlink()
+
+    def _render_preview_pdf(self, definition, res_id):
+        """PDF di anteprima da una definizione non ancora salvata.
+
+        Il rendering avviene con l'utente corrente (non in sudo), così rispetta
+        i diritti di lettura su record e campi collegati; il chiamante verifica
+        comunque i permessi di lettura sul record.
+        """
+        with self._temporary_report(definition) as key:
+            pdf, _fmt = self.env["ir.actions.report"]._render_qweb_pdf(key, res_ids=[res_id])
+            return pdf
+
+    def render_canvas(self, definition, res_id):
+        """HTML della vista visuale dell'editor per un record.
+
+        È la stessa pagina del PDF (layout aziendale compreso) con i blocchi
+        marcati da ``data-rs-path`` per la selezione; i blocchi incompleti
+        compaiono come segnaposto invece di generare un errore.
+        """
+        self.ensure_one()
+        self.check_access("read")
+        record = self.env[self.model_name].browse(int(res_id)).exists()
+        if not record:
+            raise UserError(_("Record non trovato."))
+        record.check_access("read")
+        with self._temporary_report(definition, annotate=True) as key:
+            html, _fmt = self.env["ir.actions.report"]._render_qweb_html(key, docids=[record.id])
+        return html.decode() if isinstance(html, bytes) else html
 
     # ----- dati per l'editor -----
 

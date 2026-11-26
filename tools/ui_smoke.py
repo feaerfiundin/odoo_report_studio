@@ -140,18 +140,27 @@ with sync_playwright() as p:
         page.wait_for_selector(".o_notification", timeout=15000)
         return " | ".join(page.locator(".o_notification").all_inner_texts())
 
+    canvas = page.frame_locator(".o_rs_canvas_frame")
+    block_labels = {"section": "Sezione", "text": "Testo", "field": "Campo", "table": "Tabella", "if": "Condizione"}
+
+    def wait_canvas():
+        """Aspetta che la pagina centrale sia ridisegnata dopo le ultime modifiche."""
+        page.wait_for_timeout(700)  # pausa dell'editor prima di ridisegnare
+        page.wait_for_selector(".o_rs_canvas_loading", state="detached", timeout=30000)
+        page.wait_for_timeout(300)
+
     def add_block(btype):
-        count = page.locator(".o_rs_tree .o_rs_block").count()
-        page.click(f".o_rs_palette button[data-type={btype}]")
-        # Aspetta il nuovo blocco e il pannello Proprietà del tipo giusto.
-        page.wait_for_function(f"document.querySelectorAll('.o_rs_tree .o_rs_block').length > {count}")
-        page.wait_for_selector(f".o_rs_props :text('Proprietà: {btype}')")
+        page.click(f".o_rs_toolbox button[data-type={btype}]")
+        # Il nuovo blocco è selezionato: pannello Proprietà del tipo giusto.
+        page.wait_for_selector(f".o_rs_props_title:text-is('{block_labels[btype]}')")
 
-    def select_block(label_start):
-        page.locator(".o_rs_tree .o_rs_block_label", has_text=label_start).last.click()
+    def select_parent():
+        page.click(".o_rs_props button:has-text('Seleziona il contenitore')")
 
-    def tree_labels():
-        return page.locator(".o_rs_tree .o_rs_block_label").all_inner_texts()
+    def canvas_types():
+        """Tipi dei blocchi nella pagina centrale, in ordine."""
+        wait_canvas()
+        return canvas.locator("[data-rs-path]").evaluate_all("els => els.map(e => e.dataset.rsType)")
 
     # ---------------------------------------------------------------- passi
 
@@ -217,7 +226,8 @@ with sync_playwright() as p:
         add_block("section")
         add_block("text")                      # dentro la sezione selezionata
         page.fill(".o_rs_props textarea", "Riga 1\nRiga 2")
-        select_block("Sezione")
+        select_parent()                        # torna alla sezione
+        page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
         add_block("field")                     # nella sezione
         page.fill(".o_rs_props input[list=rs_fields]", "name")
         add_block("table")                     # accanto al campo
@@ -231,21 +241,24 @@ with sync_playwright() as p:
         page.fill(".o_rs_props label:has-text('Valore') + input", "0")
         add_block("text")
         page.fill(".o_rs_props textarea", "Totale positivo")
-        page.wait_for_timeout(200)
-        labels = tree_labels()
-        # L'etichetta nel flusso deve seguire subito il testo digitato.
-        expect(labels[-1] == "Testo: Totale positivo", f"etichetta non aggiornata: {labels[-1]!r}")
-        expect(len(labels) >= 6, f"blocchi nel flusso: {labels}")
-        # Lo stile di selezione deve essere applicato (SCSS dell'editor).
-        selected = page.locator(".o_rs_tree .o_rs_selected")
+        types = canvas_types()
+        expect(types == ["section", "text", "field", "table", "if", "text"], f"blocchi nella pagina: {types}")
+        # La pagina mostra i dati reali e il testo appena digitato.
+        expect(canvas.locator("text=Totale positivo").count() == 1, "testo non aggiornato nella pagina")
+        expect(canvas.locator("th:has-text('Descrizione')").count() == 1, "tabella senza intestazione")
+        # L'ultimo blocco aggiunto è evidenziato come selezionato.
+        selected = canvas.locator(".o_rs_cv_selected")
         expect(selected.count() == 1, "nessun blocco evidenziato come selezionato")
-        border = selected.evaluate("el => getComputedStyle(el).borderLeftWidth + ' ' + getComputedStyle(el).borderLeftStyle")
-        expect(border == "3px solid", f"stile di selezione assente (bordo: {border})")
-        return f"flusso: {labels}"
+        outline = selected.evaluate("el => getComputedStyle(el).outlineWidth + ' ' + getComputedStyle(el).outlineStyle")
+        expect(outline == "2px solid", f"stile di selezione assente (contorno: {outline})")
+        # Clic su un blocco della pagina: lo seleziona e mostra le sue proprietà.
+        canvas.locator("[data-rs-type=table]").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
+        return f"pagina: {types}"
 
     def save_version():
-        page.fill(f"{topbar} input[placeholder='Commento versione']", "smoke")
-        page.click(f"{topbar} button:has-text('Salva versione')")
+        page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")
+        page.click(f"{topbar} .o_rs_btn_save")
         text = notification_text()
         expect("Versione salvata" in text, text)
         versions = page.locator("button:has-text('Ripristina')").count()
@@ -253,17 +266,19 @@ with sync_playwright() as p:
 
     def preview_pdf():
         with page.expect_response(lambda r: "/report_studio/preview" in r.url, timeout=90000) as info:
-            page.click(f"{topbar} button:has-text('Anteprima')")
+            page.click(f"{topbar} .o_rs_btn_preview")
         resp = info.value
         ctype = resp.headers.get("content-type", "")
         expect(resp.status == 200 and "pdf" in ctype, f"HTTP {resp.status} {ctype}")
-        page.wait_for_selector(".o_rs_preview iframe")
-        return f"HTTP {resp.status} {ctype}"
+        page.wait_for_selector(".o_dialog .o_rs_preview_frame")
+        page.click(".o_dialog button:has-text('Chiudi')")
+        page.wait_for_selector(".o_dialog", state="detached")
+        return f"popup, HTTP {resp.status} {ctype}"
 
     def invalid_save_shows_server_message():
         add_block("field")
         page.fill(".o_rs_props input[list=rs_fields]", "campo_che_non_esiste")
-        page.click(f"{topbar} button:has-text('Salva versione')")
+        page.click(f"{topbar} .o_rs_btn_save")
         text = notification_text()
         expect("campo_che_non_esiste" in text, f"messaggio generico: {text}")
         page.click(".o_rs_props button:has-text('Elimina blocco')")
@@ -287,9 +302,10 @@ with sync_playwright() as p:
 
     def restore_versions():
         before = restore(1)                    # v1: report vuoto
-        expect(tree_labels() == [], f"dopo il ripristino della v1: {tree_labels()}")
+        empty = canvas_types()
+        expect(empty == [], f"dopo il ripristino della v1: {empty}")
         restore(2)                             # v2: i blocchi salvati
-        labels = tree_labels()
+        labels = canvas_types()
         expect(len(labels) >= 6, f"dopo il ripristino della v2: {labels}")
         return f"versioni: {before} -> {before + 2}, blocchi ripristinati: {len(labels)}"
 
@@ -322,7 +338,7 @@ with sync_playwright() as p:
             f"document.querySelector('.o_rs_topbar').textContent.includes('Da studio {STAMP}')",
             timeout=20000,
         )
-        labels = tree_labels()
+        labels = canvas_types()
         expect(len(labels) >= 6, f"blocchi copiati: {labels}")
         return f"blocchi copiati: {len(labels)}"
 
@@ -352,13 +368,14 @@ with sync_playwright() as p:
         page.wait_for_selector(topbar)
 
     def archive():
-        page.click(f"{topbar} button:has-text('Archivia')")
-        page.wait_for_timeout(500)
-        modal = page.locator(".o_dialog")
-        if modal.count():
-            modal.locator("button.btn-primary").click()
-        page.wait_for_selector(row)
-        page.wait_for_timeout(1000)
+        """Interruttore Attivo nella barra dell'editor, poi ritorno all'elenco."""
+        expect(page.locator(f"{topbar} button:has-text('Archivia')").count() == 0, "pulsante Archivia ancora presente")
+        toggle = page.locator(f"{topbar} #o_rs_active")
+        expect(toggle.is_checked(), "il report aperto risulta già archiviato")
+        toggle.click()
+        text = notification_text()
+        expect("Report archiviato" in text, text)
+        go_list()
         # Gli archiviati restano in elenco con Attivo spento.
         cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] input")
         expect(cell.count() == 1 and not cell.is_checked(), "archiviato non visibile o ancora attivo")

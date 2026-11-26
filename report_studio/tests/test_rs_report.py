@@ -91,6 +91,26 @@ class TestRsReport(TransactionCase):
         self.assertIn('js_class="rs_report_list"', arch)
         self.assertLess(arch.index('name="write_date"'), arch.index('name="active"'))
 
+    def test_render_canvas_marks_blocks_with_real_data(self):
+        order = self._sale_order()
+        definition = json.dumps({"children": [
+            {"type": "field", "path": "name"},
+            {"type": "field", "path": ""},
+            {"type": "if", "path": "amount_total", "op": "<", "value": 0,
+             "children": [{"type": "text", "content": "Nascosto"}]},
+        ]})
+        views_before = self.env["ir.ui.view"].sudo().search_count([])
+        html = self.report.render_canvas(definition, order.id)
+        self.assertIn('data-rs-path="0"', html)
+        self.assertIn(order.name, html)
+        self.assertIn("o_rs_cv_invalid", html)          # campo vuoto: segnaposto
+        self.assertIn("Condizione falsa", html)          # if sempre selezionabile
+        self.assertNotIn("Nascosto", html)
+        # vista e azione temporanee eliminate
+        self.assertEqual(self.env["ir.ui.view"].sudo().search_count([]), views_before)
+        with self.assertRaises(UserError):
+            self.report.render_canvas(definition, 0)
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
         return self.env["sale.order"].create({"partner_id": partner.id})

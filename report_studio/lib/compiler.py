@@ -25,6 +25,12 @@ Blocchi::
 
 Non vengono mai accettate espressioni Python libere: i confronti passano
 solo da percorsi di campo validati e da letterali scalari.
+
+Con ``annotate=True`` (vista visuale dell'editor) ogni blocco è avvolto in un
+elemento con ``data-rs-path`` (posizione nell'albero, es. ``0.2.1``) e
+``data-rs-type``; un blocco non valido diventa un segnaposto con il messaggio
+d'errore invece di interrompere la compilazione, e un blocco condizionale resta
+sempre visibile (il contenuto solo se la condizione è vera).
 """
 import json
 import re
@@ -47,8 +53,9 @@ class CompileError(ValueError):
 
 
 class _Context:
-    def __init__(self, resolver):
+    def __init__(self, resolver, annotate=False):
         self.resolver = resolver
+        self.annotate = annotate
         self._counter = 0
 
     def new_var(self):
@@ -87,18 +94,41 @@ def _literal(value):
     raise CompileError("Valore di confronto non ammesso: %r" % (value,))
 
 
-def _render_children(children, model, var, depth, ctx):
+def _render_children(children, model, var, depth, ctx, tree_path=""):
     if not isinstance(children, list):
         raise CompileError("'children' deve essere una lista")
     if len(children) > MAX_CHILDREN:
         raise CompileError("Troppi blocchi nello stesso livello")
     lines = []
-    for child in children:
-        lines.extend(_render_block(child, model, var, depth, ctx))
+    for index, child in enumerate(children):
+        child_path = "%s.%d" % (tree_path, index) if tree_path else str(index)
+        if ctx.annotate:
+            lines.extend(_render_annotated(child, model, var, depth, ctx, child_path))
+        else:
+            lines.extend(_render_block(child, model, var, depth, ctx, child_path))
     return lines
 
 
-def _render_block(block, model, var, depth, ctx):
+def _render_annotated(block, model, var, depth, ctx, tree_path):
+    """Blocco per la vista visuale: avvolto e marcato, errori come segnaposto."""
+    btype = block.get("type") if isinstance(block, dict) else None
+    tag = "span" if btype == "field" else "div"
+    btype_attr = _attr(btype) if isinstance(btype, str) else "unknown"
+    try:
+        inner = _render_block(block, model, var, depth, ctx, tree_path)
+        css = "o_rs_cv_block"
+    except CompileError as exc:
+        inner = ['<span class="o_rs_cv_error">%s</span>' % escape(str(exc))]
+        css = "o_rs_cv_block o_rs_cv_invalid"
+    return (
+        ['<%s class="%s o_rs_cv_%s" data-rs-path="%s" data-rs-type="%s">'
+         % (tag, css, btype_attr, tree_path, btype_attr)]
+        + inner
+        + ["</%s>" % tag]
+    )
+
+
+def _render_block(block, model, var, depth, ctx, tree_path=""):
     if depth > MAX_DEPTH:
         raise CompileError("Profondità massima dei blocchi superata")
     if not isinstance(block, dict):
@@ -107,7 +137,7 @@ def _render_block(block, model, var, depth, ctx):
 
     if btype == "section":
         children = _render_children(
-            block.get("children", []), model, var, depth + 1, ctx
+            block.get("children", []), model, var, depth + 1, ctx, tree_path
         )
         return (
             ["<div%s>" % _css_attr(block.get("class"))]
@@ -167,8 +197,19 @@ def _render_block(block, model, var, depth, ctx):
             raise CompileError("Operatore non ammesso: %r" % (op,))
         expression = "%s.%s %s %s" % (var, path, op, _literal(value))
         children = _render_children(
-            block.get("children", []), model, var, depth + 1, ctx
+            block.get("children", []), model, var, depth + 1, ctx, tree_path
         )
+        if ctx.annotate:
+            # Nell'editor il blocco resta selezionabile anche a condizione falsa.
+            return (
+                ['<div class="o_rs_cv_if_label">Se %s %s %s</div>'
+                 % (escape(str(path)), escape(op), escape(_literal(value)))]
+                + ['<t t-if="%s">' % _attr(expression)]
+                + children
+                + ["</t>",
+                   '<t t-else=""><div class="o_rs_cv_if_false">'
+                   "Condizione falsa per questo record: contenuto nascosto</div></t>"]
+            )
         return (
             ['<t t-if="%s">' % _attr(expression)]
             + children
@@ -193,13 +234,14 @@ def _compile_qweb(definition, report_key):
     return arch
 
 
-def compile_definition(definition, model, report_key, resolver=None):
+def compile_definition(definition, model, report_key, resolver=None, annotate=False):
     """Compila una definizione in un template QWeb completo.
 
     :param definition: dict oppure stringa JSON con la definizione.
     :param model: nome tecnico del modello Odoo (es. ``sale.order``).
     :param report_key: chiave del template (``t-name``), es. ``report_studio.rs_report_1_v1``.
     :param resolver: callable ``(model, path) -> (tipo, comodel) | None``.
+    :param annotate: marca i blocchi per la vista visuale dell'editor (mai nei PDF salvati).
     :returns: stringa XML del template.
     """
     if not isinstance(report_key, str) or not REPORT_KEY_RE.match(report_key):
@@ -220,7 +262,7 @@ def compile_definition(definition, model, report_key, resolver=None):
     if layout not in LAYOUTS:
         raise CompileError("Layout non ammesso: %r" % (layout,))
 
-    ctx = _Context(resolver)
+    ctx = _Context(resolver, annotate=annotate)
     body = _render_children(definition.get("children", []), model, "o", 0, ctx)
 
     lines = [

@@ -1,34 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <t t-name="report_studio.BlockNode">
-        <div t-attf-class="o_rs_block {{ node._uid === props.selectedUid ? 'o_rs_selected' : '' }}"
-             t-on-click="onClick">
-            <div class="o_rs_block_label"><t t-esc="label"/></div>
-            <t t-if="node.children">
-                <div class="o_rs_children">
-                    <t t-foreach="node.children" t-as="child" t-key="child._uid">
-                        <BlockNode node="child" selectedUid="props.selectedUid" onSelect="props.onSelect"/>
-                    </t>
-                </div>
-            </t>
-        </div>
-    </t>
-
     <t t-name="report_studio.Versions">
-        <div class="fw-bold mb-1">Versioni</div>
+        <div class="o_rs_section_title"><i class="fa fa-history me-1"/>Versioni</div>
+        <input class="form-control form-control-sm mb-2" placeholder="Commento versione"
+               title="Commento della prossima versione salvata" t-model="state.comment"/>
         <t t-foreach="state.versions" t-as="v" t-key="v.id">
-            <div class="d-flex align-items-center gap-1 mb-1">
-                <span class="flex-grow-1">
+            <div class="d-flex align-items-center gap-1 mb-1 o_rs_version">
+                <span class="flex-grow-1 min-w-0">
                     v<t t-esc="v.version_no"/>
                     <t t-if="v.is_active"><span class="badge bg-success ms-1">attiva</span></t>
-                    <small class="text-muted d-block"><t t-esc="v.comment"/></small>
+                    <small class="text-muted d-block text-truncate" t-att-title="v.comment"><t t-esc="v.comment"/></small>
                 </span>
                 <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Ripristina</button>
                 <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copia</button>
             </div>
         </t>
         <input class="form-control form-control-sm mt-1" placeholder="Nome della copia" t-model="state.copyName"/>
+    </t>
+
+    <t t-name="report_studio.PreviewDialog">
+        <Dialog title="'Anteprima PDF'" size="'xl'" bodyClass="'o_rs_preview_dialog'">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <label class="mb-0">Record</label>
+                <select class="form-select w-auto" t-on-change="onRecordChange">
+                    <t t-foreach="props.records" t-as="rec" t-key="rec.id">
+                        <option t-att-value="rec.id" t-att-selected="rec.id === state.recordId"><t t-esc="rec.display_name"/></option>
+                    </t>
+                </select>
+                <button class="btn btn-secondary" t-on-click="load" t-att-disabled="state.loading">
+                    <i class="fa fa-refresh me-1"/>Aggiorna
+                </button>
+                <span t-if="state.loading" class="text-muted"><i class="fa fa-spinner fa-spin me-1"/>Generazione del PDF…</span>
+            </div>
+            <iframe t-if="state.url" t-att-src="state.url" class="o_rs_preview_frame w-100 border"/>
+            <div t-elif="state.error" class="alert alert-danger"><t t-esc="state.error"/></div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="props.close">Chiudi</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <!-- Pulsante della barra ancora non disponibile ("In arrivo"). -->
+    <t t-name="report_studio.TopButtonSoon">
+        <button class="btn o_rs_tb_btn btn-outline-secondary" disabled="disabled" title="In arrivo">
+            <i t-attf-class="fa {{ icon }}"/>
+            <span><t t-esc="label"/></span>
+        </button>
     </t>
 
     <t t-name="report_studio.App">
@@ -93,58 +111,101 @@
 
             <!-- EDITOR -->
             <t t-else="">
-                <div class="o_rs_topbar d-flex flex-wrap gap-2 p-2 border-bottom align-items-center">
+                <div class="o_rs_topbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
                     <button class="btn btn-outline-secondary" t-on-click="backToList">← Saved Layouts</button>
-                    <span class="fw-bold"><t t-esc="state.reportName"/></span>
+                    <span class="o_rs_report_name fw-bold"><t t-esc="state.reportName"/></span>
+                    <span class="badge text-bg-light border"><t t-esc="state.modelName"/></span>
                     <span class="badge bg-secondary"><t t-if="state.mode === 'qweb'">QWeb libero</t><t t-else="">Blocchi</t></span>
-                    <button class="btn btn-primary" t-on-click="saveVersion" t-att-disabled="!state.reportId">Salva versione</button>
-                    <input class="form-control w-auto" placeholder="Commento versione" t-model="state.comment"/>
-                    <select class="form-select w-auto" t-on-change="onRecordChange">
-                        <t t-foreach="state.records" t-as="rec" t-key="rec.id">
-                            <option t-att-value="rec.id" t-att-selected="rec.id === state.recordId">
-                                <t t-esc="rec.display_name"/>
-                            </option>
+                    <span t-if="state.dirty" class="text-warning small">Modifiche non salvate</span>
+
+                    <div class="ms-auto d-flex align-items-center gap-2">
+                        <div class="form-check form-switch mb-0 o_rs_active_toggle" title="Spento = report archiviato">
+                            <input class="form-check-input" type="checkbox" id="o_rs_active"
+                                   t-att-checked="state.active" t-att-disabled="!state.canWrite"
+                                   t-on-change="onToggleActive"/>
+                            <label class="form-check-label" for="o_rs_active">Attivo</label>
+                        </div>
+                        <select class="form-select w-auto o_rs_record_select" title="Record usato per i dati della pagina"
+                                t-on-change="onRecordChange">
+                            <t t-foreach="state.records" t-as="rec" t-key="rec.id">
+                                <option t-att-value="rec.id" t-att-selected="rec.id === state.recordId">
+                                    <t t-esc="rec.display_name"/>
+                                </option>
+                            </t>
+                        </select>
+                        <t t-call="report_studio.TopButtonSoon">
+                            <t t-set="icon" t-value="'fa-th-large'"/><t t-set="label" t-value="'Template'"/>
                         </t>
-                    </select>
-                    <button class="btn btn-secondary" t-on-click="preview" t-att-disabled="!state.recordId">Anteprima</button>
-                    <button class="btn btn-outline-secondary" t-on-click="archiveReport">Archivia</button>
-                    <span t-if="state.dirty" class="text-warning">Modifiche non salvate</span>
+                        <t t-call="report_studio.TopButtonSoon">
+                            <t t-set="icon" t-value="'fa-bookmark-o'"/><t t-set="label" t-value="'Salva come template'"/>
+                        </t>
+                        <button class="btn o_rs_tb_btn btn-outline-secondary o_rs_btn_preview" title="Anteprima PDF"
+                                t-att-disabled="!state.recordId" t-on-click="preview">
+                            <i class="fa fa-eye"/><span>Anteprima</span>
+                        </button>
+                        <t t-call="report_studio.TopButtonSoon">
+                            <t t-set="icon" t-value="'fa-print'"/><t t-set="label" t-value="'Stampa di prova'"/>
+                        </t>
+                        <t t-call="report_studio.TopButtonSoon">
+                            <t t-set="icon" t-value="'fa-question-circle'"/><t t-set="label" t-value="'Guida'"/>
+                        </t>
+                        <button class="btn o_rs_tb_btn btn-primary o_rs_btn_save" title="Salva come nuova versione"
+                                t-att-disabled="!state.reportId" t-on-click="saveVersion">
+                            <i class="fa fa-save"/><span>Salva</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="d-flex flex-grow-1 min-h-0">
 
-                    <!-- QWEB LIBERO -->
-                    <t t-if="state.mode === 'qweb'">
-                        <div class="p-2 border-end overflow-auto" style="width: 320px">
+                    <!-- SINISTRA: strumenti e versioni -->
+                    <div class="o_rs_left d-flex flex-column border-end">
+                        <div t-if="state.mode !== 'qweb'" class="o_rs_toolbox flex-grow-1 overflow-auto p-2">
+                            <div class="o_rs_section_title"><i class="fa fa-th-large me-1"/>Blocchi</div>
+                            <t t-foreach="blockGroups" t-as="group" t-key="group.label">
+                                <div class="o_rs_group_label"><t t-esc="group.label"/></div>
+                                <t t-foreach="group.items" t-as="item" t-key="item.type">
+                                    <button class="o_rs_tool btn btn-link" t-att-data-type="item.type" t-on-click="onAddBlock">
+                                        <i t-attf-class="fa {{ item.icon }} fa-fw me-2"/><t t-esc="item.label"/>
+                                    </button>
+                                </t>
+                            </t>
+                            <div class="small text-muted mt-2">
+                                Il blocco va dentro quello selezionato (Sezione, Condizione) oppure dopo di esso.
+                            </div>
+                        </div>
+                        <div t-attf-class="o_rs_versions overflow-auto p-2 {{ state.mode !== 'qweb' ? 'border-top' : 'flex-grow-1' }}">
                             <t t-call="report_studio.Versions"/>
                         </div>
-                        <div class="flex-grow-1 p-2 d-flex flex-column">
+                    </div>
+
+                    <!-- CENTRO: pagina -->
+                    <t t-if="state.mode === 'qweb'">
+                        <div class="flex-grow-1 p-2 d-flex flex-column min-w-0">
                             <div class="small text-muted mb-1">Template QWeb. Layout e stile vengono da Odoo.</div>
                             <textarea class="form-control font-monospace flex-grow-1" t-model="state.qwebText" t-on-input="markDirty"/>
                         </div>
                     </t>
-
-                    <!-- BLOCCHI -->
-                    <t t-else="">
-                        <div class="o_rs_palette p-2 border-end d-flex flex-column gap-1">
-                            <div class="fw-bold mb-1">Blocchi</div>
-                            <t t-foreach="blockTypes" t-as="bt" t-key="bt[0]">
-                                <button class="btn btn-sm btn-outline-primary" t-att-data-type="bt[0]" t-on-click="onAddBlock">
-                                    <t t-esc="bt[1]"/>
-                                </button>
-                            </t>
+                    <div t-else="" class="o_rs_canvas flex-grow-1 min-w-0 position-relative">
+                        <div t-if="state.canvasError" class="alert alert-warning m-2 o_rs_canvas_error"><t t-esc="state.canvasError"/></div>
+                        <div t-if="!state.definition.children.length" class="o_rs_canvas_hint text-muted">
+                            Pagina vuota: aggiungi un blocco dalla colonna di sinistra.
                         </div>
+                        <span t-if="state.canvasLoading" class="o_rs_canvas_loading text-muted small">
+                            <i class="fa fa-spinner fa-spin"/>
+                        </span>
+                        <iframe t-ref="canvas" class="o_rs_canvas_frame"/>
+                    </div>
 
-                        <div class="o_rs_tree p-2 border-end overflow-auto">
-                            <div class="fw-bold mb-1">Flusso</div>
-                            <t t-foreach="state.definition.children" t-as="child" t-key="child._uid">
-                                <BlockNode node="child" selectedUid="state.selectedUid" onSelect.bind="selectBlock"/>
-                            </t>
-                        </div>
-
-                        <div class="o_rs_props p-2 border-end overflow-auto" style="width: 320px">
+                    <!-- DESTRA: proprietà -->
+                    <div class="o_rs_props p-3 border-start overflow-auto">
+                        <div class="o_rs_section_title"><i class="fa fa-cog me-1"/>Proprietà</div>
+                        <t t-if="state.mode === 'qweb'">
+                            <div class="text-muted">Modalità QWeb libero: il template si modifica al centro.</div>
+                        </t>
+                        <t t-else="">
                             <t t-if="selected">
-                                <div class="fw-bold mb-2">Proprietà: <t t-esc="selected.type"/></div>
+                                <div class="o_rs_props_title mb-2"><t t-esc="blockLabels[selected.type] or selected.type"/></div>
 
                                 <t t-if="selected.type === 'section'">
                                     <label class="form-label">Classe CSS</label>
@@ -204,19 +265,14 @@
                                     <button class="btn btn-sm btn-outline-secondary" data-dir="1" t-on-click="onMove">↓</button>
                                     <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Elimina blocco</button>
                                 </div>
+                                <div class="mt-2" t-if="selectedParentUid">
+                                    <button class="btn btn-sm btn-link px-0" t-on-click="selectParent">↖ Seleziona il contenitore</button>
+                                </div>
                             </t>
                             <t t-else="">
-                                <div class="text-muted">Seleziona un blocco nel flusso per modificarne le proprietà.</div>
+                                <div class="text-muted">Seleziona un blocco nella pagina per modificarne le proprietà.</div>
                             </t>
-                            <hr/>
-                            <t t-call="report_studio.Versions"/>
-                        </div>
-                    </t>
-
-                    <!-- ANTEPRIMA -->
-                    <div class="o_rs_preview flex-grow-1 min-w-0">
-                        <iframe t-if="state.previewUrl" t-att-src="state.previewUrl" class="w-100 h-100 border-0"/>
-                        <div t-else="" class="p-3 text-muted">Premi "Anteprima" per vedere il PDF su un record.</div>
+                        </t>
                     </div>
                 </div>
 

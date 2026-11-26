@@ -1,16 +1,47 @@
 /** @odoo-module **/
-import { Component, useState, onWillStart } from "@odoo/owl";
+import { Component, useState, useRef, useEffect, onWillStart, onWillUnmount } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { Dialog } from "@web/core/dialog/dialog";
+import { user } from "@web/core/user";
 
-const BLOCK_TYPES = [
-    ["section", "Sezione"],
-    ["text", "Testo"],
-    ["field", "Campo"],
-    ["table", "Tabella"],
-    ["if", "Condizione"],
+// Cassetta degli strumenti (colonna sinistra), per gruppi.
+const BLOCK_GROUPS = [
+    {
+        label: "Contenuto",
+        items: [
+            { type: "text", label: "Testo", icon: "fa-font" },
+            { type: "field", label: "Campo", icon: "fa-database" },
+            { type: "table", label: "Tabella", icon: "fa-table" },
+        ],
+    },
+    {
+        label: "Impaginazione",
+        items: [
+            { type: "section", label: "Sezione", icon: "fa-square-o" },
+            { type: "if", label: "Condizione", icon: "fa-code-fork" },
+        ],
+    },
 ];
+const BLOCK_LABELS = Object.fromEntries(
+    BLOCK_GROUPS.flatMap((g) => g.items.map((i) => [i.type, i.label]))
+);
+
+// Stile iniettato nella vista visuale (iframe): contorni, selezione, segnaposto.
+const CANVAS_STYLE = `
+[data-rs-path] { cursor: pointer; outline: 1px dashed rgba(113, 75, 103, .25); outline-offset: 2px; }
+[data-rs-path]:hover { outline: 1px dashed rgba(113, 75, 103, .8); }
+.o_rs_cv_selected, .o_rs_cv_selected:hover { outline: 2px solid #714B67 !important; background: rgba(113, 75, 103, .06); }
+span.o_rs_cv_block { display: inline-block; min-width: 1em; }
+.o_rs_cv_section > div:empty, .o_rs_cv_if:not(:has(> :not(.o_rs_cv_if_label, .o_rs_cv_if_false))) { min-height: 2.2em; }
+.o_rs_cv_section > div:empty::before { content: "Sezione vuota: seleziona e aggiungi blocchi"; color: #999; font-style: italic; font-size: 12px; }
+.o_rs_cv_invalid { background: #fff3cd; color: #856404; padding: 2px 6px; font-size: 12px; }
+.o_rs_cv_if_label { font-size: 11px; color: #714B67; }
+.o_rs_cv_if_false { font-size: 11px; color: #999; font-style: italic; }
+`;
+
+const CANVAS_DELAY = 400;
 
 let uidCounter = 0;
 const nextUid = () => ++uidCounter;
@@ -87,44 +118,61 @@ function findNode(children, target) {
     return null;
 }
 
-class BlockNode extends Component {
-    static template = "report_studio.BlockNode";
-    static props = { node: Object, selectedUid: { type: [Number, { value: null }] }, onSelect: Function };
+// Anteprima PDF in un popup, con la scelta del record.
+class PreviewDialog extends Component {
+    static template = "report_studio.PreviewDialog";
+    static components = { Dialog };
+    static props = {
+        close: Function,
+        reportId: Number,
+        definition: String,
+        records: Array,
+        recordId: [Number, Boolean],
+    };
 
     setup() {
-        // Il nodo viene osservato da questo componente: senza, le modifiche fatte
-        // nel pannello Proprietà ridisegnano solo il padre e l'etichetta resta vecchia.
-        // L'istanza è legata al nodo dal t-key (_uid), quindi il nodo non cambia.
-        this.node = useState(this.props.node);
+        this.notification = useService("notification");
+        this.state = useState({ recordId: this.props.recordId, url: null, loading: false, error: "" });
+        onWillStart(() => this.load());
+        onWillUnmount(() => this.state.url && URL.revokeObjectURL(this.state.url));
     }
 
-    get label() {
-        const n = this.node;
-        switch (n.type) {
-            case "section":
-                return "Sezione";
-            case "text":
-                return `Testo: ${n.content}`;
-            case "field":
-                return `Campo: ${n.path}`;
-            case "table":
-                return `Tabella: ${n.source}`;
-            case "if":
-                return `Se ${n.path} ${n.op} ${n.value}`;
+    onRecordChange(ev) {
+        this.state.recordId = parseInt(ev.target.value);
+        this.load();
+    }
+
+    async load() {
+        if (!this.state.recordId) {
+            this.state.error = "Nessun record disponibile per l'anteprima.";
+            return;
         }
-        return n.type;
-    }
-
-    onClick(ev) {
-        ev.stopPropagation();
-        this.props.onSelect(this.node._uid);
+        this.state.loading = true;
+        this.state.error = "";
+        const body = new FormData();
+        body.append("report_id", this.props.reportId);
+        body.append("res_id", this.state.recordId);
+        body.append("definition", this.props.definition);
+        body.append("csrf_token", odoo.csrf_token);
+        try {
+            const response = await fetch("/report_studio/preview", { method: "POST", body });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                this.state.error = err.error || "Anteprima non riuscita";
+                this.notification.add(this.state.error, { type: "danger" });
+                return;
+            }
+            const blob = await response.blob();
+            if (this.state.url) URL.revokeObjectURL(this.state.url);
+            this.state.url = URL.createObjectURL(blob);
+        } finally {
+            this.state.loading = false;
+        }
     }
 }
-BlockNode.components = { BlockNode };
 
 export class ReportStudioApp extends Component {
     static template = "report_studio.App";
-    static components = { BlockNode };
     static props = ["*"];
 
     setup() {
@@ -132,7 +180,10 @@ export class ReportStudioApp extends Component {
         this.notification = useService("notification");
         this.dialog = useService("dialog");
         this.action = useService("action");
-        this.blockTypes = BLOCK_TYPES;
+        this.blockGroups = BLOCK_GROUPS;
+        this.blockLabels = BLOCK_LABELS;
+        this.canvasRef = useRef("canvas");
+        this.canvasTimer = null;
         this.state = useState({
             // new | edit (l'elenco è la vista standard action_rs_report_list)
             view: "new",
@@ -147,6 +198,8 @@ export class ReportStudioApp extends Component {
             reportName: "",
             modelName: "",
             mode: "blocks",
+            active: true,
+            canWrite: false,
             qwebText: "",
             definition: { children: [] },
             selectedUid: null,
@@ -157,10 +210,18 @@ export class ReportStudioApp extends Component {
             recordId: false,
             comment: "",
             copyName: "",
-            previewUrl: null,
             dirty: false,
+            // vista visuale
+            canvasHtml: "",
+            canvasError: "",
+            canvasLoading: false,
         });
         onWillStart(async () => {
+            const [editor, system] = await Promise.all([
+                user.hasGroup("report_studio.group_rs_editor"),
+                user.hasGroup("base.group_system"),
+            ]);
+            this.state.canWrite = editor || system;
             const params = this.props.action?.params || {};
             if (params.report_id) {
                 await this.openEditor(params.report_id);
@@ -171,6 +232,23 @@ export class ReportStudioApp extends Component {
                 this.goToList();
             }
         });
+        onWillUnmount(() => clearTimeout(this.canvasTimer));
+        // Nuovo HTML della vista visuale: lo carica nell'iframe mantenendo lo scroll.
+        // Riparte anche quando l'iframe compare (passaggio da "Nuovo" all'editor).
+        useEffect(
+            (html, frame) => {
+                if (!frame || !html) return;
+                const scroll = frame.contentWindow?.scrollY || 0;
+                frame.onload = () => this.setupCanvas(frame, scroll);
+                frame.srcdoc = html;
+            },
+            () => [this.state.canvasHtml, this.canvasRef.el]
+        );
+        // Selezione cambiata: aggiorna solo l'evidenziazione, senza ridisegnare.
+        useEffect(
+            () => this.highlightSelection(),
+            () => [this.state.selectedUid]
+        );
     }
 
     // ----- elenco -----
@@ -191,7 +269,6 @@ export class ReportStudioApp extends Component {
     }
 
     showList() {
-        this.state.previewUrl = null;
         return this.goToList();
     }
 
@@ -298,7 +375,7 @@ export class ReportStudioApp extends Component {
             this.state.records = await this.orm.searchRead(
                 this.state.modelName, [], ["display_name"], { limit: 50 }
             );
-        } catch (error) {
+        } catch {
             this.state.records = [];
         }
         if (!this.state.records.find((r) => r.id === this.state.recordId)) {
@@ -308,12 +385,16 @@ export class ReportStudioApp extends Component {
 
     async selectReport(reportId) {
         const [report] = await this.orm.read(
-            "rs.report", [reportId], ["name", "model_name", "current_version_id", "report_mode"]
+            "rs.report",
+            [reportId],
+            ["name", "model_name", "current_version_id", "report_mode", "active"],
+            { context: { active_test: false } }
         );
         this.state.reportId = reportId;
         this.state.reportName = report.name;
         this.state.modelName = report.model_name;
         this.state.mode = report.report_mode;
+        this.state.active = report.active;
         this.state.fields = await this.fetchFields(report.model_name);
         await this.loadVersions();
         const [version] = await this.orm.read(
@@ -332,9 +413,9 @@ export class ReportStudioApp extends Component {
             await this.loadTableFields(this.state.definition.children);
         }
         this.state.selectedUid = null;
-        this.state.previewUrl = null;
         this.state.dirty = false;
         await this.loadRecords();
+        this.refreshCanvas();
     }
 
     backToList() {
@@ -348,10 +429,100 @@ export class ReportStudioApp extends Component {
         return JSON.stringify(cleanDefinition(this.state.definition));
     }
 
+    // ----- vista visuale -----
+
+    // Ridisegna la pagina dopo una pausa nelle modifiche (le digitazioni non
+    // generano una chiamata al server per ogni tasto).
+    scheduleCanvas() {
+        clearTimeout(this.canvasTimer);
+        this.canvasTimer = setTimeout(() => this.refreshCanvas(), CANVAS_DELAY);
+    }
+
+    async refreshCanvas() {
+        clearTimeout(this.canvasTimer);
+        if (this.state.mode === "qweb" || !this.state.reportId) return;
+        if (!this.state.recordId) {
+            this.state.canvasError = `Nessun record di ${this.state.modelName} da mostrare: creane uno per vedere la pagina.`;
+            return;
+        }
+        this.state.canvasLoading = true;
+        try {
+            const html = await this.orm.call(
+                "rs.report", "render_canvas",
+                [[this.state.reportId], this.currentDefinitionJson(), this.state.recordId]
+            );
+            this.state.canvasError = "";
+            this.state.canvasHtml = html;
+        } catch (error) {
+            this.state.canvasError = errorMessage(error, "Impossibile disegnare la pagina");
+        } finally {
+            this.state.canvasLoading = false;
+        }
+    }
+
+    setupCanvas(frame, scroll) {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const style = doc.createElement("style");
+        style.textContent = CANVAS_STYLE;
+        doc.head.appendChild(style);
+        doc.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            const el = ev.target.closest("[data-rs-path]");
+            this.state.selectedUid = el ? this.uidAtPath(el.dataset.rsPath) : null;
+        });
+        frame.contentWindow.scrollTo(0, scroll);
+        this.highlightSelection();
+    }
+
+    highlightSelection() {
+        const doc = this.canvasRef.el?.contentDocument;
+        if (!doc) return;
+        doc.querySelectorAll(".o_rs_cv_selected").forEach((el) => el.classList.remove("o_rs_cv_selected"));
+        const path = this.pathOfUid(this.state.selectedUid);
+        if (path !== null) {
+            doc.querySelector(`[data-rs-path="${path}"]`)?.classList.add("o_rs_cv_selected");
+        }
+    }
+
+    // Posizione nell'albero ("0.2.1") <-> _uid del blocco nell'editor.
+    uidAtPath(path) {
+        let list = this.state.definition.children;
+        let node = null;
+        for (const index of path.split(".").map(Number)) {
+            node = list?.[index];
+            if (!node) return null;
+            list = node.children;
+        }
+        return node._uid;
+    }
+
+    pathOfUid(uid, children = this.state.definition.children, prefix = "") {
+        if (!uid) return null;
+        for (let index = 0; index < children.length; index++) {
+            const node = children[index];
+            const path = prefix ? `${prefix}.${index}` : String(index);
+            if (node._uid === uid) return path;
+            if (node.children) {
+                const found = this.pathOfUid(uid, node.children, path);
+                if (found !== null) return found;
+            }
+        }
+        return null;
+    }
+
+    // ----- blocchi e proprietà -----
+
     get selected() {
         if (!this.state.selectedUid) return null;
         const found = findNode(this.state.definition.children, this.state.selectedUid);
         return found ? found.node : null;
+    }
+
+    get selectedParentUid() {
+        const path = this.pathOfUid(this.state.selectedUid);
+        if (!path || !path.includes(".")) return null;
+        return this.uidAtPath(path.split(".").slice(0, -1).join("."));
     }
 
     get tableColumnFields() {
@@ -362,12 +533,13 @@ export class ReportStudioApp extends Component {
         return this.state.fieldCache[sourceField.relation] || [];
     }
 
-    selectBlock(uid) {
-        this.state.selectedUid = uid;
+    selectParent() {
+        this.state.selectedUid = this.selectedParentUid;
     }
 
     markDirty() {
         this.state.dirty = true;
+        this.scheduleCanvas();
     }
 
     onAddBlock(ev) {
@@ -427,8 +599,23 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    async onRecordChange(ev) {
+    onRecordChange(ev) {
         this.state.recordId = parseInt(ev.target.value);
+        this.refreshCanvas();
+    }
+
+    // ----- barra in alto -----
+
+    async onToggleActive(ev) {
+        const active = ev.target.checked;
+        try {
+            await this.orm.write("rs.report", [this.state.reportId], { active });
+            this.state.active = active;
+            this.notification.add(active ? "Report attivato" : "Report archiviato", { type: "info" });
+        } catch (error) {
+            ev.target.checked = this.state.active;
+            this.notification.add(errorMessage(error, "Modifica non riuscita"), { type: "danger" });
+        }
     }
 
     async saveVersion() {
@@ -446,22 +633,16 @@ export class ReportStudioApp extends Component {
         }
     }
 
-    async preview() {
-        const body = new FormData();
-        body.append("report_id", this.state.reportId);
-        body.append("res_id", this.state.recordId);
-        body.append("definition", this.currentDefinitionJson());
-        body.append("csrf_token", odoo.csrf_token);
-        const response = await fetch("/report_studio/preview", { method: "POST", body });
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            this.notification.add(err.error || "Anteprima non riuscita", { type: "danger" });
-            return;
-        }
-        const blob = await response.blob();
-        if (this.state.previewUrl) URL.revokeObjectURL(this.state.previewUrl);
-        this.state.previewUrl = URL.createObjectURL(blob);
+    preview() {
+        this.dialog.add(PreviewDialog, {
+            reportId: this.state.reportId,
+            definition: this.currentDefinitionJson(),
+            records: this.state.records,
+            recordId: this.state.recordId,
+        });
     }
+
+    // ----- versioni -----
 
     async restoreVersion(ev) {
         const versionId = parseInt(ev.currentTarget.dataset.id);
@@ -479,12 +660,6 @@ export class ReportStudioApp extends Component {
         this.state.copyName = "";
         await this.openEditor(newId);
         this.notification.add("Nuovo report creato dalla copia", { type: "success" });
-    }
-
-    async archiveReport() {
-        await this.orm.write("rs.report", [this.state.reportId], { active: false });
-        this.notification.add("Report archiviato", { type: "info" });
-        this.backToList();
     }
 }
 

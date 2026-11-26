@@ -45,6 +45,9 @@ def resolver(model, path):
     return ftype, comodel
 
 
+KEY = "report_studio.test_v1"
+
+
 def compile_(children, layout=None):
     definition = {"children": children}
     if layout:
@@ -181,6 +184,58 @@ class TestCompiler(unittest.TestCase):
         with self.assertRaises(compiler.CompileError):
             compiler.compile_definition({"mode": "qweb", "arch": " "}, "sale.order", "report_studio.test_q3")
 
+
+    # ----- vista visuale dell'editor (annotate=True) -----
+
+    def _annotated(self, children):
+        return compiler.compile_definition(
+            {"children": children}, "sale.order", KEY, resolver=resolver, annotate=True
+        )
+
+    def test_annotate_marks_blocks_with_tree_path(self):
+        arch = self._annotated([
+            {"type": "text", "content": "Ciao"},
+            {"type": "section", "children": [{"type": "field", "path": "name"}]},
+        ])
+        self.assertIn('data-rs-path="0" data-rs-type="text"', arch)
+        self.assertIn('data-rs-path="1" data-rs-type="section"', arch)
+        self.assertIn('<span class="o_rs_cv_block o_rs_cv_field" data-rs-path="1.0"', arch)
+        etree_ok(arch)
+
+    def test_annotate_invalid_block_is_placeholder(self):
+        arch = self._annotated([
+            {"type": "field", "path": ""},
+            {"type": "field", "path": "campo_<inesistente>"},
+            {"type": "text", "content": "ok"},
+        ])
+        self.assertIn('o_rs_cv_invalid', arch)
+        self.assertNotIn("<inesistente>", arch)  # messaggio escapato
+        self.assertIn('data-rs-path="2" data-rs-type="text"', arch)
+        etree_ok(arch)
+
+    def test_annotate_condition_always_visible(self):
+        arch = self._annotated([{"type": "if", "path": "amount_total", "op": ">", "value": 0,
+                                 "children": [{"type": "text", "content": "x"}]}])
+        self.assertIn('data-rs-path="0.0"', arch)
+        self.assertIn('t-else=""', arch)
+        self.assertIn("Se amount_total &gt; 0", arch)
+        etree_ok(arch)
+
+    def test_saved_templates_are_not_annotated(self):
+        arch = compiler.compile_definition(
+            {"children": [{"type": "text", "content": "Ciao"}]}, "sale.order", KEY, resolver=resolver
+        )
+        self.assertNotIn("data-rs-path", arch)
+        with self.assertRaises(compiler.CompileError):
+            compiler.compile_definition(
+                {"children": [{"type": "field", "path": ""}]}, "sale.order", KEY, resolver=resolver
+            )
+
+
+def etree_ok(arch):
+    """Il template annotato è XML ben formato."""
+    import xml.dom.minidom
+    xml.dom.minidom.parseString(arch)
 
 if __name__ == "__main__":
     unittest.main()

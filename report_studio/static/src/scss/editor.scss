@@ -1,28 +1,130 @@
 .o_rs_app {
-    .o_rs_block {
-        padding: 2px 6px;
-        margin: 2px 0;
-        border-left: 3px solid transparent;
-        cursor: pointer;
-        font-size: 0.9rem;
+    background: $o-webclient-background-color;
 
-        &.o_rs_selected {
-            border-left-color: $primary;
+    .o_rs_topbar {
+        background: $o-view-background-color;
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+    }
+
+    .o_rs_report_name {
+        font-size: 1.15rem;
+    }
+
+    // Pulsanti della barra: icona sopra, etichetta sotto.
+    .o_rs_tb_btn {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 5.5rem;
+        line-height: 1.15;
+        padding: 0.3rem 0.6rem;
+
+        i {
+            margin-bottom: 0.2rem;
+        }
+    }
+
+    .o_rs_active_toggle .form-check-input {
+        cursor: pointer;
+    }
+
+    .o_rs_record_select {
+        max-width: 14rem;
+    }
+
+    .o_rs_section_title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    // Colonna sinistra: strumenti in alto, versioni in basso.
+    .o_rs_left {
+        width: 250px;
+        flex: 0 0 250px;
+        background: $o-view-background-color;
+        min-height: 0;
+    }
+
+    .o_rs_group_label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: $text-muted;
+        margin: 0.9rem 0 0.25rem;
+    }
+
+    .o_rs_tool {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0.35rem 0.5rem;
+        color: $body-color;
+        text-decoration: none;
+        border-radius: 0.25rem;
+
+        i {
+            color: $primary;
+        }
+
+        &:hover {
             background: rgba($primary, 0.08);
         }
     }
 
-    .o_rs_children {
-        margin-left: 14px;
+    .o_rs_versions {
+        max-height: 40%;
+        flex-shrink: 0;
     }
 
-    .o_rs_tree,
-    .o_rs_props,
-    .o_rs_palette {
+    .o_rs_version .btn {
+        padding: 0.1rem 0.35rem;
+        font-size: 0.75rem;
+    }
+
+    // Centro: la pagina con i dati del record.
+    .o_rs_canvas {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    .o_rs_canvas_frame {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 0;
+        border: 1px solid $border-color;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .o_rs_canvas_hint {
+        text-align: center;
+        padding: 0.5rem;
+    }
+
+    .o_rs_canvas_loading {
+        position: absolute;
+        top: 1.4rem;
+        right: 1.6rem;
+    }
+
+    // Destra: proprietà del blocco selezionato.
+    .o_rs_props {
+        width: 320px;
+        flex: 0 0 320px;
+        background: $o-view-background-color;
         min-height: 0;
     }
 
-    .o_rs_tree {
-        width: 300px;
+    .o_rs_props_title {
+        color: $primary;
+        font-weight: 600;
     }
+}
+
+.o_rs_preview_dialog .o_rs_preview_frame {
+    height: 75vh;
 }
