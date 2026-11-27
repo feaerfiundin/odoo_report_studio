@@ -186,6 +186,17 @@
                                    t-on-change="onToggleActive"/>
                             <label class="form-check-label" for="o_rs_active">Attivo</label>
                         </div>
+                        <div t-if="state.mode !== 'qweb'" class="input-group input-group-sm w-auto o_rs_lang"
+                             title="Lingua dei testi che stai modificando; la pagina centrale la mostra">
+                            <span class="input-group-text"><i class="fa fa-language"/></span>
+                            <select class="form-select o_rs_lang_select" t-on-change="onEditLang">
+                                <t t-foreach="langOptions" t-as="opt" t-key="opt.code">
+                                    <option t-att-value="opt.code" t-att-selected="opt.code === state.editLang">
+                                        <t t-esc="opt.label"/>
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
                         <select class="form-select w-auto o_rs_record_select" title="Record usato per i dati della pagina"
                                 t-on-change="onRecordChange">
                             <t t-foreach="state.records" t-as="rec" t-key="rec.id">
@@ -265,6 +276,11 @@
                             <div class="text-muted">Modalità QWeb libero: il template si modifica al centro.</div>
                         </t>
                         <t t-else="">
+                            <div t-if="isTranslating" class="alert alert-info py-2 small o_rs_translating">
+                                <i class="fa fa-language me-1"/>Traduzione in <b t-esc="langName(state.editLang)"/>:
+                                testi, etichette e intestazioni si scrivono in questa lingua. Se lasci vuoto
+                                si stampa il testo in <t t-esc="langName(baseLang)"/> (in grigio).
+                            </div>
                             <t t-if="selected">
                                 <div class="o_rs_props_title mb-2"><t t-esc="blockLabels[selected.type] or selected.type"/></div>
 
@@ -327,7 +343,10 @@
 
                                 <t t-if="selected.type === 'text'">
                                     <label class="form-label">Testo</label>
-                                    <textarea class="form-control" rows="4" t-model="selected.content" t-on-input="markDirty"/>
+                                    <textarea class="form-control o_rs_text_content" rows="4"
+                                              t-att-value="trValue(selected, 'content')"
+                                              t-att-placeholder="trPlaceholder(selected, 'content')"
+                                              t-on-input="(ev) => this.setTr(selected, 'content', ev)"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="'Carattere'"/>
@@ -338,8 +357,10 @@
                                     <label class="form-label">Campo</label>
                                     <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
                                     <label class="form-label mt-2">Etichetta</label>
-                                    <input class="form-control o_rs_field_label" placeholder="es. DDT num:"
-                                           t-model="selected.label" t-on-input="markDirty"/>
+                                    <input class="form-control o_rs_field_label"
+                                           t-att-placeholder="trPlaceholder(selected, 'label', 'es. DDT num:') or 'es. DDT num:'"
+                                           t-att-value="trValue(selected, 'label')"
+                                           t-on-input="(ev) => this.setTr(selected, 'label', ev)"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.label_font"/><t t-set="title" t-value="'Carattere etichetta'"/>
@@ -375,8 +396,10 @@
                                         <div class="o_rs_column o_rs_column_grid mb-1" t-att-data-uid="col._uid">
                                             <input class="form-control form-control-sm" list="rs_cols" placeholder="campo"
                                                    t-model="col.path" t-on-input="markDirty"/>
-                                            <input class="form-control form-control-sm" placeholder="etichetta"
-                                                   t-model="col.label" t-on-input="markDirty"/>
+                                            <input class="form-control form-control-sm o_rs_col_label"
+                                                   t-att-placeholder="trPlaceholder(col, 'label', 'etichetta') or 'etichetta'"
+                                                   t-att-value="trValue(col, 'label')"
+                                                   t-on-input="(ev) => this.setTr(col, 'label', ev)"/>
                                             <input type="number" min="1" max="100" step="1"
                                                    class="form-control form-control-sm o_rs_width_input"
                                                    t-att-value="col.width" t-att-disabled="col.locked"
@@ -445,6 +468,32 @@
                             </t>
                             <t t-else="">
                                 <div class="text-muted">Seleziona un blocco nella pagina per modificarne le proprietà.</div>
+                                <div class="o_rs_props_title mt-4 mb-2">Pagina</div>
+                                <div class="small text-muted mb-2">
+                                    Lingua principale dei testi: <b t-esc="langName(baseLang)"/>.
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input o_rs_print_lang" type="checkbox" id="o_rs_print_lang"
+                                           t-att-checked="state.definition.print_lang?.enabled" t-on-change="onPrintLang"/>
+                                    <label class="form-check-label" for="o_rs_print_lang">Stampa nella lingua del cliente</label>
+                                </div>
+                                <t t-if="state.definition.print_lang?.enabled">
+                                    <label class="form-label small text-muted mt-2 mb-1">Lingua letta dal contatto</label>
+                                    <select class="form-select form-select-sm o_rs_print_lang_field" t-on-change="onPrintLangField">
+                                        <t t-foreach="partnerFields" t-as="pf" t-key="pf.name">
+                                            <option t-att-value="pf.name" t-att-selected="pf.name === state.definition.print_lang.field">
+                                                <t t-esc="pf.string"/> (<t t-esc="pf.name"/>)
+                                            </option>
+                                        </t>
+                                    </select>
+                                    <div class="small text-muted mt-1">
+                                        Testi tradotti e campi di Odoo (prodotti, date, selezioni) escono nella lingua del
+                                        contatto; se il contatto non ha lingua, in quella di chi stampa.
+                                    </div>
+                                </t>
+                                <div t-else="" class="small text-muted mt-1">
+                                    Spenta: si stampa nella lingua di chi stampa.
+                                </div>
                             </t>
                         </t>
                     </div>

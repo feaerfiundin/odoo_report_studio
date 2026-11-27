@@ -387,6 +387,56 @@ class TestCompiler(unittest.TestCase):
         with self.assertRaises(compiler.CompileError):
             compile_([dict(table, margins={"top": 500})])
 
+    # ----- lingue -----
+
+    def test_translations_choose_text_by_lang(self):
+        xml = compile_([
+            {"type": "text", "content": "Hello\nWorld", "translations": {"it_IT": "Ciao\nMondo", "fr_FR": ""}},
+            {"type": "field", "path": "name", "label": "Order", "label_translations": {"it_IT": "Ordine"}},
+            {"type": "table", "source": "order_line", "columns": [
+                {"path": "name", "label": "Qty", "label_translations": {"de_DE": "Menge", "it_IT": "Qtà"}}]},
+        ])
+        self.assertIn('<t t-set="rs_lang" t-value="lang"/>', xml)
+        self.assertIn("<p><t t-if=\"rs_lang == 'it_IT'\">Ciao<br/>Mondo</t>"
+                      "<t t-else=\"\">Hello<br/>World</t></p>", xml)
+        self.assertNotIn("fr_FR", xml)  # traduzione vuota: testo base
+        self.assertIn("<t t-if=\"rs_lang == 'it_IT'\">Ordine</t><t t-else=\"\">Order</t>", xml)
+        self.assertIn("<t t-if=\"rs_lang == 'de_DE'\">Menge</t><t t-elif=\"rs_lang == 'it_IT'\">Qtà</t>"
+                      "<t t-else=\"\">Qty</t>", xml)
+
+    def test_translations_validated(self):
+        for block in ({"type": "text", "content": "x", "translations": {"it' or 1": "y"}},
+                      {"type": "text", "content": "x", "translations": {"it_IT": 3}},
+                      {"type": "text", "content": "x", "translations": ["it_IT"]},
+                      {"type": "field", "path": "name", "label": "x", "label_translations": {"it_IT": "y" * 500}}):
+            with self.assertRaises(compiler.CompileError, msg=block):
+                compile_([block])
+        with self.assertRaises(compiler.CompileError):
+            compiler.compile_definition({"base_lang": "x'y", "children": []}, "sale.order", KEY, resolver=resolver)
+
+    def test_print_lang_uses_document_template(self):
+        definition = {"print_lang": {"enabled": True, "field": "partner_id"},
+                      "children": [{"type": "field", "path": "name"}]}
+        templates = compiler.compile_templates(definition, "sale.order", KEY, resolver=resolver)
+        self.assertEqual([k for k, _a in templates], [KEY, KEY + "_document"])
+        main, document = templates[0][1], templates[1][1]
+        self.assertIn('<t t-set="rs_lang" t-value="o.partner_id.lang or lang"/>', main)
+        self.assertIn('<t t-call="%s_document" t-lang="rs_lang"/>' % KEY, main)
+        self.assertIn('<t t-name="%s_document">' % KEY, document)
+        self.assertIn('<span t-field="o.name"/>', document)
+        self.assertNotIn("t-field", main)
+        # disattivata o vista dell'editor: un solo template
+        off = dict(definition, print_lang={"enabled": False})
+        self.assertEqual(len(compiler.compile_templates(off, "sale.order", KEY, resolver=resolver)), 1)
+        self.assertEqual(len(compiler.compile_templates(definition, "sale.order", KEY,
+                                                        resolver=resolver, annotate=True)), 1)
+
+    def test_print_lang_field_must_be_partner(self):
+        for field in ("name", "order_line", "inesistente", "partner_id.name"):
+            with self.assertRaises(compiler.CompileError, msg=field):
+                compiler.compile_templates({"print_lang": {"enabled": True, "field": field}, "children": []},
+                                           "sale.order", KEY, resolver=resolver)
+
     def test_field_align(self):
         # Senza allineamento il campo resta in linea, come prima.
         self.assertIn('<span t-field="o.name"/>', compile_([{"type": "field", "path": "name"}]))

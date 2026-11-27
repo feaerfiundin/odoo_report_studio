@@ -4,7 +4,8 @@ import json
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-IMMUTABLE_FIELDS = {"report_id", "version_no", "definition", "comment", "arch", "view_id"}
+IMMUTABLE_FIELDS = {"report_id", "version_no", "definition", "comment", "arch", "view_id",
+                    "document_view_id"}
 
 
 class RsReportVersion(models.Model):
@@ -35,6 +36,14 @@ class RsReportVersion(models.Model):
         string="Vista QWeb",
         readonly=True,
         ondelete="restrict",
+    )
+    document_view_id = fields.Many2one(
+        "ir.ui.view",
+        string="Vista QWeb della pagina",
+        readonly=True,
+        ondelete="restrict",
+        help="Solo con la stampa nella lingua del cliente: la pagina, chiamata "
+             "dalla vista principale con t-lang.",
     )
     comment = fields.Char(string="Commento")
     user_id = fields.Many2one(

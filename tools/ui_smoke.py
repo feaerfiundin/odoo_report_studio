@@ -619,11 +619,67 @@ with sync_playwright() as p:
         expect(inp.is_checked(), "toggle Attivo non riattiva")
         return "riattivato dall'elenco"
 
+    def rpc(model, method, rpc_args, kwargs=None):
+        res = page.evaluate("""async (p) => (await (await fetch('/web/dataset/call_kw', {method: 'POST',
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify(p)})).json())""",
+            {"jsonrpc": "2.0", "params": {"model": model, "method": method, "args": rpc_args,
+                                          "kwargs": kwargs or {}}})
+        if "error" in res:
+            raise RuntimeError(res["error"].get("data", {}).get("message", res["error"]))
+        return res["result"]
+
+    # Seconda lingua per la prova delle traduzioni: se l'italiano non è attivo
+    # lo attiva (senza caricare le traduzioni di Odoo) e alla fine lo disattiva.
+    lang_state = {"activated": []}
+
+    def ensure_second_lang():
+        ids = rpc("res.lang", "search", [[["code", "=", "it_IT"]]], {"context": {"active_test": False}})
+        active = rpc("res.lang", "read", [ids, ["active"]])[0]["active"]
+        if not active:
+            rpc("res.lang", "write", [ids, {"active": True}])
+            lang_state["activated"] = ids
+        return "italiano attivato per la prova" if not active else "italiano già attivo"
+
+    def translations():
+        """Menu lingua: traduzione IT di un testo; pagina centrale nella lingua scelta."""
+        base = page.locator(f"{topbar} .o_rs_lang_select").input_value()
+        options = page.locator(f"{topbar} .o_rs_lang_select option").all_inner_texts()
+        expect(any("(principale)" in o for o in options) and any(o.startswith("IT") for o in options),
+               f"menu lingua: {options}")
+        canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Testo')")
+        page.select_option(f"{topbar} .o_rs_lang_select", "it_IT")
+        page.wait_for_selector(".o_rs_props .o_rs_translating")
+        area = page.locator(".o_rs_props textarea.o_rs_text_content")
+        expect(area.input_value() == "" and "Riga 1" in (area.get_attribute("placeholder") or ""),
+               "in traduzione la casella deve essere vuota con il testo base come suggerimento")
+        area.fill("Linea uno\nLinea due")
+        wait_canvas()
+        page.wait_for_timeout(600)
+        expect(canvas.locator("text=Linea uno").count() == 1, "la pagina non mostra la traduzione")
+        expect(canvas.locator("text=Riga 1").count() == 0, "in italiano la pagina mostra ancora il testo base")
+        it_label = [o for o in page.locator(f"{topbar} .o_rs_lang_select option").all_inner_texts() if o.startswith("IT")]
+        expect(it_label and "✓" in it_label[0], f"lingua tradotta non marcata: {it_label}")
+        page.select_option(f"{topbar} .o_rs_lang_select", base)
+        wait_canvas()
+        page.wait_for_timeout(600)
+        expect(area.input_value().startswith("Riga 1"), f"testo base cambiato: {area.input_value()!r}")
+        expect(canvas.locator("text=Riga 1").count() == 1, "torna alla lingua principale: testo base assente")
+        # Opzione della pagina: stampa nella lingua del cliente.
+        canvas.locator("body").click(position={"x": 3, "y": 3})
+        page.wait_for_selector(".o_rs_props :text('Seleziona un blocco')")
+        page.check(".o_rs_props .o_rs_print_lang")
+        field = page.locator(".o_rs_props .o_rs_print_lang_field").input_value()
+        expect(field == "partner_id", f"campo contatto: {field}")
+        return f"base {base}, IT tradotto, opzione lingua cliente su {field}"
+
     def open_by_url():
         page.goto(f"{args.base}/odoo/action-report_studio.action_rs_report_list")
         page.wait_for_selector(lst, timeout=30000)
 
     ok = step(page, "login", login)
+    if ok:
+        step(page, "seconda_lingua", ensure_second_lang)
     if ok and not step(page, "menu_report_studio", open_from_menu):
         ok = step(page, "apri_da_url", open_by_url)
     if ok:
@@ -635,6 +691,7 @@ with sync_playwright() as p:
         step(page, "larghezze_colonne", column_widths)
         step(page, "blocchi_impaginazione", layout_blocks)
         step(page, "allineamento", alignment)
+        step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)
         step(page, "anteprima_pdf", preview_pdf)
         step(page, "errore_server_leggibile", invalid_save_shows_server_message)
@@ -669,6 +726,12 @@ with sync_playwright() as p:
         print(f"Report di prova eliminati: {removed}")
     except Exception as exc:  # noqa
         print(f"Pulizia non riuscita: {exc}")
+    if lang_state["activated"]:
+        try:
+            rpc("res.lang", "write", [lang_state["activated"], {"active": False}])
+            print("Italiano disattivato di nuovo")
+        except Exception as exc:  # noqa
+            print(f"Disattivazione dell'italiano non riuscita: {exc}")
 
     browser.close()
 

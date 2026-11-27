@@ -50,6 +50,23 @@ Il blocco Colonne ha da 2 a 4 colonne, tutte di tipo ``column``; una colonna
 può stare solo dentro un blocco Colonne. Nel PDF le colonne sono una tabella
 senza bordi: il motore PDF di Odoo (wkhtmltopdf) non gestisce bene flexbox.
 
+Lingue. I testi dei blocchi Testo, le etichette dei Campi e le intestazioni
+delle colonne di tabella si possono tradurre::
+
+    {"type": "text", "content": "Hello", "translations": {"it_IT": "Ciao"}}
+    {"type": "field", "label": "Order", "label_translations": {"it_IT": "Ordine"}}
+    colonna: {"label": "Qty", "label_translations": {"it_IT": "Qtà"}}
+
+Il testo base (``content`` / ``label``) è nella lingua principale
+(``"base_lang"`` della definizione, solo informativo) e vale per ogni lingua
+senza traduzione. In stampa si sceglie il testo con la variabile QWeb
+``rs_lang``: la lingua di stampa (``lang`` di Odoo, cioè quella di chi stampa).
+Con ``"print_lang": {"enabled": true, "field": "partner_id"}`` la lingua è
+quella del contatto indicato (``o.partner_id.lang``): la pagina diventa un
+secondo template ``<chiave>_document`` chiamato con ``t-lang``, così anche i
+campi di Odoo (nomi prodotto, selezioni, date) escono in quella lingua, come
+nei documenti nativi. ``compile_templates`` restituisce tutti i template.
+
 Non vengono mai accettate espressioni Python libere: i confronti passano
 solo da percorsi di campo validati e da letterali scalari.
 
@@ -83,6 +100,9 @@ SEPARATOR_STYLES = ("solid", "dashed", "dotted")
 SEPARATOR_THICKNESS = (1, 5)  # px
 COLUMNS_RANGE = (2, 4)
 ALIGNS = ("left", "center", "right", "justify")
+LANG_RE = re.compile(r"^[a-z]{2,3}(_[A-Za-z0-9]{2,8})?(@[a-z]+)?$")
+MAX_TEXT = 10000
+MAX_LANGS = 50
 TABLE_TYPES = ("one2many", "many2many")
 
 
@@ -197,6 +217,41 @@ def _check_path(path, model, ctx):
     return result
 
 
+def _translations(value, limit, what):
+    """Traduzioni validate {codice lingua: testo}, senza quelle vuote."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict) or len(value) > MAX_LANGS:
+        raise CompileError("Traduzioni non valide (%s)" % what)
+    result = {}
+    for code, text in value.items():
+        if not isinstance(code, str) or not LANG_RE.match(code):
+            raise CompileError("Codice lingua non valido: %r" % (code,))
+        if not isinstance(text, str) or len(text) > limit:
+            raise CompileError("Traduzione non valida (%s, %s)" % (what, code))
+        if text.strip():
+            result[code] = text
+    return result
+
+
+def _by_lang(base, translations, render):
+    """QWeb che sceglie il testo nella lingua di stampa (rs_lang); base se manca."""
+    if not translations:
+        return render(base)
+    parts = []
+    for index, code in enumerate(sorted(translations)):
+        parts.append('<t t-%s="rs_lang == \'%s\'">%s</t>'
+                     % ("if" if index == 0 else "elif", code, render(translations[code])))
+    parts.append('<t t-else="">%s</t>' % render(base))
+    return "".join(parts)
+
+
+def _text_html(text):
+    """Testo statico: escape e a capo come <br/>."""
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    return "<br/>".join(escape(line) for line in lines)
+
+
 def _literal(value):
     if value is None or isinstance(value, (bool, int, float, str)):
         return repr(value)
@@ -291,14 +346,14 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
 
     if btype == "text":
         content = block.get("content", "")
-        if not isinstance(content, str):
+        if not isinstance(content, str) or len(content) > MAX_TEXT:
             raise CompileError("'content' deve essere una stringa")
+        translations = _translations(block.get("translations"), MAX_TEXT, "testo")
         # Ogni a capo del testo diventa un <br/> nel documento.
-        lines = content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
         return ["<p%s%s>%s</p>" % (
             _css_attr(block.get("class")),
             _style_attr(_align_css(block.get("align")), _font_css(block.get("font"))),
-            "<br/>".join(escape(line) for line in lines),
+            _by_lang(content, translations, _text_html),
         )]
 
     if btype == "field":
@@ -311,7 +366,9 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         if label.strip():
             # Etichetta + spazio indivisibile + valore, sulla stessa riga.
             value = '<span><span class="o_rs_label"%s>%s</span>&#160;%s</span>' % (
-                _style_attr(_font_css(block.get("label_font"))), escape(label), value,
+                _style_attr(_font_css(block.get("label_font"))),
+                _by_lang(label, _translations(block.get("label_translations"), MAX_LABEL, "etichetta"), escape),
+                value,
             )
         # text-align non vale su un elemento in linea: con un allineamento
         # proprio il campo va su una riga a sé, allineata.
@@ -347,7 +404,8 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
             # il CSS dei report Odoo imposta quello delle intestazioni, che quindi
             # non lo erediterebbero dalla tabella.
             align = _align_css(column.get("align") or block.get("align"))
-            heads.append("<th%s>%s</th>" % (_style_attr(width, align, head_css), escape(str(label))))
+            heads.append("<th%s>%s</th>" % (_style_attr(width, align, head_css), _by_lang(
+                str(label), _translations(column.get("label_translations"), MAX_LABEL, "intestazione"), escape)))
             cells.append('<td%s><span t-field="%s.%s"/></td>' % (_style_attr(align, body_css), line, cpath))
         # Con larghezze impostate la tabella le rispetta (layout fisso).
         table_style = _style_attr(
@@ -452,19 +510,25 @@ def _compile_qweb(definition, report_key):
     return arch
 
 
-def compile_definition(definition, model, report_key, resolver=None, annotate=False):
-    """Compila una definizione in un template QWeb completo.
+def _print_lang(definition, model, ctx):
+    """Campo contatto da cui leggere la lingua di stampa, oppure None."""
+    options = definition.get("print_lang")
+    if options is None:
+        return None
+    if not isinstance(options, dict) or not isinstance(options.get("enabled", False), bool):
+        raise CompileError("Opzione 'stampa nella lingua del cliente' non valida")
+    if not options.get("enabled"):
+        return None
+    path = options.get("field") or "partner_id"
+    ftype, comodel = _check_path(path, model, ctx)
+    if ftype is not None and (ftype != "many2one" or comodel != "res.partner"):
+        raise CompileError("Il campo %r non è un contatto (many2one a res.partner)" % path)
+    return path
 
-    :param definition: dict oppure stringa JSON con la definizione.
-    :param model: nome tecnico del modello Odoo (es. ``sale.order``).
-    :param report_key: chiave del template (``t-name``), es. ``report_studio.rs_report_1_v1``.
-    :param resolver: callable ``(model, path) -> (tipo, comodel) | None``.
-    :param annotate: marca i blocchi per la vista visuale dell'editor (mai nei PDF salvati).
-    :returns: stringa XML del template.
-    """
+
+def _parse(definition, report_key):
     if not isinstance(report_key, str) or not REPORT_KEY_RE.match(report_key):
         raise CompileError("Chiave del report non valida: %r" % (report_key,))
-
     if isinstance(definition, str):
         try:
             definition = json.loads(definition)
@@ -472,25 +536,74 @@ def compile_definition(definition, model, report_key, resolver=None, annotate=Fa
             raise CompileError("JSON non valido: %s" % exc)
     if not isinstance(definition, dict):
         raise CompileError("La definizione deve essere un oggetto JSON")
+    base_lang = definition.get("base_lang")
+    if base_lang is not None and not (isinstance(base_lang, str) and LANG_RE.match(base_lang)):
+        raise CompileError("Lingua principale non valida: %r" % (base_lang,))
+    return definition
 
+
+def compile_templates(definition, model, report_key, resolver=None, annotate=False):
+    """Compila una definizione nei template QWeb del report.
+
+    :param definition: dict oppure stringa JSON con la definizione.
+    :param model: nome tecnico del modello Odoo (es. ``sale.order``).
+    :param report_key: chiave del template principale (``t-name``),
+        es. ``report_studio.rs_report_1_v1``; è quella dell'azione di stampa.
+    :param resolver: callable ``(model, path) -> (tipo, comodel) | None``.
+    :param annotate: marca i blocchi per la vista visuale dell'editor (mai nei
+        PDF salvati). La vista visuale usa sempre un solo template: la lingua
+        è quella del contesto (la lingua che si sta modificando).
+    :returns: lista di ``(chiave, xml)``; il primo è il template principale,
+        il secondo (solo con la stampa nella lingua del cliente) la pagina.
+    """
+    definition = _parse(definition, report_key)
     if definition.get("mode") == "qweb":
-        return _compile_qweb(definition, report_key)
+        return [(report_key, _compile_qweb(definition, report_key))]
 
     layout = definition.get("layout", "external")
     if layout not in LAYOUTS:
         raise CompileError("Layout non ammesso: %r" % (layout,))
 
     ctx = _Context(resolver, annotate=annotate)
+    lang_field = _print_lang(definition, model, ctx)
     body = _render_children(definition.get("children", []), model, "o", 0, ctx)
-
-    lines = [
-        '<t t-name="%s">' % report_key,
-        '<t t-call="web.html_container">',
-        '<t t-foreach="docs" t-as="o">',
+    page = [
         '<t t-call="%s">' % LAYOUTS[layout],
         # Allineamento di base del documento: a sinistra.
         '<div class="page" style="text-align: left">',
-    ]
-    lines.extend(body)
-    lines.extend(["</div>", "</t>", "</t>", "</t>", "</t>"])
-    return "\n".join(lines)
+    ] + body + ["</div>", "</t>"]
+
+    if lang_field is None or annotate:
+        lines = [
+            '<t t-name="%s">' % report_key,
+            '<t t-call="web.html_container">',
+            '<t t-foreach="docs" t-as="o">',
+            # Lingua dei testi tradotti: quella di stampa.
+            '<t t-set="rs_lang" t-value="lang"/>',
+        ] + page + ["</t>", "</t>", "</t>"]
+        return [(report_key, "\n".join(lines))]
+
+    # Lingua del cliente: la pagina è un template a parte, chiamato con t-lang
+    # (il contenuto di una t-call verrebbe reso nella lingua del chiamante).
+    document_key = "%s_document" % report_key
+    main = "\n".join([
+        '<t t-name="%s">' % report_key,
+        '<t t-call="web.html_container">',
+        '<t t-foreach="docs" t-as="o">',
+        '<t t-set="rs_lang" t-value="o.%s.lang or lang"/>' % lang_field,
+        '<t t-call="%s" t-lang="rs_lang"/>' % document_key,
+        "</t>", "</t>", "</t>",
+    ])
+    document = "\n".join(['<t t-name="%s">' % document_key] + page + ["</t>"])
+    return [(report_key, main), (document_key, document)]
+
+
+def compile_definition(definition, model, report_key, resolver=None, annotate=False):
+    """Template principale (vedi ``compile_templates``); tutti i template uniti.
+
+    Con la stampa nella lingua del cliente i template sono due: qui sono
+    restituiti uno dopo l'altro (per i test e per la consultazione), mentre
+    Odoo ne riceve uno per vista da ``compile_templates``.
+    """
+    return "\n".join(arch for _key, arch in compile_templates(
+        definition, model, report_key, resolver=resolver, annotate=annotate))

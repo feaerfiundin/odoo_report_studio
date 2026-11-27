@@ -13,7 +13,9 @@ Per ogni passo stampa esito e notifiche Odoo e salva uno screenshot; alla fine
 elenca errori JS e risposte HTTP >= 400 e scrive `report.json` nella cartella di
 output. Codice di uscita 0 se tutto riesce, 1 altrimenti.
 
-Alla fine elimina i report creati in quel giro (il nome contiene l'ora di avvio).
+Per la prova delle traduzioni serve una seconda lingua: se l'italiano non è
+attivo lo attiva (senza caricare le traduzioni di Odoo) e alla fine lo
+disattiva. Alla fine elimina i report creati in quel giro (il nome contiene l'ora di avvio).
 Usalo comunque solo su un DB di prova.
 
 ### Immagine Docker (una volta sola)

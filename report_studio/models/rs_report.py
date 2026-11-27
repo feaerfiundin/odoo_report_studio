@@ -8,7 +8,7 @@ from odoo.addons.base.models.ir_qweb import QWebException
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import test_python_expr
 
-from ..lib.compiler import CompileError, compile_definition
+from ..lib.compiler import CompileError, compile_templates
 
 EMPTY_DEFINITION = json.dumps({"children": []})
 
@@ -188,7 +188,7 @@ class RsReport(models.Model):
         singola.
         """
         reports = self.sudo()
-        views = reports.version_ids.view_id
+        views = reports.version_ids.view_id | reports.version_ids.document_view_id
         actions = reports.action_id
         result = super().unlink()
         views.exists().unlink()
@@ -235,15 +235,20 @@ class RsReport(models.Model):
         return ftype, comodel
 
     def _compile(self, definition, report_key, annotate=False):
-        """Compila la definizione nel template QWeb; errori come UserError."""
+        """Compila la definizione nei template QWeb [(chiave, xml)]; errori come UserError."""
         self.ensure_one()
         try:
-            return compile_definition(
+            return compile_templates(
                 definition, self.model_name, report_key,
                 resolver=self._resolve_field, annotate=annotate,
             )
         except CompileError as exc:
             raise UserError(_("Definizione del report non valida: %s") % exc) from exc
+
+    def _create_qweb_views(self, name, templates):
+        """Una vista QWeb per template; la prima è la principale."""
+        return [self._create_qweb_view(name if index == 0 else "%s - pagina" % name, key, arch)
+                for index, (key, arch) in enumerate(templates)]
 
     def _create_qweb_view(self, name, key, arch):
         return self.env["ir.ui.view"].sudo().create({
@@ -278,15 +283,16 @@ class RsReport(models.Model):
         self._check_definition_permission(definition)
         next_no = max(self.version_ids.mapped("version_no"), default=0) + 1
         report_key = "report_studio.rs_report_%s_v%s" % (self.id, next_no)
-        arch = self._compile(definition, report_key)
-        view = self._create_qweb_view("%s - v%s" % (self.name, next_no), report_key, arch)
+        templates = self._compile(definition, report_key)
+        views = self._create_qweb_views("%s - v%s" % (self.name, next_no), templates)
         version = self.env["rs.report.version"].create({
             "report_id": self.id,
             "version_no": next_no,
             "definition": definition,
             "comment": comment,
-            "arch": arch,
-            "view_id": view.id,
+            "arch": "\n".join(arch for _key, arch in templates),
+            "view_id": views[0].id,
+            "document_view_id": views[1].id if len(views) > 1 else False,
         })
         self.current_version_id = version
         self._ensure_report_action(report_key)
@@ -313,8 +319,8 @@ class RsReport(models.Model):
         definition = definition or EMPTY_DEFINITION
         self._check_definition_permission(definition)
         key = "report_studio.preview_%s_%s" % (self.id, uuid.uuid4().hex)
-        arch = self._compile(definition, key, annotate=annotate)
-        view = self._create_qweb_view("%s - anteprima" % self.name, key, arch)
+        templates = self._compile(definition, key, annotate=annotate)
+        views = self._create_qweb_views("%s - anteprima" % self.name, templates)
         action = self.env["ir.actions.report"].sudo().create({
             "name": "%s - anteprima" % self.name,
             "model": self.model_name,
@@ -331,7 +337,8 @@ class RsReport(models.Model):
             raise
         finally:
             action.unlink()
-            view.unlink()
+            for view in reversed(views):
+                view.unlink()
 
     def _render_preview_pdf(self, definition, res_id):
         """PDF di anteprima da una definizione non ancora salvata.
@@ -344,15 +351,19 @@ class RsReport(models.Model):
             pdf, _fmt = self.env["ir.actions.report"]._render_qweb_pdf(key, res_ids=[res_id])
             return pdf
 
-    def render_canvas(self, definition, res_id):
+    def render_canvas(self, definition, res_id, lang=None):
         """HTML della vista visuale dell'editor per un record.
 
         È la stessa pagina del PDF (layout aziendale compreso) con i blocchi
         marcati da ``data-rs-path`` per la selezione; i blocchi incompleti
-        compaiono come segnaposto invece di generare un errore.
+        compaiono come segnaposto invece di generare un errore. ``lang`` è la
+        lingua che si sta modificando: testi tradotti e campi di Odoo sono
+        mostrati in quella lingua (solo lingue attive).
         """
         self.ensure_one()
         self.check_access("read")
+        if lang and lang in self._active_lang_codes():
+            self = self.with_context(lang=lang)  # noqa: PLW0642
         record = self.env[self.model_name].browse(int(res_id)).exists()
         if not record:
             raise UserError(_("Record non trovato."))
@@ -360,6 +371,30 @@ class RsReport(models.Model):
         with self._temporary_report(definition, annotate=True) as key:
             html, _fmt = self.env["ir.actions.report"]._render_qweb_html(key, docids=[record.id])
         return html.decode() if isinstance(html, bytes) else html
+
+    # ----- lingue -----
+
+    def _active_lang_codes(self):
+        return [code for code, _name in self.env["res.lang"].get_installed()]
+
+    @api.model
+    def _main_lang(self):
+        """Lingua principale di Odoo: quella predefinita dei contatti, poi
+        quella dell'azienda, poi la prima attiva."""
+        codes = self._active_lang_codes()
+        for code in (self.env["ir.default"]._get("res.partner", "lang"),
+                     self.env.company.partner_id.lang):
+            if code in codes:
+                return code
+        return codes[0] if codes else "en_US"
+
+    @api.model
+    def get_languages(self):
+        """Lingue per l'editor: le attive in Odoo e la principale."""
+        return {
+            "main": self._main_lang(),
+            "langs": [{"code": code, "name": name} for code, name in self.env["res.lang"].get_installed()],
+        }
 
     # ----- dati per l'editor -----
 

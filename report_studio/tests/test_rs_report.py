@@ -238,6 +238,56 @@ class TestRsReport(TransactionCase):
         self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">N.</span>', version.arch)
         self.assertIn("Centrato", self.report.render_canvas(definition, order.id))
 
+    def test_print_in_customer_language(self):
+        self.env["res.lang"]._activate_lang("it_IT")
+        order = self._sale_order()
+        order.partner_id.lang = "it_IT"
+        children = [{"type": "text", "content": "Hello", "translations": {"it_IT": "Ciao"}},
+                    {"type": "field", "path": "name", "label": "Order", "label_translations": {"it_IT": "Ordine"}}]
+        on = {"print_lang": {"enabled": True, "field": "partner_id"}, "children": children}
+        html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(on), order.id)
+        self.assertIn(b"Ciao", html)
+        self.assertIn(b"Ordine", html)
+        self.assertNotIn(b"Hello", html)
+        # senza l'opzione: lingua di chi stampa
+        off = {"children": children}
+        html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(off), order.id)
+        self.assertIn(b"Hello", html)
+        self.assertNotIn(b"Ciao", html)
+        # cliente senza lingua: lingua di chi stampa
+        order.partner_id.lang = False
+        html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(on), order.id)
+        self.assertIn(b"Hello", html)
+        # versione salvata: due viste, la stampa vera usa la pagina tradotta
+        order.partner_id.lang = "it_IT"
+        version = self.report._create_version(json.dumps(on))
+        self.assertTrue(version.document_view_id)
+        self.assertEqual(version.document_view_id.key, version.view_id.key + "_document")
+        html, _fmt = self.env["ir.actions.report"].with_context(lang="en_US")._render_qweb_html(
+            self.report.action_id.report_name, [order.id])
+        self.assertIn(b"Ciao", html)
+        views = version.view_id | version.document_view_id
+        self.report.unlink()
+        self.assertFalse(views.exists())
+
+    def test_canvas_in_editing_language(self):
+        self.env["res.lang"]._activate_lang("it_IT")
+        order = self._sale_order()
+        definition = json.dumps({"children": [
+            {"type": "text", "content": "Hello", "translations": {"it_IT": "Ciao"}}]})
+        self.assertIn("Ciao", self.report.render_canvas(definition, order.id, lang="it_IT"))
+        self.assertIn("Hello", self.report.with_context(lang="en_US").render_canvas(definition, order.id))
+        # lingua non attiva: ignorata
+        self.assertIn("Hello", self.report.with_context(lang="en_US").render_canvas(definition, order.id, lang="xx_XX"))
+        langs = self.report.get_languages()
+        self.assertIn("it_IT", [lang["code"] for lang in langs["langs"]])
+        self.assertIn(langs["main"], [lang["code"] for lang in langs["langs"]])
+
+    def test_print_lang_field_validated(self):
+        bad = {"print_lang": {"enabled": True, "field": "name"}, "children": []}
+        with self.assertRaises(UserError):
+            self.report._create_version(json.dumps(bad))
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
         return self.env["sale.order"].create({"partner_id": partner.id})

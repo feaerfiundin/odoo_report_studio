@@ -177,6 +177,29 @@ function parseLiteral(text) {
     return String(text);
 }
 
+// Traduzioni {lingua: testo} senza quelle vuote; undefined se nessuna.
+function cleanTranslations(translations) {
+    const out = Object.fromEntries(
+        Object.entries(translations || {}).filter(([, text]) => typeof text === "string" && text.trim())
+    );
+    return Object.keys(out).length ? out : undefined;
+}
+
+// Chiave delle traduzioni per ogni testo traducibile: content -> translations, label -> label_translations.
+const TRANSLATION_KEY = { content: "translations", label: "label_translations" };
+
+// Lingue in cui il report ha almeno un testo tradotto.
+function translatedLangs(blocks, found = new Set()) {
+    for (const block of blocks) {
+        for (const tr of [block.translations, block.label_translations,
+                          ...(block.columns || []).map((c) => c.label_translations)]) {
+            Object.keys(cleanTranslations(tr) || {}).forEach((code) => found.add(code));
+        }
+        if (block.children) translatedLangs(block.children, found);
+    }
+    return found;
+}
+
 // Toglie gli _uid e normalizza i valori prima dell'invio al server.
 function cleanBlock(block) {
     const { _uid, ...rest } = block;
@@ -185,8 +208,16 @@ function cleanBlock(block) {
     if (Array.isArray(block.columns)) {
         out.columns = block.columns.map(({ _uid: _c, ...col }) => {
             if (!col.align) delete col.align;
+            col.label_translations = cleanTranslations(col.label_translations);
+            if (!col.label_translations) delete col.label_translations;
             return col;
         });
+    }
+    for (const key of ["translations", "label_translations"]) {
+        if (key in out) {
+            out[key] = cleanTranslations(out[key]);
+            if (!out[key]) delete out[key];
+        }
     }
     if (!out.align) delete out.align;
     if (block.type === "if") out.value = parseLiteral(block.value);
@@ -207,10 +238,15 @@ function cleanBlock(block) {
 }
 
 function cleanDefinition(definition) {
-    return {
+    const out = {
         layout: definition.layout || "external",
         children: definition.children.map(cleanBlock),
     };
+    if (definition.base_lang) out.base_lang = definition.base_lang;
+    if (definition.print_lang?.enabled) {
+        out.print_lang = { enabled: true, field: definition.print_lang.field || "partner_id" };
+    }
+    return out;
 }
 
 // Messaggio leggibile da un errore RPC di Odoo (UserError, ValidationError...).
@@ -334,6 +370,10 @@ export class ReportStudioApp extends Component {
             canvasHtml: "",
             canvasError: "",
             canvasLoading: false,
+            // lingue: quella dei testi base (principale), quella che si sta modificando
+            langs: [],
+            mainLang: "",
+            editLang: "",
         });
         onWillStart(async () => {
             const [editor, system] = await Promise.all([
@@ -341,6 +381,9 @@ export class ReportStudioApp extends Component {
                 user.hasGroup("base.group_system"),
             ]);
             this.state.canWrite = editor || system;
+            const languages = await this.orm.call("rs.report", "get_languages", []);
+            this.state.langs = languages.langs;
+            this.state.mainLang = languages.main;
             const params = this.props.action?.params || {};
             if (params.report_id) {
                 await this.openEditor(params.report_id);
@@ -527,11 +570,15 @@ export class ReportStudioApp extends Component {
         } else {
             this.state.definition = {
                 layout: parsed.layout,
+                // Report senza lingua base (creati prima): la principale di Odoo.
+                base_lang: parsed.base_lang || this.state.mainLang,
+                print_lang: { enabled: false, field: "partner_id", ...(parsed.print_lang || {}) },
                 children: (parsed.children || []).map(withUids),
             };
             await this.loadTableFields(this.state.definition.children);
         }
         this.state.selectedUid = null;
+        this.state.editLang = this.state.definition.base_lang || this.state.mainLang;
         this.state.dirty = false;
         await this.loadRecords();
         this.refreshCanvas();
@@ -568,7 +615,7 @@ export class ReportStudioApp extends Component {
         try {
             const html = await this.orm.call(
                 "rs.report", "render_canvas",
-                [[this.state.reportId], this.currentDefinitionJson(), this.state.recordId]
+                [[this.state.reportId], this.currentDefinitionJson(), this.state.recordId, this.state.editLang]
             );
             this.state.canvasError = "";
             this.state.canvasHtml = html;
@@ -753,6 +800,74 @@ export class ReportStudioApp extends Component {
     // Secondo clic sul pulsante attivo: torna a "come il contenitore".
     setAlign(target, value) {
         target.align = target.align === value ? "" : value;
+        this.markDirty();
+    }
+
+    // ----- lingue -----
+
+    get baseLang() {
+        return this.state.definition.base_lang || this.state.mainLang;
+    }
+
+    get isTranslating() {
+        return this.state.editLang && this.state.editLang !== this.baseLang;
+    }
+
+    langName(code) {
+        return this.state.langs.find((l) => l.code === code)?.name || code;
+    }
+
+    langShort(code) {
+        return (code || "").split("_")[0].toUpperCase();
+    }
+
+    // Voci del menu lingua: lingue attive di Odoo, principale e tradotte marcate.
+    get langOptions() {
+        const translated = translatedLangs(this.state.definition.children);
+        return this.state.langs.map((l) => ({
+            code: l.code,
+            label: `${this.langShort(l.code)} - ${l.name}` +
+                (l.code === this.baseLang ? " (principale)" : translated.has(l.code) ? " ✓" : ""),
+        }));
+    }
+
+    onEditLang(ev) {
+        this.state.editLang = ev.target.value;
+        this.refreshCanvas();
+    }
+
+    // Testo traducibile (content / label) nella lingua che si sta modificando.
+    trValue(obj, key) {
+        if (!this.isTranslating) return obj[key] || "";
+        return obj[TRANSLATION_KEY[key]]?.[this.state.editLang] || "";
+    }
+
+    trPlaceholder(obj, key, fallback = "") {
+        return this.isTranslating ? obj[key] || fallback : fallback;
+    }
+
+    setTr(obj, key, ev) {
+        if (!this.isTranslating) {
+            obj[key] = ev.target.value;
+        } else {
+            const trKey = TRANSLATION_KEY[key];
+            obj[trKey] = { ...(obj[trKey] || {}), [this.state.editLang]: ev.target.value };
+        }
+        this.markDirty();
+    }
+
+    // Campi contatto (many2one a res.partner) per la lingua del cliente.
+    get partnerFields() {
+        return this.state.fields.filter((f) => f.type === "many2one" && f.relation === "res.partner");
+    }
+
+    onPrintLang(ev) {
+        this.state.definition.print_lang.enabled = ev.target.checked;
+        this.markDirty();
+    }
+
+    onPrintLangField(ev) {
+        this.state.definition.print_lang.field = ev.target.value;
         this.markDirty();
     }
 
