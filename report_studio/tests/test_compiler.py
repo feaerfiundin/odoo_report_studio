@@ -387,6 +387,52 @@ class TestCompiler(unittest.TestCase):
         with self.assertRaises(compiler.CompileError):
             compile_([dict(table, margins={"top": 500})])
 
+    # ----- section label and borders -----
+
+    def test_section_without_label_and_borders_unchanged(self):
+        xml = compile_([{"type": "section", "margins": {"left": 10}, "title": {"text": " "},
+                         "border": {"sides": []}, "children": []}])
+        self.assertIn('<div style="padding: 0mm 0mm 0mm 10mm">\n</div>', xml)
+
+    def test_section_label_bar(self):
+        xml = compile_([{"type": "section", "margins": {"left": 5}, "align": "right", "children": [
+            {"type": "text", "content": "x"}],
+            "title": {"text": "Customer", "translations": {"it_IT": "Cliente"},
+                      "background": "#E9ECEF", "color": "#000000",
+                      "font": {"bold": True}, "align": "center"}}])
+        self.assertIn('<div style="text-align: right">\n<div class="o_rs_section_title" '
+                      'style="background-color: #E9ECEF; color: #000000; padding: 1mm 2mm; '
+                      'text-align: center; font-weight: bold">'
+                      "<t t-if=\"rs_lang == 'it_IT'\">Cliente</t><t t-else=\"\">Customer</t></div>\n"
+                      '<div style="padding: 0mm 0mm 0mm 5mm">\n<p>x</p>\n</div>\n</div>', xml)
+
+    def test_section_borders(self):
+        xml = compile_([{"type": "section", "children": [],
+                         "border": {"sides": ["top", "bottom"], "style": "double", "width": 3}}])
+        self.assertIn('<div style="border-top: 3px double #333333; border-bottom: 3px double #333333">', xml)
+        xml = compile_([{"type": "section", "children": [],
+                         "border": {"sides": ["left", "top", "right", "bottom"], "color": "#ff0000"}}])
+        self.assertIn("border-top: 1px solid #ff0000; border-right: 1px solid #ff0000; "
+                      "border-bottom: 1px solid #ff0000; border-left: 1px solid #ff0000", xml)
+
+    def test_section_label_and_borders_validated(self):
+        for extra in ({"title": {"text": "x", "background": "red"}},
+                      {"title": {"text": "x", "color": "#12345"}},
+                      {"title": "x"},
+                      {"border": {"sides": ["middle"]}},
+                      {"border": {"sides": ["top"], "style": "groove"}},
+                      {"border": {"sides": ["top"], "width": 9}},
+                      {"border": {"sides": ["top"], "color": "#zzzzzz"}}):
+            with self.assertRaises(compiler.CompileError, msg=extra):
+                compile_([dict({"type": "section", "children": []}, **extra)])
+
+    def test_section_label_selectable_in_editor(self):
+        arch = self._annotated([{"type": "section", "children": [],
+                                 "title": {"text": "Customer"}, "border": {"sides": ["top"]}}])
+        self.assertIn('data-rs-path="0" data-rs-type="section"', arch)
+        self.assertIn('<div class="o_rs_section_title" style="padding: 1mm 2mm">Customer</div>', arch)
+        etree_ok(arch)
+
     # ----- languages -----
 
     def test_translations_choose_text_by_lang(self):

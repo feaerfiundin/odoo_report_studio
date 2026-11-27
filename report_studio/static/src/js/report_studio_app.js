@@ -67,6 +67,18 @@ function ensureEditorKeys(block) {
 }
 const SEPARATOR_STYLES = ["solid", "dashed", "dotted"];
 const zeroMargins = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
+// Section label (bar on top) and borders: defaults of the editor.
+const newSectionTitle = () => ({
+    text: "",
+    translations: {},
+    background: "#e9ecef",
+    color: "",
+    font: {},
+    align: "",
+});
+const newBorder = () => ({ sides: [], style: "solid", width: 1, color: "#333333" });
+const BORDER_STYLES = ["solid", "double", "dashed", "dotted"];
+const BORDER_WIDTHS = [1, 2, 3, 4, 5, 6];
 // New column: some side margin, so the text does not touch the vertical line.
 const newColumn = () => ({
     _uid: nextUid(),
@@ -104,7 +116,14 @@ function baseBlock(type) {
     const base = { _uid: nextUid(), type };
     switch (type) {
         case "section":
-            return { ...base, class: "", margins: zeroMargins(), children: [] };
+            return {
+                ...base,
+                class: "",
+                margins: zeroMargins(),
+                title: newSectionTitle(),
+                border: newBorder(),
+                children: [],
+            };
         case "columns":
             return { ...base, divider: false, margins: zeroMargins(), children: [newColumn(), newColumn()] };
         case "separator":
@@ -146,6 +165,14 @@ function withUids(block) {
     }
     if (block.type === "field" && copy.label === undefined) copy.label = "";
     if (MARGIN_TYPES.includes(block.type)) copy.margins = { ...zeroMargins(), ...(block.margins || {}) };
+    if (block.type === "section") {
+        const title = { ...newSectionTitle(), ...(block.title || {}) };
+        title.translations = { ...(title.translations || {}) };
+        title.font = { ...(title.font || {}) };
+        copy.title = title;
+        copy.border = { ...newBorder(), ...(block.border || {}) };
+        copy.border.sides = [...(copy.border.sides || [])];
+    }
     return ensureEditorKeys(copy);
 }
 
@@ -178,12 +205,16 @@ function cleanTranslations(translations) {
 
 // Translation key of each translatable text: content -> translations,
 // label -> label_translations.
-const TRANSLATION_KEY = { content: "translations", label: "label_translations" };
+const TRANSLATION_KEY = {
+    content: "translations",
+    label: "label_translations",
+    text: "translations",
+};
 
 // Languages in which the report has at least one translated text.
 function translatedLangs(blocks, found = new Set()) {
     for (const block of blocks) {
-        for (const tr of [block.translations, block.label_translations,
+        for (const tr of [block.translations, block.label_translations, block.title?.translations,
                           ...(block.columns || []).map((c) => c.label_translations)]) {
             Object.keys(cleanTranslations(tr) || {}).forEach((code) => found.add(code));
         }
@@ -219,6 +250,26 @@ function cleanBlock(block) {
         else delete out[key];
     }
     if (block.type === "field" && !block.label?.trim()) delete out.label;
+    if (block.type === "section") {
+        const title = { ...(block.title || {}) };
+        title.translations = cleanTranslations(title.translations);
+        title.font = cleanFont(title.font);
+        for (const key of ["translations", "font", "background", "color", "align"]) {
+            if (!title[key]) delete title[key];
+        }
+        if (title.text?.trim()) out.title = title;
+        else delete out.title;
+        if (block.border?.sides?.length) {
+            out.border = {
+                sides: MARGIN_SIDES.filter((side) => block.border.sides.includes(side)),
+                style: block.border.style || "solid",
+                width: Number(block.border.width) || 1,
+                color: block.border.color || "#333333",
+            };
+        } else {
+            delete out.border;
+        }
+    }
     if (MARGIN_TYPES.includes(block.type)) {
         const margins = Object.fromEntries(
             MARGIN_SIDES.map((side) => [side, Number(block.margins?.[side]) || 0])
@@ -415,6 +466,9 @@ export class ReportStudioApp extends Component {
         this.marginSides = MARGIN_SIDES.map((side) => [side, labels.margins[side]]);
         this.alignments = ALIGNMENTS.map(([key, icon]) => [key, labels.aligns[key], icon]);
         this.separatorStyles = SEPARATOR_STYLES.map((key) => [key, labels.separators[key]]);
+        this.borderStyles = BORDER_STYLES.map((key) => [key, labels.borders[key]]);
+        this.borderWidths = BORDER_WIDTHS;
+        this.cssPresets = labels.css_classes;
     }
 
     // ----- list -----
@@ -944,6 +998,10 @@ export class ReportStudioApp extends Component {
         return _t("e.g. Delivery no.:");
     }
 
+    get sectionLabelPlaceholder() {
+        return _t("e.g. Customer data");
+    }
+
     get columnLabelPlaceholder() {
         return _t("label");
     }
@@ -956,12 +1014,74 @@ export class ReportStudioApp extends Component {
             value: _t("Value Font"),
             head: _t("Header Font"),
             body: _t("Row Font"),
+            sectionLabel: _t("Label Font"),
         };
     }
 
     // Toolbar buttons not available yet.
     get soonButtons() {
         return this.labels.soon;
+    }
+
+    // ----- section: label, borders, CSS classes -----
+
+    // Color of the label (background / text); "" = none.
+    onTitleColor(title, key, ev) {
+        title[key] = ev.target.value;
+        this.markDirty();
+    }
+
+    clearTitleColor(title, key) {
+        title[key] = "";
+        this.markDirty();
+    }
+
+    // Borders like in a spreadsheet: all, none, or side by side.
+    setBorderSides(border, sides) {
+        border.sides = [...sides];
+        this.markDirty();
+    }
+
+    toggleBorderSide(border, side) {
+        border.sides = border.sides.includes(side)
+            ? border.sides.filter((s) => s !== side)
+            : [...border.sides, side];
+        this.markDirty();
+    }
+
+    onBorder(border, key, ev) {
+        border[key] = key === "width" ? Number(ev.target.value) : ev.target.value;
+        this.markDirty();
+    }
+
+    // Classes written in the CSS Class field, as a list.
+    sectionClasses(block) {
+        return (block.class || "").split(/\s+/).filter(Boolean);
+    }
+
+    cssPresetLabel(cls) {
+        return this.cssPresets.find((p) => p[0] === cls)?.[1] || cls;
+    }
+
+    // Presets not used yet, for the "Add" menu.
+    availableCssPresets(block) {
+        const used = this.sectionClasses(block);
+        return this.cssPresets.filter((p) => !used.includes(p[0]));
+    }
+
+    addCssClass(block, ev) {
+        const cls = ev.target.value;
+        ev.target.value = "";
+        if (!cls) return;
+        block.class = [...this.sectionClasses(block), cls].join(" ");
+        this.markDirty();
+    }
+
+    removeCssClass(block, cls) {
+        block.class = this.sectionClasses(block)
+            .filter((c) => c !== cls)
+            .join(" ");
+        this.markDirty();
     }
 
     onMargin(margins, side, ev) {

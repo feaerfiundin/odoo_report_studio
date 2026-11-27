@@ -1,0 +1,11 @@
+// Copyright 2026 feaerfiundin
+// License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+// Classes offered by the Section "CSS Class" menu that Bootstrap lacks.
+// Loaded in the report assets, so they work in the PDF and in the editor page.
+
+// Keep the section on a single page when possible.
+.o_rs_keep_together {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}

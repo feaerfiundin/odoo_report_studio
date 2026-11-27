@@ -311,6 +311,29 @@ class TestRsReport(TransactionCase):
         self.assertIn("Page break", html)
         self.assertNotIn("Interruzione di pagina", html)
 
+    def test_section_label_borders_and_classes(self):
+        self.env["res.lang"]._activate_lang("it_IT")
+        order = self._sale_order()
+        definition = json.dumps({"children": [{
+            "type": "section",
+            "class": "small o_rs_keep_together",
+            "title": {"text": "Customer", "translations": {"it_IT": "Cliente"},
+                      "background": "#e9ecef"},
+            "border": {"sides": ["top", "bottom"], "style": "double", "width": 3},
+            "children": [{"type": "field", "path": "name"}],
+        }]})
+        version = self.report._create_version(definition)
+        self.assertIn('class="small o_rs_keep_together"', version.arch)
+        self.assertIn("border-top: 3px double #333333", version.arch)
+        self.assertIn('class="o_rs_section_title"', version.arch)
+        html = self.report.render_canvas(definition, order.id, lang="it_IT")
+        self.assertIn("Cliente", html)
+        self.assertIn(order.name, html)
+        # the report assets define the "do not split" class
+        bundle = self.env["ir.qweb"]._get_asset_bundle("web.report_assets_common")
+        self.assertIn("/report_studio/static/src/scss/report.scss",
+                      [f["url"] for f in bundle.files])
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Preview customer"})
         return self.env["sale.order"].create({"partner_id": partner.id})

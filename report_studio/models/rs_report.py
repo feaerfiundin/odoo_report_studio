@@ -515,6 +515,28 @@ class RsReport(models.Model):
                 "dashed": _("Dashed"),
                 "dotted": _("Dotted"),
             },
+            "borders": {
+                "solid": _("Single"),
+                "double": _("Double"),
+                "dashed": _("Dashed"),
+                "dotted": _("Dotted"),
+            },
+            # Classes offered by the CSS Class menu of the Section: Bootstrap
+            # utilities available in the reports, plus o_rs_keep_together
+            # (static/src/scss/report.scss).
+            "css_classes": [
+                ["small", _("Small text")],
+                ["text-muted", _("Grey text")],
+                ["fw-bold", _("Bold text")],
+                ["fst-italic", _("Italic text")],
+                ["text-uppercase", _("Uppercase text")],
+                ["bg-light", _("Light grey background")],
+                ["rounded", _("Rounded corners")],
+                ["p-2", _("Inner spacing")],
+                ["mt-3", _("Space above")],
+                ["mb-3", _("Space below")],
+                ["o_rs_keep_together", _("Do not split across pages")],
+            ],
             "soon": {
                 "template": _("Template"),
                 "saveTemplate": _("Save as Template"),

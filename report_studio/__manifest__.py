@@ -26,6 +26,9 @@
             "report_studio/static/src/xml/report_studio_app.xml",
             "report_studio/static/src/scss/editor.scss",
         ],
+        "web.report_assets_common": [
+            "report_studio/static/src/scss/report.scss",
+        ],
     },
     "installable": True,
     "application": False,

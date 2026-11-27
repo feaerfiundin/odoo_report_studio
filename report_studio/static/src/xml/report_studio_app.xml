@@ -284,8 +284,97 @@
                                 <div class="o_rs_props_title mb-2"><t t-esc="blockLabels[selected.type] or selected.type"/></div>
 
                                 <t t-if="selected.type === 'section'">
-                                    <label class="form-label">CSS Class</label>
-                                    <input class="form-control" t-model="selected.class" t-on-input="markDirty"/>
+                                    <!-- Label: bar on top of the section, translatable. -->
+                                    <div class="o_rs_section_label">
+                                        <label class="form-label">Label</label>
+                                        <input class="form-control o_rs_section_title_text"
+                                               t-att-placeholder="trPlaceholder(selected.title, 'text', sectionLabelPlaceholder) or sectionLabelPlaceholder"
+                                               t-att-value="trValue(selected.title, 'text')"
+                                               t-on-input="(ev) => this.setTr(selected.title, 'text', ev)"/>
+                                        <div class="d-flex align-items-center gap-3 mt-2">
+                                            <t t-foreach="[['background', 'Background'], ['color', 'Text']]" t-as="c" t-key="c[0]">
+                                                <div class="d-flex align-items-center gap-1" t-att-data-color="c[0]">
+                                                    <small class="text-muted" t-if="c[0] === 'background'">Background</small>
+                                                    <small class="text-muted" t-else="">Text color</small>
+                                                    <input type="color" class="form-control form-control-color form-control-sm o_rs_title_color"
+                                                           t-att-value="selected.title[c[0]] or (c[0] === 'background' ? '#ffffff' : '#000000')"
+                                                           t-on-input="(ev) => this.onTitleColor(selected.title, c[0], ev)"/>
+                                                    <button t-if="selected.title[c[0]]" type="button" class="btn btn-sm btn-link px-1 o_rs_clear_color"
+                                                            title="No color" t-on-click="() => this.clearTitleColor(selected.title, c[0])">×</button>
+                                                    <small t-else="" class="text-muted fst-italic">none</small>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected.title"/></t>
+                                        <t t-call="report_studio.FontControls">
+                                            <t t-set="font" t-value="selected.title.font"/><t t-set="title" t-value="fontTitles.sectionLabel"/>
+                                        </t>
+                                    </div>
+
+                                    <!-- Borders, like the cell borders of a spreadsheet. -->
+                                    <div class="o_rs_borders mt-3">
+                                        <div class="fw-bold mb-1"><i class="fa fa-square-o me-1"/>Borders</div>
+                                        <div class="btn-group btn-group-sm mb-2" role="group">
+                                            <button type="button" class="btn btn-outline-secondary o_rs_border_all" title="All borders"
+                                                    t-on-click="() => this.setBorderSides(selected.border, ['top', 'right', 'bottom', 'left'])">
+                                                <i class="fa fa-square-o"/>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary o_rs_border_none" title="No border"
+                                                    t-on-click="() => this.setBorderSides(selected.border, [])">
+                                                <i class="fa fa-ban"/>
+                                            </button>
+                                            <t t-foreach="marginSides" t-as="side" t-key="side[0]">
+                                                <button type="button" t-att-title="side[1]" t-att-data-side="side[0]"
+                                                        t-attf-class="btn btn-outline-secondary o_rs_border_side {{ selected.border.sides.includes(side[0]) ? 'active' : '' }}"
+                                                        t-on-click="() => this.toggleBorderSide(selected.border, side[0])">
+                                                    <t t-esc="side[1]"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="form-select form-select-sm o_rs_border_style" title="Border line style"
+                                                    t-on-change="(ev) => this.onBorder(selected.border, 'style', ev)">
+                                                <t t-foreach="borderStyles" t-as="st" t-key="st[0]">
+                                                    <option t-att-value="st[0]" t-att-selected="selected.border.style === st[0]"><t t-esc="st[1]"/></option>
+                                                </t>
+                                            </select>
+                                            <select class="form-select form-select-sm o_rs_border_width" style="width: 5.5rem; flex: 0 0 5.5rem" title="Thickness"
+                                                    t-on-change="(ev) => this.onBorder(selected.border, 'width', ev)">
+                                                <t t-foreach="borderWidths" t-as="px" t-key="px">
+                                                    <option t-att-value="px" t-att-selected="selected.border.width === px"><t t-esc="px"/> px</option>
+                                                </t>
+                                            </select>
+                                            <input type="color" class="form-control form-control-color form-control-sm o_rs_border_color"
+                                                   title="Border line color" t-att-value="selected.border.color"
+                                                   t-on-input="(ev) => this.onBorder(selected.border, 'color', ev)"/>
+                                        </div>
+                                        <small class="text-muted" t-if="selected.border.style === 'double' and selected.border.width &lt; 3">
+                                            A double line needs at least 3 px to show both lines.
+                                        </small>
+                                    </div>
+
+                                    <!-- CSS classes: presets from the menu, or written by hand. -->
+                                    <div class="o_rs_css mt-3">
+                                        <label class="form-label">CSS Class</label>
+                                        <div class="d-flex flex-wrap gap-1 mb-1">
+                                            <t t-foreach="sectionClasses(selected)" t-as="cls" t-key="cls">
+                                                <span class="badge text-bg-light border o_rs_css_chip" t-att-data-class="cls">
+                                                    <t t-esc="cssPresetLabel(cls)"/>
+                                                    <a href="#" class="ms-1 text-danger" title="Remove"
+                                                       t-on-click.prevent="() => this.removeCssClass(selected, cls)">×</a>
+                                                </span>
+                                            </t>
+                                        </div>
+                                        <select class="form-select form-select-sm o_rs_css_add" t-on-change="(ev) => this.addCssClass(selected, ev)">
+                                            <option value="">+ Add a style…</option>
+                                            <t t-foreach="availableCssPresets(selected)" t-as="preset" t-key="preset[0]">
+                                                <option t-att-value="preset[0]"><t t-esc="preset[1]"/></option>
+                                            </t>
+                                        </select>
+                                        <input class="form-control form-control-sm mt-1 font-monospace o_rs_css_text" t-model="selected.class"
+                                               t-on-input="markDirty" title="Classes separated by a space (Bootstrap classes work too)"/>
+                                    </div>
+
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>

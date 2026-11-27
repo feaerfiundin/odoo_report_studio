@@ -37,6 +37,14 @@ Font (every key optional; missing or empty = the layout's)::
 ``size`` is in points (6-72); the ``width`` of table columns is a
 percentage (0-100].
 
+A Section can also have a label bar on top and borders::
+
+    "title": {"text": "Customer", "translations": {...}, "background": "#e9ecef",
+              "color": "#000000", "font": <font>, "align": "left"}
+    "border": {"sides": ["top", "right", "bottom", "left"],
+               "style": "solid" | "double" | "dashed" | "dotted",
+               "width": 1, "color": "#333333"}
+
 Section and Table also accept ``"margins": <margins>``. Margins (mm, all
 optional)::
 
@@ -117,6 +125,9 @@ LANG_RE = re.compile(r"^[a-z]{2,3}(_[A-Za-z0-9]{2,8})?(@[a-z]+)?$")
 MAX_TEXT = 10000
 MAX_LANGS = 50
 TABLE_TYPES = ("one2many", "many2many")
+COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+BORDER_STYLES = ("solid", "double", "dashed", "dotted")
+BORDER_WIDTH = (1, 6)  # px
 
 
 class _Term(str):
@@ -401,26 +412,7 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
     btype = block.get("type")
 
     if btype == "section":
-        children = _render_children(
-            block.get("children", []), model, var, depth + 1, ctx, tree_path
-        )
-        children = children or _empty_placeholder(
-            children, ctx, _("Empty section: select it and add blocks")
-        )
-        return (
-            [
-                "<div%s%s>"
-                % (
-                    _css_attr(block.get("class")),
-                    _style_attr(
-                        _margins_css(block.get("margins")),
-                        _align_css(block.get("align")),
-                    ),
-                )
-            ]
-            + children
-            + ["</div>"]
-        )
+        return _render_section(block, model, var, depth, ctx, tree_path)
 
     if btype == "separator":
         style = block.get("style", "solid")
@@ -538,6 +530,99 @@ def _render_block(block, model, var, depth, ctx, tree_path=""):
         return ['<t t-if="%s">' % _attr(expression)] + children + ["</t>"]
 
     raise CompileError(_("Unknown block type: %r"), btype)
+
+
+def _color(value, what):
+    """Validated #RRGGBB color, or "" when missing."""
+    if value in (None, ""):
+        return ""
+    if not isinstance(value, str) or not COLOR_RE.match(value):
+        raise CompileError(
+            _("Invalid color for %(what)s: %(value)r"), {"what": what, "value": value}
+        )
+    return value
+
+
+def _border_css(border):
+    """CSS of the section borders: chosen sides, one style, width and color."""
+    if border is None:
+        return []
+    if not isinstance(border, dict):
+        raise CompileError(_("The border must be an object"))
+    sides = border.get("sides") or []
+    if not isinstance(sides, list) or set(sides) - set(MARGIN_SIDES):
+        raise CompileError(_("Invalid border sides: %r"), sides)
+    if not sides:
+        return []
+    style = border.get("style", "solid")
+    if style not in BORDER_STYLES:
+        raise CompileError(_("Border style not allowed: %r"), style)
+    width = _number(border.get("width", 1), *BORDER_WIDTH, what=_("Border width (px)"))
+    color = _color(border.get("color"), _("border")) or "#333333"
+    return [
+        "border-%s: %gpx %s %s" % (side, width, style, color)
+        for side in MARGIN_SIDES
+        if side in sides
+    ]
+
+
+def _section_title(title):
+    """Label of the section: a full width bar on top, translatable."""
+    if title is None:
+        return []
+    if not isinstance(title, dict):
+        raise CompileError(_("The section label must be an object"))
+    text = title.get("text") or ""
+    if not isinstance(text, str) or len(text) > MAX_LABEL:
+        raise CompileError(_("Invalid section label"))
+    if not text.strip():
+        return []
+    translations = _translations(title.get("translations"), MAX_LABEL, _("label"))
+    background = _color(title.get("background"), _("label background"))
+    color = _color(title.get("color"), _("label text"))
+    style = _style_attr(
+        "background-color: %s" % background if background else "",
+        "color: %s" % color if color else "",
+        "padding: 1mm 2mm",
+        _align_css(title.get("align")),
+        _font_css(title.get("font")),
+    )
+    return [
+        '<div class="o_rs_section_title"%s>%s</div>'
+        % (style, _by_lang(text, translations, _text_html))
+    ]
+
+
+def _render_section(block, model, var, depth, ctx, tree_path):
+    """Section: container with optional label bar, borders and margins.
+
+    Without label and borders the output is a single div (as before); with
+    them the outer div carries the borders and the label bar spans its full
+    width, while the margins become the padding of an inner div.
+    """
+    children = _render_children(
+        block.get("children", []), model, var, depth + 1, ctx, tree_path
+    )
+    children = children or _empty_placeholder(
+        children, ctx, _("Empty section: select it and add blocks")
+    )
+    title = _section_title(block.get("title"))
+    borders = _border_css(block.get("border"))
+    margins = _margins_css(block.get("margins"))
+    align = _align_css(block.get("align"))
+    if not title and not borders:
+        return (
+            ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(margins, align))]
+            + children
+            + ["</div>"]
+        )
+    return (
+        ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(*borders, align))]
+        + title
+        + ["<div%s>" % _style_attr(margins)]
+        + children
+        + ["</div>", "</div>"]
+    )
 
 
 def _render_table(block, model, var, ctx):

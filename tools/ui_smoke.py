@@ -418,7 +418,8 @@ with sync_playwright() as p:
 
     def alignment():
         """Sezione a destra, testo centrato: il figlio vince, il resto segue la sezione."""
-        align = lambda target: page.click(f".o_rs_props .o_rs_align button[data-align={target}]")
+        # Allineamento del blocco (non quello dell'etichetta della sezione).
+        align = lambda target: page.click(f".o_rs_props > .o_rs_align button[data-align={target}]")
         computed = lambda loc: loc.first.evaluate("el => getComputedStyle(el).textAlign")
         canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
         page.wait_for_selector(".o_rs_props_title:text-is('Testo')")
@@ -641,6 +642,34 @@ with sync_playwright() as p:
             lang_state["activated"] = ids
         return "italiano attivato per la prova" if not active else "italiano già attivo"
 
+    def section_label_borders():
+        """Sezione: etichetta con sfondo, bordi come nei fogli di calcolo, classi dal menu."""
+        canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
+        select_parent()
+        page.wait_for_selector(".o_rs_props .o_rs_section_title_text")
+        page.fill(".o_rs_props .o_rs_section_title_text", "Dati ordine")
+        page.click(".o_rs_props .o_rs_border_all")
+        page.select_option(".o_rs_props .o_rs_border_style", "double")
+        page.select_option(".o_rs_props .o_rs_border_width", "3")
+        page.select_option(".o_rs_props .o_rs_css_add", "o_rs_keep_together")
+        page.wait_for_selector(".o_rs_props .o_rs_css_chip[data-class=o_rs_keep_together]", timeout=3000)
+        chips = page.locator(".o_rs_props .o_rs_css_chip").all_inner_texts()
+        expect(any("pagine" in c or "pages" in c for c in chips), f"classe dal menu: {chips}")
+        wait_canvas()
+        page.wait_for_timeout(600)
+        title = canvas.locator(".o_rs_section_title", has_text="Dati ordine")
+        expect(title.count() == 1, "etichetta della sezione assente nella pagina")
+        bg = title.evaluate("el => getComputedStyle(el).backgroundColor")
+        expect(bg not in ("rgba(0, 0, 0, 0)", "transparent"), f"sfondo dell'etichetta: {bg}")
+        section = canvas.locator("[data-rs-type=section] > div").first
+        css = section.evaluate("el => [getComputedStyle(el).borderTopStyle, getComputedStyle(el).borderTopWidth,"
+                               " el.className]")
+        expect(css[0] == "double" and css[1] == "3px" and "o_rs_keep_together" in css[2], f"bordo/classe: {css}")
+        # Il testo libero mostra le classi scelte dal menu.
+        free = page.locator(".o_rs_props .o_rs_css_text").input_value()
+        expect("o_rs_keep_together" in free, f"campo classi: {free!r}")
+        return f"etichetta con sfondo {bg}, bordo {css[0]} {css[1]}, classi {css[2]!r}"
+
     def translations():
         """Menu lingua: traduzione IT di un testo; pagina centrale nella lingua scelta."""
         select = page.locator(f"{topbar} .o_rs_lang_select")
@@ -695,6 +724,7 @@ with sync_playwright() as p:
         step(page, "larghezze_colonne", column_widths)
         step(page, "blocchi_impaginazione", layout_blocks)
         step(page, "allineamento", alignment)
+        step(page, "sezione_etichetta_bordi", section_label_borders)
         step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)
         step(page, "anteprima_pdf", preview_pdf)
