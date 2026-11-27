@@ -49,7 +49,10 @@ Prova l'elenco standard dei report: filtri (Attivi, Archiviati, QWeb libero),
 raggruppamenti anche annidati, salvataggio di un preferito e sua riapplicazione
 dopo il ricaricamento della pagina, ricerca per modello, ordinamento per
 colonna. Poi entra come editor (interruttore Attivo, apertura dell'editor) e
-come visualizzatore (niente "Nuovo", Attivo in sola lettura).
+come visualizzatore (niente "Nuovo", Attivo in sola lettura). Prova anche la
+pagina Report: aggiunta e rimozione dal menu Stampa (verificata nel menu Stampa
+di un ordine), report archiviato, editor che usa i pulsanti, visualizzatore in
+sola lettura.
 Crea da sé i report che gli servono (nome "FT <ora>") e li elimina alla fine.
 
 Va lanciato dopo `ui_smoke.py`, così in elenco ci sono report attivi e

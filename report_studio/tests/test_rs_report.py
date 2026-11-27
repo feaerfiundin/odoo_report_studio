@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 from odoo.tools.safe_eval import safe_eval
 
@@ -70,15 +70,81 @@ class TestRsReport(TransactionCase):
         self.assertEqual(self.report.version_count, 2)
 
     def test_archive_removes_print_binding(self):
+        self.report.action_add_print_menu()
         self.assertTrue(self.report.action_id.binding_model_id)
         self.report.active = False
         self.assertFalse(self.report.action_id.binding_model_id)
         self.report.active = True
         self.assertEqual(self.report.action_id.binding_model_id, self.report.model_id)
 
+    def test_print_menu_only_with_button(self):
+        """Un report nuovo non è nel menu Stampa finché non lo si aggiunge."""
+        action = self.report.action_id
+        self.assertFalse(self.report.in_print_menu)
+        self.assertFalse(action.binding_model_id)
+        self.report.action_add_print_menu()
+        self.assertEqual(action.binding_model_id, self.model)
+        self.assertEqual(action.binding_type, "report")
+        # una nuova versione non cambia la scelta
+        self.report._create_version(json.dumps({"children": []}))
+        self.assertEqual(action.binding_model_id, self.model)
+        self.report.action_remove_print_menu()
+        self.assertFalse(action.binding_model_id)
+        self.report.active = False
+        with self.assertRaises(UserError):
+            self.report.action_add_print_menu()
+
+    def test_print_settings_copied_to_action(self):
+        paper = self.env["report.paperformat"].search([], limit=1)
+        self.report.write({
+            "print_name": "Stampa ordine",
+            "paperformat_id": paper.id,
+            "print_report_name": "'Ordine - %s' % object.name",
+            "attachment": "(object.name + '.pdf')",
+            "attachment_use": True,
+        })
+        action = self.report.action_id
+        self.assertEqual(action.name, "Stampa ordine")
+        self.assertEqual(action.paperformat_id, paper)
+        self.assertEqual(action.print_report_name, "'Ordine - %s' % object.name")
+        self.assertEqual(action.attachment, "(object.name + '.pdf')")
+        self.assertTrue(action.attachment_use)
+        # nome nel menu vuoto: torna il nome del report
+        self.report.print_name = False
+        self.assertEqual(action.name, "Test report")
+        with self.assertRaises(ValidationError):
+            self.report.print_report_name = "'Ordine' %"
+
+    def test_print_page_roles(self):
+        editor = new_test_user(self.env, login="rs_print_editor",
+                               groups="base.group_user,report_studio.group_rs_editor")
+        viewer = new_test_user(self.env, login="rs_print_viewer",
+                               groups="base.group_user,report_studio.group_rs_viewer")
+        paper = self.env["report.paperformat"].search([], limit=1)
+        as_editor = self.report.with_user(editor)
+        as_editor.action_add_print_menu()
+        as_editor.write({"paperformat_id": paper.id, "print_name": "Da editor"})
+        self.assertEqual(self.report.action_id.binding_model_id, self.model)
+        self.assertEqual(self.report.action_id.name, "Da editor")
+        with self.assertRaises(AccessError):
+            self.report.with_user(viewer).action_remove_print_menu()
+        self.assertTrue(self.report.with_user(viewer).in_print_menu)  # lettura ammessa
+        # pagina e menu
+        action = self.env.ref("report_studio.action_rs_report_print")
+        menu = self.env.ref("report_studio.menu_report_studio_print")
+        self.assertEqual(menu.action, action)
+        self.assertEqual(menu.parent_id, self.env.ref("report_studio.menu_report_studio_root"))
+        form = self.env["rs.report"].with_user(editor).get_views(
+            [(self.env.ref("report_studio.rs_report_print_view_form").id, "form")])["views"]["form"]["arch"]
+        self.assertIn("action_add_print_menu", form)
+        form_viewer = self.env["rs.report"].with_user(viewer).get_views(
+            [(self.env.ref("report_studio.rs_report_print_view_form").id, "form")])["views"]["form"]["arch"]
+        self.assertNotIn("action_add_print_menu", form_viewer)
+
     def test_saved_layouts_list_shows_archived(self):
         action = self.env.ref("report_studio.action_rs_report_list")
         self.assertEqual(self.env.ref("report_studio.menu_report_studio_root").action, action)
+        self.assertEqual(self.env.ref("report_studio.menu_report_studio_layouts").action, action)
         context = safe_eval(action.context)
         self.assertIs(context.get("active_test"), False)
         # Di default la ricerca parte col filtro Attivi, che si può togliere.

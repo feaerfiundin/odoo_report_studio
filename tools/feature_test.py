@@ -131,6 +131,38 @@ def remove_fixtures(page):
     return len(ids)
 
 
+def open_print_page(page):
+    """Menu Report Studio > Report."""
+    page.goto(f"{BASE}/odoo/action-report_studio.action_rs_report_print")
+    page.wait_for_selector(LIST, timeout=30000)
+    page.wait_for_timeout(800)
+
+
+def open_print_form(page, name):
+    open_print_page(page)
+    clear_facets(page)   # anche gli archiviati
+    page.locator(f"{ROW} td[name=name]", has_text=name).first.click()
+    page.wait_for_selector(".o_form_view")
+    page.wait_for_timeout(500)
+
+
+def print_menu_items(page, model_action, label):
+    """Voci del menu Stampa (ingranaggio) nella scheda del primo record."""
+    page.goto(f"{BASE}/odoo/action-{model_action}")
+    page.wait_for_selector(ROW, timeout=30000)
+    page.locator(ROW).first.locator("td.o_data_cell").first.click()
+    page.wait_for_selector(".o_form_view")
+    page.locator(".o_cp_action_menus button").first.click()
+    page.wait_for_timeout(500)
+    printer = page.locator(".o-dropdown--menu .o-dropdown-item, .o-dropdown--menu .dropdown-toggle", has_text="Print")
+    if printer.count():
+        printer.first.hover()
+        page.wait_for_timeout(500)
+    items = page.locator(".o-dropdown--menu .o-dropdown-item").all_inner_texts()
+    page.keyboard.press("Escape")
+    return [i.strip() for i in items if label in i]
+
+
 def col(page, name):
     return [t.strip() for t in page.locator(f"{ROW} td[name={name}]").all_inner_texts()]
 
@@ -240,6 +272,32 @@ with sync_playwright() as p:
         expect(a and b and a[0] != b[0], "l'ordine non cambia")
         return f"primo {a[0]} -> {b[0]}"
 
+    def pagina_report_admin():
+        open_print_page(page)
+        names = col(page, "name")
+        expect(f"{STAMP} ordine" in names, f"pagina Report: {names}")
+        expect(page.locator(".o_list_button_add").count() == 0, "Nuovo nella pagina Report")
+        open_print_form(page, f"{STAMP} ordine")
+        expect(page.locator(".o_rs_add_print_menu").count() == 1, "pulsante Aggiungi al menu Stampa assente")
+        page.locator(".o_field_widget[name=print_name] input").fill(f"{STAMP} stampa")
+        page.locator(".o_rs_add_print_menu").click()          # salva e aggiunge
+        page.wait_for_selector(".o_rs_remove_print_menu")
+        expect(page.locator(".o_rs_print_menu_info").count() == 1, "avviso 'nel menu Stampa' assente")
+        items = print_menu_items(page, "sale.action_orders", f"{STAMP} stampa")
+        expect(items, "la voce non compare nel menu Stampa dell'ordine")
+        open_print_form(page, f"{STAMP} ordine")
+        page.locator(".o_rs_remove_print_menu").click()
+        page.wait_for_selector(".o_rs_add_print_menu")
+        gone = print_menu_items(page, "sale.action_orders", f"{STAMP} stampa")
+        expect(not gone, f"voce ancora nel menu Stampa: {gone}")
+        return f"aggiunto ({items}) e rimosso dal menu Stampa dell'ordine"
+
+    def pagina_report_archiviato():
+        open_print_form(page, f"{STAMP} ordine archiviato")
+        expect(page.locator(".o_rs_add_print_menu").count() == 0, "Aggiungi visibile su un archiviato")
+        expect(page.locator(".o_form_view .alert-warning").count() == 1, "avviso archiviato assente")
+        return "archiviato: niente pulsante, avviso presente"
+
     def elimina_preferito():
         ids = rpc(page, "ir.filters", "search", [[["name", "=", "Prova archiviati per modello"]]])
         rpc(page, "ir.filters", "unlink", [ids])
@@ -249,7 +307,8 @@ with sync_playwright() as p:
                      ("raggruppa_modello", raggruppa_modello), ("raggruppa_annidato_attivo", raggruppa_attivo),
                      ("salva_preferito", salva_preferito), ("riapplica_preferito", riapplica_preferito),
                      ("cerca_per_modello", cerca_per_modello), ("ordina_ultima_modifica", ordina_ultima_modifica),
-                     ("pulizia_preferito", elimina_preferito)]:
+                     ("pulizia_preferito", elimina_preferito), ("pagina_report_admin", pagina_report_admin),
+                     ("pagina_report_archiviato", pagina_report_archiviato)]:
         step(page, name, fn)
     print("errori JS admin:", errors)
     ctx.close()
@@ -286,8 +345,17 @@ with sync_playwright() as p:
         page.wait_for_selector(LIST)
         return "editor aperto e ritorno all'elenco"
 
+    def editor_pagina_report():
+        open_print_form(page, f"{STAMP} fattura")
+        page.locator(".o_rs_add_print_menu").click()
+        page.wait_for_selector(".o_rs_remove_print_menu")
+        expect(not page.locator(".o_notification.bg-danger, .o_error_dialog").count(), "errore mostrato")
+        page.locator(".o_rs_remove_print_menu").click()
+        page.wait_for_selector(".o_rs_add_print_menu")
+        return "l'editor aggiunge e toglie dal menu Stampa"
+
     for name, fn in [("editor_elenco", editor_elenco), ("editor_toggle_attivo", editor_toggle),
-                     ("editor_apre_report", editor_apre)]:
+                     ("editor_apre_report", editor_apre), ("editor_pagina_report", editor_pagina_report)]:
         step(page, name, fn)
     ctx.close()
 
@@ -311,7 +379,16 @@ with sync_playwright() as p:
         expect(box.is_disabled(), "casella Attivo modificabile")
         return f"casella in sola lettura (valore {before})"
 
-    for name, fn in [("viewer_elenco", viewer_elenco), ("viewer_sola_lettura", viewer_non_modifica)]:
+    def viewer_pagina_report():
+        open_print_form(page, f"{STAMP} ordine")
+        buttons = page.locator(".o_rs_add_print_menu, .o_rs_remove_print_menu").count()
+        expect(buttons == 0, f"pulsanti visibili al visualizzatore: {buttons}")
+        editable = page.locator(".o_field_widget[name=print_name] input").count()
+        expect(editable == 0, "campo modificabile dal visualizzatore")
+        return "pagina visibile in sola lettura"
+
+    for name, fn in [("viewer_elenco", viewer_elenco), ("viewer_sola_lettura", viewer_non_modifica),
+                     ("viewer_pagina_report", viewer_pagina_report)]:
         step(page, name, fn)
     ctx.close()
 

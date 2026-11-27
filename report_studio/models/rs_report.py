@@ -5,7 +5,8 @@ from contextlib import contextmanager
 
 from odoo import _, api, fields, models
 from odoo.addons.base.models.ir_qweb import QWebException
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools.safe_eval import test_python_expr
 
 from ..lib.compiler import CompileError, compile_definition
 
@@ -68,6 +69,40 @@ class RsReport(models.Model):
         copy=False,
         ondelete="set null",
     )
+    report_key = fields.Char(
+        related="action_id.report_name", string="Nome tecnico del template",
+    )
+
+    # ----- stampa (pagina Report) -----
+    # Copiati sull'azione di stampa (ir.actions.report) a ogni modifica: gli
+    # editor non hanno accesso in scrittura alle azioni, il modulo le aggiorna
+    # in sudo solo per i report che gestisce.
+    in_print_menu = fields.Boolean(
+        string="Nel menu Stampa",
+        copy=False,
+        help="Il report compare nel menu Stampa del suo modello (es. dalla fattura). "
+             "Un report archiviato non compare comunque.",
+    )
+    print_name = fields.Char(
+        string="Nome nel menu Stampa",
+        help="Voce nel menu Stampa. Vuoto: il nome del report.",
+    )
+    paperformat_id = fields.Many2one("report.paperformat", string="Formato carta")
+    print_report_name = fields.Char(
+        string="Nome del file stampato",
+        help="Espressione Python per il nome del PDF, con il record in 'object'. "
+             "Es.: 'Fattura - %s' % object.name",
+    )
+    attachment_use = fields.Boolean(
+        string="Riusa l'allegato alla ristampa",
+        help="Se il PDF è già stato salvato come allegato, la ristampa usa quello.",
+    )
+    attachment = fields.Char(
+        string="Salva come allegato",
+        help="Espressione Python per il nome dell'allegato; vuoto: non salvato. "
+             "Es.: (object.name + '.pdf')",
+    )
+
     version_ids = fields.One2many(
         "rs.report.version", "report_id", string="Versioni"
     )
@@ -96,18 +131,54 @@ class RsReport(models.Model):
             report._create_version(definition, comment=comment)
         return reports
 
+    # Campi del report che finiscono sull'azione di stampa.
+    _PRINT_FIELDS = (
+        "name", "active", "in_print_menu", "print_name", "paperformat_id",
+        "print_report_name", "attachment_use", "attachment",
+    )
+
+    def _print_action_vals(self):
+        """Valori dell'azione di stampa. Nel menu Stampa solo se attivo e aggiunto."""
+        self.ensure_one()
+        return {
+            "name": self.print_name or self.name,
+            "binding_model_id": self.model_id.id if self.active and self.in_print_menu else False,
+            "paperformat_id": self.paperformat_id.id,
+            "print_report_name": self.print_report_name or False,
+            "attachment_use": self.attachment_use,
+            "attachment": self.attachment or False,
+        }
+
+    @api.constrains("print_report_name", "attachment")
+    def _check_print_expressions(self):
+        for report in self:
+            for field in ("print_report_name", "attachment"):
+                expr = report[field]
+                message = expr and test_python_expr(expr.strip(), mode="eval")
+                if message:
+                    raise ValidationError(_("%(field)s: espressione non valida.\n%(error)s",
+                                            field=report._fields[field].string, error=message))
+
     def write(self, vals):
         result = super().write(vals)
-        for report in self.filtered("action_id"):
-            action_vals = {}
-            if "active" in vals:
-                # Un report archiviato non deve comparire nei menu di stampa.
-                action_vals["binding_model_id"] = report.model_id.id if report.active else False
-            if "name" in vals:
-                action_vals["name"] = report.name
-            if action_vals:
-                report.action_id.sudo().write(action_vals)
+        if any(key in vals for key in self._PRINT_FIELDS):
+            for report in self.filtered("action_id"):
+                report.action_id.sudo().write(report._print_action_vals())
         return result
+
+    def action_add_print_menu(self):
+        """Pulsante "Aggiungi al menu Stampa" (pagina Report)."""
+        self.check_access("write")
+        if self.filtered(lambda r: not r.active):
+            raise UserError(_("Un report archiviato non può stare nel menu Stampa: riattivalo prima."))
+        self.write({"in_print_menu": True})
+        return True
+
+    def action_remove_print_menu(self):
+        """Pulsante "Rimuovi dal menu Stampa" (pagina Report)."""
+        self.check_access("write")
+        self.write({"in_print_menu": False})
+        return True
 
     def unlink(self):
         """Elimina anche viste QWeb e azioni di stampa generate dal report.
@@ -189,11 +260,10 @@ class RsReport(models.Model):
             self.action_id.sudo().write({"report_name": report_key})
             return
         self.action_id = self.env["ir.actions.report"].sudo().create({
-            "name": self.name,
+            **self._print_action_vals(),
             "model": self.model_name,
             "report_type": "qweb-pdf",
             "report_name": report_key,
-            "binding_model_id": self.model_id.id if self.active else False,
             "binding_type": "report",
         })
 

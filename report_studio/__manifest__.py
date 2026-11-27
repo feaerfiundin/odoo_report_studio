@@ -2,7 +2,7 @@
 {
     "name": "Report Studio",
     "summary": "Editor WYSIWYG a blocchi per report QWeb/PDF in Odoo",
-    "version": "18.0.0.1.0",
+    "version": "18.0.0.2.0",
     "category": "Reporting",
     "author": "feaerfiundin",
     "license": "AGPL-3",

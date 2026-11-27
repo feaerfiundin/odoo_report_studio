@@ -38,6 +38,9 @@
                 <filter name="filter_active" string="Attivi" domain="[('active', '=', True)]"/>
                 <filter name="filter_archived" string="Archiviati" domain="[('active', '=', False)]"/>
                 <separator/>
+                <filter name="filter_print_menu" string="Nel menu Stampa" domain="[('in_print_menu', '=', True), ('active', '=', True)]"/>
+                <filter name="filter_not_print_menu" string="Non nel menu Stampa" domain="['|', ('in_print_menu', '=', False), ('active', '=', False)]"/>
+                <separator/>
                 <filter name="filter_blocks" string="Blocchi" domain="[('report_mode', '=', 'blocks')]"/>
                 <filter name="filter_qweb" string="QWeb libero" domain="[('report_mode', '=', 'qweb')]"/>
                 <separator/>
@@ -47,6 +50,7 @@
                     <filter name="group_model" string="Modello" context="{'group_by': 'model_name'}"/>
                     <filter name="group_mode" string="Modalità" context="{'group_by': 'report_mode'}"/>
                     <filter name="group_active" string="Attivo" context="{'group_by': 'active'}"/>
+                    <filter name="group_print_menu" string="Nel menu Stampa" context="{'group_by': 'in_print_menu'}"/>
                     <filter name="group_write_uid" string="Modificato da" context="{'group_by': 'write_uid'}"/>
                     <filter name="group_write_date" string="Ultima modifica" context="{'group_by': 'write_date:month'}"/>
                 </group>
@@ -66,6 +70,92 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nessun report</p>
             <p>Premi "Nuovo" per crearne uno.</p>
+        </field>
+    </record>
+
+    <!-- Pagina Report: come Impostazioni > Tecnico > Report, ma solo per i report
+         di Report Studio. Qui si decide se un report compare nel menu Stampa del
+         suo modello (es. nella fattura) e come viene stampato. I report si creano
+         e si disegnano da Saved Layouts: qui niente Nuovo né Elimina. -->
+    <record id="rs_report_print_view_list" model="ir.ui.view">
+        <field name="name">rs.report.print.list</field>
+        <field name="model">rs.report</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <list string="Report" create="0" delete="0" decoration-muted="not active">
+                <field name="name" string="Report"/>
+                <field name="print_name" optional="show"/>
+                <field name="model_name" string="Modello"/>
+                <field name="report_key" optional="hide"/>
+                <field name="paperformat_id" optional="show"/>
+                <field name="in_print_menu" widget="boolean" readonly="1"/>
+                <field name="active" string="Attivo" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="rs_report_print_view_form" model="ir.ui.view">
+        <field name="name">rs.report.print.form</field>
+        <field name="model">rs.report</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <form string="Report" create="0" delete="0" duplicate="0">
+                <header>
+                    <button name="action_add_print_menu" type="object" class="btn-primary o_rs_add_print_menu"
+                            string="Aggiungi al menu Stampa" icon="fa-print"
+                            invisible="in_print_menu or not active"
+                            groups="report_studio.group_rs_editor,base.group_system"/>
+                    <button name="action_remove_print_menu" type="object" class="o_rs_remove_print_menu"
+                            string="Rimuovi dal menu Stampa"
+                            invisible="not in_print_menu"
+                            groups="report_studio.group_rs_editor,base.group_system"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="active">
+                        Report archiviato: non compare nel menu Stampa. Riattivalo da Saved Layouts.
+                    </div>
+                    <div class="alert alert-info o_rs_print_menu_info" role="status" invisible="not in_print_menu or not active">
+                        Il report è nel menu Stampa del modello <field name="model_name" class="fw-bold" readonly="1"/>.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Report">
+                            <field name="model_id" readonly="1" options="{'no_open': True}"/>
+                            <field name="report_mode" readonly="1"/>
+                            <field name="report_key" readonly="1"/>
+                            <field name="in_print_menu" readonly="1"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Stampa">
+                            <field name="print_name" placeholder="come il nome del report"/>
+                            <field name="paperformat_id" options="{'no_create': True}"
+                                   placeholder="formato carta dell'azienda"/>
+                            <field name="print_report_name" placeholder="'Fattura - %s' % object.name"/>
+                        </group>
+                        <group string="Allegato">
+                            <field name="attachment" placeholder="(object.name + '.pdf')"/>
+                            <field name="attachment_use"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_rs_report_print" model="ir.actions.act_window">
+        <field name="name">Report</field>
+        <field name="res_model">rs.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="rs_report_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('rs_report_print_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('rs_report_print_view_form')})]"/>
+        <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nessun report</p>
+            <p>I report si creano da Saved Layouts.</p>
         </field>
     </record>
 </odoo>
