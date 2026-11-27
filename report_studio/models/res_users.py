@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
-from odoo import _, api, fields, models
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+from odoo import api, fields, models
 from odoo.exceptions import AccessError
 
 RS_MANAGER = "report_studio.group_rs_manager"
 
-# Ruoli dal più alto al più basso: ogni gruppo implica i successivi (implied_ids).
+# Roles from the highest to the lowest: each group implies the next ones
+# (implied_ids).
 RS_ROLES = [
     ("manager", "report_studio.group_rs_manager"),
     ("editor", "report_studio.group_rs_editor"),
@@ -12,7 +14,7 @@ RS_ROLES = [
     ("user", "report_studio.group_rs_user"),
 ]
 
-# Nome del campo con i gruppi dell'utente in questa versione di Odoo.
+# Name of the field holding the user groups in this Odoo version.
 GROUPS_FIELD = "groups_id"
 
 
@@ -22,19 +24,19 @@ class ResUsers(models.Model):
     report_studio_role = fields.Selection(
         selection=[
             ("none", ""),
-            ("user", "Utente"),
-            ("viewer", "Visualizzatore"),
+            ("user", "User"),
+            ("viewer", "Viewer"),
             ("editor", "Editor"),
-            ("manager", "Amministratore"),
+            ("manager", "Administrator"),
         ],
         string="Report Studio",
         compute="_compute_report_studio_role",
         inverse="_inverse_report_studio_role",
-        help="Ruolo di Report Studio. Vuoto = nessun accesso.",
+        help="Report Studio role. Empty = no access.",
     )
 
     def _rs_role_groups(self):
-        """{ruolo: gruppo} dal più alto al più basso, solo per i gruppi esistenti."""
+        """{role: group} from the highest to the lowest, existing groups only."""
         roles = {}
         for role, xmlid in RS_ROLES:
             group = self.env.ref(xmlid, raise_if_not_found=False)
@@ -55,8 +57,8 @@ class ResUsers(models.Model):
         roles = self._rs_role_groups()
         rs_group_ids = {group.id for group in roles.values()}
         for user in self:
-            # Toglie tutti i gruppi Report Studio, poi aggiunge solo il gruppo del
-            # ruolo scelto: i ruoli inferiori arrivano dagli implied_ids.
+            # Remove every Report Studio group, then add only the group of the
+            # chosen role: the lower roles come from implied_ids.
             commands = [(3, gid) for gid in rs_group_ids & set(user[GROUPS_FIELD].ids)]
             group = roles.get(user.report_studio_role)
             if group:
@@ -65,7 +67,7 @@ class ResUsers(models.Model):
                 user.write({GROUPS_FIELD: commands})
 
     def write(self, vals):
-        """Solo l'Amministratore Report Studio può cambiare i ruoli Report Studio."""
+        """Only the Report Studio Administrator can change Report Studio roles."""
         if (
             GROUPS_FIELD not in vals
             or self.env.su
@@ -80,6 +82,9 @@ class ResUsers(models.Model):
         for user in self:
             if (set(user[GROUPS_FIELD].ids) & rs_group_ids) != before[user.id]:
                 raise AccessError(
-                    _("Solo un Amministratore di Report Studio può modificare i ruoli Report Studio.")
+                    self.env._(
+                        "Only a Report Studio Administrator can change "
+                        "Report Studio roles."
+                    )
                 )
         return result

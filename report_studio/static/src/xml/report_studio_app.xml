@@ -1,45 +1,47 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <templates xml:space="preserve">
 
     <t t-name="report_studio.Versions">
-        <div class="o_rs_section_title"><i class="fa fa-history me-1"/>Versioni</div>
-        <input class="form-control form-control-sm mb-2" placeholder="Commento versione"
-               title="Commento della prossima versione salvata" t-model="state.comment"/>
+        <div class="o_rs_section_title"><i class="fa fa-history me-1"/>Versions</div>
+        <input class="form-control form-control-sm mb-2" placeholder="Version comment"
+               title="Comment of the next saved version" t-model="state.comment"/>
         <t t-foreach="state.versions" t-as="v" t-key="v.id">
             <div class="d-flex align-items-center gap-1 mb-1 o_rs_version">
                 <span class="flex-grow-1 min-w-0">
                     v<t t-esc="v.version_no"/>
-                    <t t-if="v.is_active"><span class="badge bg-success ms-1">attiva</span></t>
+                    <t t-if="v.is_active"><span class="badge bg-success ms-1">active</span></t>
                     <small class="text-muted d-block text-truncate" t-att-title="v.comment"><t t-esc="v.comment"/></small>
                 </span>
-                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Ripristina</button>
-                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copia</button>
+                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Restore</button>
+                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copy</button>
             </div>
         </t>
-        <input class="form-control form-control-sm mt-1" placeholder="Nome della copia" t-model="state.copyName"/>
+        <input class="form-control form-control-sm mt-1" placeholder="Name of the copy" t-model="state.copyName"/>
     </t>
 
-    <!-- Controlli carattere: dimensione, grassetto, corsivo, sottolineato.
-         Parametri: font (oggetto del blocco), title (etichetta del gruppo). -->
+    <!-- Font controls: size, bold, italic, underline.
+         Parameters: font (block object), title (group label). -->
     <t t-name="report_studio.FontControls">
         <div class="o_rs_font mt-2" t-att-data-font="title">
             <label class="form-label small text-muted mb-1"><t t-esc="title"/></label>
             <div class="d-flex gap-1">
-                <select class="form-select form-select-sm o_rs_font_size" title="Dimensione (pt)"
+                <select class="form-select form-select-sm o_rs_font_size" title="Size (pt)"
                         t-on-change="(ev) => this.onFontSize(font, ev)">
-                    <option value="" t-att-selected="!font.size">Predefinita</option>
+                    <option value="" t-att-selected="!font.size">Layout default</option>
                     <t t-foreach="fontSizes" t-as="size" t-key="size">
                         <option t-att-value="size" t-att-selected="font.size === size"><t t-esc="size"/> pt</option>
                     </t>
                 </select>
                 <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" title="Grassetto" data-style="bold"
+                    <button type="button" title="Bold" data-style="bold"
                             t-attf-class="btn btn-outline-secondary {{ font.bold ? 'active' : '' }}"
                             t-on-click="() => this.toggleFont(font, 'bold')"><i class="fa fa-bold"/></button>
-                    <button type="button" title="Corsivo" data-style="italic"
+                    <button type="button" title="Italic" data-style="italic"
                             t-attf-class="btn btn-outline-secondary {{ font.italic ? 'active' : '' }}"
                             t-on-click="() => this.toggleFont(font, 'italic')"><i class="fa fa-italic"/></button>
-                    <button type="button" title="Sottolineato" data-style="underline"
+                    <button type="button" title="Underline" data-style="underline"
                             t-attf-class="btn btn-outline-secondary {{ font.underline ? 'active' : '' }}"
                             t-on-click="() => this.toggleFont(font, 'underline')"><i class="fa fa-underline"/></button>
                 </div>
@@ -47,11 +49,11 @@
         </div>
     </t>
 
-    <!-- Allineamento del testo. Parametro: target (blocco). Nessun pulsante attivo =
-         come il contenitore; il blocco più interno vince. -->
+    <!-- Text alignment. Parameter: target (block). No active button = as the
+         container; the innermost block wins. -->
     <t t-name="report_studio.AlignControls">
         <div class="o_rs_align mt-2">
-            <label class="form-label small text-muted mb-1 d-block">Allineamento</label>
+            <label class="form-label small text-muted mb-1 d-block">Alignment</label>
             <div class="btn-group btn-group-sm" role="group">
                 <t t-foreach="alignments" t-as="al" t-key="al[0]">
                     <button type="button" t-att-title="al[1]" t-att-data-align="al[0]"
@@ -59,14 +61,14 @@
                             t-on-click="() => this.setAlign(target, al[0])"><i t-attf-class="fa {{ al[2] }}"/></button>
                 </t>
             </div>
-            <small class="text-muted ms-2" t-if="!target.align">come il contenitore</small>
+            <small class="text-muted ms-2" t-if="!target.align">as the container</small>
         </div>
     </t>
 
-    <!-- Margini interni in mm. Parametro: margins (oggetto del blocco). -->
+    <!-- Inner margins in mm. Parameter: margins (block object). -->
     <t t-name="report_studio.MarginControls">
         <div class="o_rs_margins mt-3">
-            <div class="fw-bold mb-1"><i class="fa fa-arrows-alt me-1"/>Margini (mm)</div>
+            <div class="fw-bold mb-1"><i class="fa fa-arrows-alt me-1"/>Margins (mm)</div>
             <div class="row g-1">
                 <t t-foreach="marginSides" t-as="side" t-key="side[0]">
                     <div class="col-6">
@@ -81,7 +83,7 @@
     </t>
 
     <t t-name="report_studio.PreviewDialog">
-        <Dialog title="'Anteprima PDF'" size="'xl'" bodyClass="'o_rs_preview_dialog'">
+        <Dialog title.translate="PDF Preview" size="'xl'" bodyClass="'o_rs_preview_dialog'">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <label class="mb-0">Record</label>
                 <select class="form-select w-auto" t-on-change="onRecordChange">
@@ -90,21 +92,21 @@
                     </t>
                 </select>
                 <button class="btn btn-secondary" t-on-click="load" t-att-disabled="state.loading">
-                    <i class="fa fa-refresh me-1"/>Aggiorna
+                    <i class="fa fa-refresh me-1"/>Refresh preview
                 </button>
-                <span t-if="state.loading" class="text-muted"><i class="fa fa-spinner fa-spin me-1"/>Generazione del PDF…</span>
+                <span t-if="state.loading" class="text-muted"><i class="fa fa-spinner fa-spin me-1"/>Generating the PDF…</span>
             </div>
             <iframe t-if="state.url" t-att-src="state.url" class="o_rs_preview_frame w-100 border"/>
             <div t-elif="state.error" class="alert alert-danger"><t t-esc="state.error"/></div>
             <t t-set-slot="footer">
-                <button class="btn btn-primary" t-on-click="props.close">Chiudi</button>
+                <button class="btn btn-primary" t-on-click="props.close">Close</button>
             </t>
         </Dialog>
     </t>
 
-    <!-- Pulsante della barra ancora non disponibile ("In arrivo"). -->
+    <!-- Toolbar button not available yet ("Coming soon"). -->
     <t t-name="report_studio.TopButtonSoon">
-        <button class="btn o_rs_tb_btn btn-outline-secondary" disabled="disabled" title="In arrivo">
+        <button class="btn o_rs_tb_btn btn-outline-secondary" disabled="disabled" title="Coming soon">
             <i t-attf-class="fa {{ icon }}"/>
             <span><t t-esc="label"/></span>
         </button>
@@ -113,37 +115,37 @@
     <t t-name="report_studio.App">
         <div class="o_rs_app d-flex flex-column h-100">
 
-            <!-- NUOVO REPORT -->
+            <!-- NEW REPORT -->
             <t t-if="state.view === 'new'">
                 <div class="d-flex align-items-center gap-2 p-2 border-bottom">
                     <button class="btn btn-outline-secondary" t-on-click="showList">Saved Layouts</button>
-                    <span class="fw-bold">Nuovo</span>
+                    <span class="fw-bold">New Report</span>
                 </div>
                 <div class="p-4" style="max-width: 720px">
                     <div class="row mb-3 align-items-center">
-                        <label class="col-3 col-form-label">Report</label>
+                        <label class="col-3 col-form-label">Name</label>
                         <div class="col-9">
-                            <input class="form-control" placeholder="Nome del report" t-model="state.newName"/>
+                            <input class="form-control" placeholder="Report name" t-model="state.newName"/>
                         </div>
                     </div>
                     <div class="row mb-3 align-items-center">
                         <label class="col-3 col-form-label">Model</label>
                         <div class="col-9">
                             <select class="form-select" t-model="state.newModel" t-att-disabled="state.newSource ? true : false">
-                                <option value="">— scegli il modello —</option>
+                                <option value="">— choose the model —</option>
                                 <t t-foreach="state.models" t-as="m" t-key="m.id">
                                     <option t-att-value="m.model"><t t-esc="m.model"/> — <t t-esc="m.name"/></option>
                                 </t>
                             </select>
-                            <small class="text-muted">Per una copia il modello è quello del documento di partenza.</small>
+                            <small class="text-muted">For a copy the model is the one of the starting document.</small>
                         </div>
                     </div>
                     <div class="row mb-3 align-items-center">
-                        <label class="col-3 col-form-label">Documento di partenza</label>
+                        <label class="col-3 col-form-label">Starting Document</label>
                         <div class="col-9">
                             <select class="form-select" t-on-change="onNewSourceChange">
-                                <option value="">— nessuno: report vuoto a blocchi —</option>
-                                <optgroup t-if="nativeSources.length" label="Documenti Odoo">
+                                <option value="">— none: empty blocks report —</option>
+                                <optgroup t-if="nativeSources.length" label="Odoo Documents">
                                     <t t-foreach="nativeSources" t-as="s" t-key="s.key">
                                         <option t-att-value="s.key"><t t-esc="s.label"/></option>
                                     </t>
@@ -157,15 +159,14 @@
                         </div>
                     </div>
                     <div class="row mb-3 align-items-center">
-                        <label class="col-3 col-form-label">Struttura</label>
+                        <label class="col-3 col-form-label">Structure</label>
                         <div class="col-9 text-muted">
-                            Quella configurata in Odoo (Impostazioni → Società → Layout documenti).
-                            Vale per tutti i documenti.
+                            The one configured in Odoo (Settings → Companies → Document Layout). It applies to all documents.
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
                         <button class="btn btn-primary" t-on-click="onOpenVisualEditor">Open Visual Editor</button>
-                        <button class="btn btn-secondary" t-on-click="showList">Abbandona</button>
+                        <button class="btn btn-secondary" t-on-click="showList">Discard</button>
                     </div>
                 </div>
             </t>
@@ -176,18 +177,18 @@
                     <button class="btn btn-outline-secondary" t-on-click="backToList">← Saved Layouts</button>
                     <span class="o_rs_report_name fw-bold"><t t-esc="state.reportName"/></span>
                     <span class="badge text-bg-light border"><t t-esc="state.modelName"/></span>
-                    <span class="badge bg-secondary"><t t-if="state.mode === 'qweb'">QWeb libero</t><t t-else="">Blocchi</t></span>
-                    <span t-if="state.dirty" class="text-warning small">Modifiche non salvate</span>
+                    <span class="badge bg-secondary"><t t-if="state.mode === 'qweb'">Free QWeb</t><t t-else="">Blocks</t></span>
+                    <span t-if="state.dirty" class="text-warning small">Unsaved changes</span>
 
                     <div class="ms-auto d-flex align-items-center gap-2">
-                        <div class="form-check form-switch mb-0 o_rs_active_toggle" title="Spento = report archiviato">
+                        <div class="form-check form-switch mb-0 o_rs_active_toggle" title="Off = archived report">
                             <input class="form-check-input" type="checkbox" id="o_rs_active"
                                    t-att-checked="state.active" t-att-disabled="!state.canWrite"
                                    t-on-change="onToggleActive"/>
-                            <label class="form-check-label" for="o_rs_active">Attivo</label>
+                            <label class="form-check-label" for="o_rs_active">Active</label>
                         </div>
                         <div t-if="state.mode !== 'qweb'" class="input-group input-group-sm w-auto o_rs_lang"
-                             title="Lingua dei testi che stai modificando; la pagina centrale la mostra">
+                             title="Language of the texts you are editing; the page in the center shows it">
                             <span class="input-group-text"><i class="fa fa-language"/></span>
                             <select class="form-select o_rs_lang_select" t-on-change="onEditLang">
                                 <t t-foreach="langOptions" t-as="opt" t-key="opt.code">
@@ -197,7 +198,7 @@
                                 </t>
                             </select>
                         </div>
-                        <select class="form-select w-auto o_rs_record_select" title="Record usato per i dati della pagina"
+                        <select class="form-select w-auto o_rs_record_select" title="Record used for the page data"
                                 t-on-change="onRecordChange">
                             <t t-foreach="state.records" t-as="rec" t-key="rec.id">
                                 <option t-att-value="rec.id" t-att-selected="rec.id === state.recordId">
@@ -206,34 +207,34 @@
                             </t>
                         </select>
                         <t t-call="report_studio.TopButtonSoon">
-                            <t t-set="icon" t-value="'fa-th-large'"/><t t-set="label" t-value="'Template'"/>
+                            <t t-set="icon" t-value="'fa-th-large'"/><t t-set="label" t-value="soonButtons.template"/>
                         </t>
                         <t t-call="report_studio.TopButtonSoon">
-                            <t t-set="icon" t-value="'fa-bookmark-o'"/><t t-set="label" t-value="'Salva come template'"/>
+                            <t t-set="icon" t-value="'fa-bookmark-o'"/><t t-set="label" t-value="soonButtons.saveTemplate"/>
                         </t>
-                        <button class="btn o_rs_tb_btn btn-outline-secondary o_rs_btn_preview" title="Anteprima PDF"
+                        <button class="btn o_rs_tb_btn btn-outline-secondary o_rs_btn_preview" title="PDF Preview"
                                 t-att-disabled="!state.recordId" t-on-click="preview">
-                            <i class="fa fa-eye"/><span>Anteprima</span>
+                            <i class="fa fa-eye"/><span>Preview</span>
                         </button>
                         <t t-call="report_studio.TopButtonSoon">
-                            <t t-set="icon" t-value="'fa-print'"/><t t-set="label" t-value="'Stampa di prova'"/>
+                            <t t-set="icon" t-value="'fa-print'"/><t t-set="label" t-value="soonButtons.testPrint"/>
                         </t>
                         <t t-call="report_studio.TopButtonSoon">
-                            <t t-set="icon" t-value="'fa-question-circle'"/><t t-set="label" t-value="'Guida'"/>
+                            <t t-set="icon" t-value="'fa-question-circle'"/><t t-set="label" t-value="soonButtons.help"/>
                         </t>
-                        <button class="btn o_rs_tb_btn btn-primary o_rs_btn_save" title="Salva come nuova versione"
+                        <button class="btn o_rs_tb_btn btn-primary o_rs_btn_save" title="Save as a new version"
                                 t-att-disabled="!state.reportId" t-on-click="saveVersion">
-                            <i class="fa fa-save"/><span>Salva</span>
+                            <i class="fa fa-save"/><span>Save</span>
                         </button>
                     </div>
                 </div>
 
                 <div class="o_rs_body d-flex flex-grow-1">
 
-                    <!-- SINISTRA: strumenti e versioni -->
+                    <!-- LEFT: tools and versions -->
                     <div class="o_rs_left d-flex flex-column border-end">
                         <div t-if="state.mode !== 'qweb'" class="o_rs_toolbox flex-grow-1 overflow-auto p-2">
-                            <div class="o_rs_section_title"><i class="fa fa-th-large me-1"/>Blocchi</div>
+                            <div class="o_rs_section_title"><i class="fa fa-th-large me-1"/>Blocks</div>
                             <t t-foreach="blockGroups" t-as="group" t-key="group.label">
                                 <div class="o_rs_group_label"><t t-esc="group.label"/></div>
                                 <t t-foreach="group.items" t-as="item" t-key="item.type">
@@ -243,7 +244,7 @@
                                 </t>
                             </t>
                             <div class="small text-muted mt-2">
-                                Il blocco va dentro quello selezionato (Sezione, Colonna, Condizione) oppure dopo di esso.
+                                The block goes inside the selected one (Section, Column, Condition) or after it.
                             </div>
                         </div>
                         <div t-attf-class="o_rs_versions overflow-auto p-2 {{ state.mode !== 'qweb' ? 'border-top' : 'flex-grow-1' }}">
@@ -251,17 +252,17 @@
                         </div>
                     </div>
 
-                    <!-- CENTRO: pagina -->
+                    <!-- CENTER: page -->
                     <t t-if="state.mode === 'qweb'">
                         <div class="flex-grow-1 p-2 d-flex flex-column min-w-0">
-                            <div class="small text-muted mb-1">Template QWeb. Layout e stile vengono da Odoo.</div>
+                            <div class="small text-muted mb-1">QWeb template. Layout and style come from Odoo.</div>
                             <textarea class="form-control font-monospace flex-grow-1" t-model="state.qwebText" t-on-input="markDirty"/>
                         </div>
                     </t>
                     <div t-else="" class="o_rs_canvas flex-grow-1 min-w-0 position-relative">
                         <div t-if="state.canvasError" class="alert alert-warning m-2 o_rs_canvas_error"><t t-esc="state.canvasError"/></div>
                         <div t-if="!state.definition.children.length" class="o_rs_canvas_hint text-muted">
-                            Pagina vuota: aggiungi un blocco dalla colonna di sinistra.
+                            Empty page: add a block from the left column.
                         </div>
                         <span t-if="state.canvasLoading" class="o_rs_canvas_loading text-muted small">
                             <i class="fa fa-spinner fa-spin"/>
@@ -269,30 +270,28 @@
                         <iframe t-ref="canvas" class="o_rs_canvas_frame"/>
                     </div>
 
-                    <!-- DESTRA: proprietà -->
+                    <!-- RIGHT: properties -->
                     <div class="o_rs_props p-3 border-start overflow-auto">
-                        <div class="o_rs_section_title"><i class="fa fa-cog me-1"/>Proprietà</div>
+                        <div class="o_rs_section_title"><i class="fa fa-cog me-1"/>Properties</div>
                         <t t-if="state.mode === 'qweb'">
-                            <div class="text-muted">Modalità QWeb libero: il template si modifica al centro.</div>
+                            <div class="text-muted">Free QWeb mode: the template is edited in the center.</div>
                         </t>
                         <t t-else="">
                             <div t-if="isTranslating" class="alert alert-info py-2 small o_rs_translating">
-                                <i class="fa fa-language me-1"/>Traduzione in <b t-esc="langName(state.editLang)"/>:
-                                testi, etichette e intestazioni si scrivono in questa lingua. Se lasci vuoto
-                                si stampa il testo in <t t-esc="langName(baseLang)"/> (in grigio).
+                                <i class="fa fa-language me-1"/><t t-esc="translatingNotice"/>
                             </div>
                             <t t-if="selected">
                                 <div class="o_rs_props_title mb-2"><t t-esc="blockLabels[selected.type] or selected.type"/></div>
 
                                 <t t-if="selected.type === 'section'">
-                                    <label class="form-label">Classe CSS</label>
+                                    <label class="form-label">CSS Class</label>
                                     <input class="form-control" t-model="selected.class" t-on-input="markDirty"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
                                 <t t-if="selected.type === 'columns'">
-                                    <label class="form-label">Numero di colonne</label>
+                                    <label class="form-label">Number of Columns</label>
                                     <select class="form-select o_rs_columns_count" t-on-change="onColumnsCount">
                                         <t t-foreach="columnCounts" t-as="n" t-key="n">
                                             <option t-att-value="n" t-att-selected="selected.children.length === n"><t t-esc="n"/></option>
@@ -301,29 +300,29 @@
                                     <div class="form-check form-switch mt-2">
                                         <input class="form-check-input o_rs_columns_divider" type="checkbox" id="o_rs_divider"
                                                t-model="selected.divider" t-on-change="markDirty"/>
-                                        <label class="form-check-label" for="o_rs_divider">Riga verticale tra le colonne</label>
+                                        <label class="form-check-label" for="o_rs_divider">Vertical line between the columns</label>
                                     </div>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <div class="small text-muted mt-2">
-                                        Per aggiungere blocchi o impostare i margini di una colonna, clicca dentro la colonna nella pagina.
+                                        To add blocks or set the margins of a column, click inside the column in the page.
                                     </div>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
                                 <t t-if="selected.type === 'column'">
-                                    <div class="small text-muted">I blocchi aggiunti dalla colonna di sinistra vanno in questa colonna.</div>
+                                    <div class="small text-muted">The blocks added from the left column go into this column.</div>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
                                 <t t-if="selected.type === 'separator'">
-                                    <label class="form-label">Stile della riga</label>
+                                    <label class="form-label">Line Style</label>
                                     <select class="form-select o_rs_separator_style" t-model="selected.style" t-on-change="markDirty">
                                         <t t-foreach="separatorStyles" t-as="st" t-key="st[0]">
                                             <option t-att-value="st[0]"><t t-esc="st[1]"/></option>
                                         </t>
                                     </select>
-                                    <label class="form-label mt-2">Spessore</label>
+                                    <label class="form-label mt-2">Thickness</label>
                                     <select class="form-select o_rs_separator_thickness" t-model.number="selected.thickness" t-on-change="markDirty">
                                         <t t-foreach="[1, 2, 3, 4, 5]" t-as="px" t-key="px">
                                             <option t-att-value="px"><t t-esc="px"/> px</option>
@@ -332,72 +331,72 @@
                                 </t>
 
                                 <t t-if="selected.type === 'spacer'">
-                                    <label class="form-label">Altezza (mm)</label>
+                                    <label class="form-label">Height (mm)</label>
                                     <input type="number" min="1" max="200" step="1" class="form-control o_rs_spacer_height"
                                            t-model.number="selected.height" t-on-change="markDirty"/>
                                 </t>
 
                                 <t t-if="selected.type === 'page_break'">
-                                    <div class="text-muted">Nel PDF il contenuto successivo inizia su una nuova pagina.</div>
+                                    <div class="text-muted">In the PDF the following content starts on a new page.</div>
                                 </t>
 
                                 <t t-if="selected.type === 'text'">
-                                    <label class="form-label">Testo</label>
+                                    <label class="form-label">Text</label>
                                     <textarea class="form-control o_rs_text_content" rows="4"
                                               t-att-value="trValue(selected, 'content')"
                                               t-att-placeholder="trPlaceholder(selected, 'content')"
                                               t-on-input="(ev) => this.setTr(selected, 'content', ev)"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
-                                        <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="'Carattere'"/>
+                                        <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="fontTitles.font"/>
                                     </t>
                                 </t>
 
                                 <t t-if="selected.type === 'field'">
-                                    <label class="form-label">Campo</label>
+                                    <label class="form-label">Field</label>
                                     <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
-                                    <label class="form-label mt-2">Etichetta</label>
+                                    <label class="form-label mt-2">Label</label>
                                     <input class="form-control o_rs_field_label"
-                                           t-att-placeholder="trPlaceholder(selected, 'label', 'es. DDT num:') or 'es. DDT num:'"
+                                           t-att-placeholder="trPlaceholder(selected, 'label', labelPlaceholder) or labelPlaceholder"
                                            t-att-value="trValue(selected, 'label')"
                                            t-on-input="(ev) => this.setTr(selected, 'label', ev)"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
-                                        <t t-set="font" t-value="selected.label_font"/><t t-set="title" t-value="'Carattere etichetta'"/>
+                                        <t t-set="font" t-value="selected.label_font"/><t t-set="title" t-value="fontTitles.label"/>
                                     </t>
                                     <t t-call="report_studio.FontControls">
-                                        <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="'Carattere valore'"/>
+                                        <t t-set="font" t-value="selected.font"/><t t-set="title" t-value="fontTitles.value"/>
                                     </t>
                                 </t>
 
                                 <t t-if="selected.type === 'table'">
-                                    <label class="form-label">Sorgente (one2many / many2many)</label>
+                                    <label class="form-label">Source (one2many / many2many)</label>
                                     <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onTableSourceChange"/>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
-                                        <t t-set="font" t-value="selected.head_font"/><t t-set="title" t-value="'Carattere intestazione'"/>
+                                        <t t-set="font" t-value="selected.head_font"/><t t-set="title" t-value="fontTitles.head"/>
                                     </t>
                                     <t t-call="report_studio.FontControls">
-                                        <t t-set="font" t-value="selected.body_font"/><t t-set="title" t-value="'Carattere righe'"/>
+                                        <t t-set="font" t-value="selected.body_font"/><t t-set="title" t-value="fontTitles.body"/>
                                     </t>
                                     <div class="d-flex align-items-baseline mt-3 mb-1">
-                                        <span class="fw-bold me-auto">Colonne</span>
+                                        <span class="fw-bold me-auto">Columns</span>
                                         <small t-attf-class="o_rs_width_total {{ totalWidth(selected.columns) === 100 ? 'text-muted' : 'text-danger' }}">
-                                            Totale <t t-esc="totalWidth(selected.columns)"/>%
+                                            Total <t t-esc="totalWidth(selected.columns)"/>%
                                         </small>
                                     </div>
-                                    <!-- Una riga per colonna: campo, etichetta, larghezza, blocco, allineamento, rimuovi. -->
+                                    <!-- One row per column: field, label, width, lock, alignment, remove. -->
                                     <div class="o_rs_column_grid o_rs_column_head small text-muted">
-                                        <span>Campo</span><span>Etichetta</span><span>Largh. %</span>
-                                        <span title="Blocca la larghezza"><i class="fa fa-lock"/></span>
-                                        <span title="Allineamento"><i class="fa fa-align-left"/></span><span/>
+                                        <span>Field</span><span>Label</span><span>Width %</span>
+                                        <span title="Lock the width"><i class="fa fa-lock"/></span>
+                                        <span title="Alignment"><i class="fa fa-align-left"/></span><span/>
                                     </div>
                                     <t t-foreach="selected.columns" t-as="col" t-key="col._uid">
                                         <div class="o_rs_column o_rs_column_grid mb-1" t-att-data-uid="col._uid">
-                                            <input class="form-control form-control-sm" list="rs_cols" placeholder="campo"
+                                            <input class="form-control form-control-sm" list="rs_cols" placeholder="field"
                                                    t-model="col.path" t-on-input="markDirty"/>
                                             <input class="form-control form-control-sm o_rs_col_label"
-                                                   t-att-placeholder="trPlaceholder(col, 'label', 'etichetta') or 'etichetta'"
+                                                   t-att-placeholder="trPlaceholder(col, 'label', columnLabelPlaceholder) or columnLabelPlaceholder"
                                                    t-att-value="trValue(col, 'label')"
                                                    t-on-input="(ev) => this.setTr(col, 'label', ev)"/>
                                             <input type="number" min="1" max="100" step="1"
@@ -405,20 +404,20 @@
                                                    t-att-value="col.width" t-att-disabled="col.locked"
                                                    t-on-change="(ev) => this.onColumnWidth(col._uid, ev)"/>
                                             <input type="checkbox" class="form-check-input o_rs_width_lock m-0"
-                                                   title="Blocca: non cambia quando si modificano le altre colonne"
+                                                   title="Lock: it does not change when the other columns change"
                                                    t-att-checked="col.locked"
                                                    t-on-change="(ev) => this.onColumnLock(col._uid, ev)"/>
                                             <Dropdown menuClass="'o_rs_col_align_menu'">
                                                 <button type="button"
                                                         t-attf-class="btn btn-sm btn-outline-secondary o_rs_col_align {{ col.align ? '' : 'o_rs_inherited' }}"
                                                         t-att-data-align="col.align or ''"
-                                                        t-att-title="col.align ? alignLabel(col.align) : 'Come la tabella (' + alignLabel(tableAlign).toLowerCase() + ')'">
+                                                        t-att-title="columnAlignTitle(col)">
                                                     <i t-attf-class="fa {{ alignIcon(col.align or tableAlign) }}"/>
                                                 </button>
                                                 <t t-set-slot="content">
                                                     <DropdownItem onSelected="() => this.setColumnAlign(col._uid, '')"
                                                                   class="col.align ? '' : 'active'" attrs="{'data-align': ''}">
-                                                        <i t-attf-class="fa {{ alignIcon(tableAlign) }} fa-fw me-2 opacity-50"/>Come la tabella
+                                                        <i t-attf-class="fa {{ alignIcon(tableAlign) }} fa-fw me-2 opacity-50"/>As the table
                                                     </DropdownItem>
                                                     <t t-foreach="alignments" t-as="al" t-key="al[0]">
                                                         <DropdownItem onSelected="() => this.setColumnAlign(col._uid, al[0])"
@@ -429,7 +428,7 @@
                                                 </t>
                                             </Dropdown>
                                             <button class="btn btn-sm btn-outline-danger" t-att-data-uid="col._uid"
-                                                    t-on-click="onRemoveColumn" title="Rimuovi colonna">×</button>
+                                                    t-on-click="onRemoveColumn" title="Remove column">×</button>
                                         </div>
                                     </t>
                                     <datalist id="rs_cols">
@@ -437,48 +436,48 @@
                                             <option t-att-value="cf.name"/>
                                         </t>
                                     </datalist>
-                                    <button class="btn btn-sm btn-outline-primary" t-on-click="onAddColumn">+ colonna</button>
+                                    <button class="btn btn-sm btn-outline-primary" t-on-click="onAddColumn">+ column</button>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
                                 <t t-if="selected.type === 'if'">
-                                    <label class="form-label">Campo</label>
+                                    <label class="form-label">Field</label>
                                     <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
-                                    <label class="form-label mt-2">Operatore</label>
+                                    <label class="form-label mt-2">Operator</label>
                                     <select class="form-select" t-model="selected.op" t-on-change="markDirty">
-                                        <option value="==">uguale a</option>
-                                        <option value="!=">diverso da</option>
-                                        <option value=">">maggiore di</option>
-                                        <option value="&lt;">minore di</option>
-                                        <option value=">=">maggiore o uguale</option>
-                                        <option value="&lt;=">minore o uguale</option>
+                                        <option value="==">equal to</option>
+                                        <option value="!=">different from</option>
+                                        <option value=">">greater than</option>
+                                        <option value="&lt;">less than</option>
+                                        <option value=">=">greater or equal</option>
+                                        <option value="&lt;=">less or equal</option>
                                     </select>
-                                    <label class="form-label mt-2">Valore</label>
+                                    <label class="form-label mt-2">Value</label>
                                     <input class="form-control" t-model="selected.value" t-on-input="markDirty"/>
                                 </t>
 
                                 <div class="mt-3 d-flex gap-1" t-if="selected.type !== 'column'">
                                     <button class="btn btn-sm btn-outline-secondary" data-dir="-1" t-on-click="onMove">↑</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-dir="1" t-on-click="onMove">↓</button>
-                                    <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Elimina blocco</button>
+                                    <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Delete Block</button>
                                 </div>
                                 <div class="mt-2" t-if="selectedParentUid">
-                                    <button class="btn btn-sm btn-link px-0" t-on-click="selectParent">↖ Seleziona il contenitore</button>
+                                    <button class="btn btn-sm btn-link px-0" t-on-click="selectParent">↖ Select the container</button>
                                 </div>
                             </t>
                             <t t-else="">
-                                <div class="text-muted">Seleziona un blocco nella pagina per modificarne le proprietà.</div>
-                                <div class="o_rs_props_title mt-4 mb-2">Pagina</div>
+                                <div class="text-muted">Select a block in the page to edit its properties.</div>
+                                <div class="o_rs_props_title mt-4 mb-2">Page</div>
                                 <div class="small text-muted mb-2">
-                                    Lingua principale dei testi: <b t-esc="langName(baseLang)"/>.
+                                    Main language of the texts: <b t-esc="langName(baseLang)"/>.
                                 </div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input o_rs_print_lang" type="checkbox" id="o_rs_print_lang"
                                            t-att-checked="state.definition.print_lang?.enabled" t-on-change="onPrintLang"/>
-                                    <label class="form-check-label" for="o_rs_print_lang">Stampa nella lingua del cliente</label>
+                                    <label class="form-check-label" for="o_rs_print_lang">Print in the customer language</label>
                                 </div>
                                 <t t-if="state.definition.print_lang?.enabled">
-                                    <label class="form-label small text-muted mt-2 mb-1">Lingua letta dal contatto</label>
+                                    <label class="form-label small text-muted mt-2 mb-1">Language read from the contact</label>
                                     <select class="form-select form-select-sm o_rs_print_lang_field" t-on-change="onPrintLangField">
                                         <t t-foreach="partnerFields" t-as="pf" t-key="pf.name">
                                             <option t-att-value="pf.name" t-att-selected="pf.name === state.definition.print_lang.field">
@@ -487,12 +486,11 @@
                                         </t>
                                     </select>
                                     <div class="small text-muted mt-1">
-                                        Testi tradotti e campi di Odoo (prodotti, date, selezioni) escono nella lingua del
-                                        contatto; se il contatto non ha lingua, in quella di chi stampa.
+                                        Translated texts and Odoo fields (products, dates, selections) are printed in the language of the contact; when the contact has no language, in the one of the user printing.
                                     </div>
                                 </t>
                                 <div t-else="" class="small text-muted mt-1">
-                                    Spenta: si stampa nella lingua di chi stampa.
+                                    Off: printed in the language of the user printing.
                                 </div>
                             </t>
                         </t>

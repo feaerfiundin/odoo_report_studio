@@ -1,66 +1,72 @@
-# -*- coding: utf-8 -*-
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import json
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-IMMUTABLE_FIELDS = {"report_id", "version_no", "definition", "comment", "arch", "view_id",
-                    "document_view_id"}
+IMMUTABLE_FIELDS = {
+    "report_id",
+    "version_no",
+    "definition",
+    "comment",
+    "arch",
+    "view_id",
+    "document_view_id",
+}
 
 
 class RsReportVersion(models.Model):
-    """Snapshot immutabile di un report: definizione JSON, template QWeb e vista.
+    """Immutable snapshot of a report: JSON definition, QWeb template and view.
 
-    Una volta creata, la versione non può essere modificata: le modifiche
-    producono una nuova versione tramite rs.report._create_version().
+    Once created, a version cannot be changed: changes produce a new version
+    through rs.report._create_version().
     """
 
     _name = "rs.report.version"
-    _description = "Report Studio - Versione"
+    _description = "Report Studio - Version"
     _order = "version_no desc"
 
     report_id = fields.Many2one(
-        "rs.report", required=True, ondelete="cascade", index=True
+        "rs.report", string="Report", required=True, ondelete="cascade", index=True
     )
-    version_no = fields.Integer(required=True, readonly=True)
+    version_no = fields.Integer(string="Version", required=True, readonly=True)
     definition = fields.Text(
         required=True,
-        help="Definizione JSON dei blocchi del report.",
+        help="JSON definition of the report blocks.",
     )
     arch = fields.Text(
         readonly=True,
-        help="Template QWeb generato dalla definizione.",
+        help="QWeb template generated from the definition.",
     )
     view_id = fields.Many2one(
         "ir.ui.view",
-        string="Vista QWeb",
+        string="QWeb View",
         readonly=True,
         ondelete="restrict",
     )
     document_view_id = fields.Many2one(
         "ir.ui.view",
-        string="Vista QWeb della pagina",
+        string="Page QWeb View",
         readonly=True,
         ondelete="restrict",
-        help="Solo con la stampa nella lingua del cliente: la pagina, chiamata "
-             "dalla vista principale con t-lang.",
+        help="Only when printing in the customer language: the page, called by "
+        "the main view with t-lang.",
     )
-    comment = fields.Char(string="Commento")
+    comment = fields.Char()
     user_id = fields.Many2one(
         "res.users",
         default=lambda self: self.env.user,
         readonly=True,
-        string="Autore",
+        string="Author",
     )
-    is_active = fields.Boolean(
-        compute="_compute_is_active", string="Attiva"
-    )
+    is_active = fields.Boolean(compute="_compute_is_active", string="Active")
 
     _sql_constraints = [
         (
             "report_version_unique",
             "unique(report_id, version_no)",
-            "Il numero di versione deve essere unico per report.",
+            "The version number must be unique per report.",
         ),
     ]
 
@@ -76,20 +82,23 @@ class RsReportVersion(models.Model):
                 json.loads(version.definition)
             except (TypeError, ValueError) as exc:
                 raise ValidationError(
-                    _("La definizione del report non è JSON valido: %s") % exc
-                )
+                    self.env._("The report definition is not valid JSON: %s", exc)
+                ) from exc
 
     def write(self, vals):
-        # Nessuna eccezione via contesto: il contesto arriva anche dai client RPC.
+        # No exception through the context: the context also comes from RPC clients.
         if IMMUTABLE_FIELDS & set(vals):
             raise UserError(
-                _("Le versioni dei report sono immutabili. "
-                  "Crea una nuova versione per modificarne il contenuto.")
+                self.env._(
+                    "Report versions are immutable. "
+                    "Create a new version to change their content."
+                )
             )
         return super().write(vals)
 
     def unlink(self):
         raise UserError(
-            _("Le versioni dei report non possono essere eliminate: "
-              "lo storico è permanente.")
+            self.env._(
+                "Report versions cannot be deleted: the history is permanent."
+            )
         )

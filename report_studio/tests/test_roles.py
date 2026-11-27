@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
-"""Uso di Report Studio da utenti NON amministratori.
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+"""Report Studio used by NON administrator users.
 
-I test girano di norma come superutente e non vedono i problemi di permessi:
-qui ogni operazione passa da with_user() con i ruoli reali.
+Tests usually run as superuser and do not see access right issues: here every
+operation goes through with_user() with the real roles.
 """
 import json
 from unittest.mock import patch
@@ -15,7 +16,6 @@ SALES = "sales_team.group_sale_salesman"
 
 @tagged("post_install", "-at_install")
 class TestRoles(TransactionCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -28,8 +28,8 @@ class TestRoles(TransactionCase):
         cls.manager = new_test_user(
             cls.env, login="rs_manager", groups="base.group_user,%s,report_studio.group_rs_manager" % SALES
         )
-        partner = cls.env["res.partner"].create({"name": "Cliente ruoli"})
-        # Venditore "solo i propri documenti": l'ordine deve essere dell'editor.
+        partner = cls.env["res.partner"].create({"name": "Roles customer"})
+        # Salesman "own documents only": the order must belong to the editor.
         cls.order = cls.env["sale.order"].create({"partner_id": partner.id, "user_id": cls.editor.id})
 
     def _rs(self, user):
@@ -39,7 +39,7 @@ class TestRoles(TransactionCase):
         Report = self._rs(self.editor)
         models = {m["model"] for m in Report.get_model_options()}
         self.assertIn("sale.order", models)
-        self.assertNotIn("ir.model", models)  # non leggibile dall'editor
+        self.assertNotIn("ir.model", models)  # not readable by the editor
         fields = {f["name"]: f for f in Report.get_model_fields("sale.order")}
         self.assertEqual(fields["order_line"]["relation"], "sale.order.line")
 
@@ -49,22 +49,22 @@ class TestRoles(TransactionCase):
         self.assertEqual(rows[0]["model_name"], "sale.order")
 
         definition = json.dumps({"children": [
-            {"type": "text", "content": "Ciao"},
+            {"type": "text", "content": "Hello"},
             {"type": "field", "path": "partner_id.name"},
             {"type": "table", "source": "order_line", "columns": [{"path": "name", "label": ""}]},
         ]})
         report.action_save_version(definition, comment="editor")
         self.assertEqual(report.version_count, 2)
         html = report._render_preview_pdf(definition, self.order.id)
-        self.assertIn(b"Ciao", html)
+        self.assertIn(b"Hello", html)
         report.restore_version_by_id(report.version_ids.filtered(lambda v: v.version_no == 1).id)
         self.assertEqual(report.version_count, 3)
-        copy_id = report.copy_version_by_id(report.current_version_id.id, "Copia editor")
+        copy_id = report.copy_version_by_id(report.current_version_id.id, "Editor copy")
         self.assertEqual(Report.browse(copy_id).version_count, 1)
 
     def test_preview_is_not_rendered_as_superuser(self):
         report = self._rs(self.editor).browse(
-            self._rs(self.editor).create_new_report("Anteprima", "sale.order")
+            self._rs(self.editor).create_new_report("Preview", "sale.order")
         )
         IrActionsReport = type(self.env["ir.actions.report"])
         original = IrActionsReport._render_qweb_pdf
@@ -86,7 +86,7 @@ class TestRoles(TransactionCase):
 
     def test_viewer_is_read_only(self):
         report = self.env["rs.report"].create({
-            "name": "Solo lettura", "model_id": self.env["ir.model"]._get("sale.order").id,
+            "name": "Read only", "model_id": self.env["ir.model"]._get("sale.order").id,
         })
         as_viewer = report.with_user(self.viewer)
         self.assertEqual(as_viewer.model_name, "sale.order")
@@ -104,7 +104,7 @@ class TestRoles(TransactionCase):
 
         manager_catalog = self._rs(self.manager).get_source_catalog()
         self.assertIn("action:%s" % action.id, [i["key"] for i in manager_catalog])
-        report_id = self._rs(self.manager).create_from_source("Ordine", "action:%s" % action.id)
+        report_id = self._rs(self.manager).create_from_source("Order", "action:%s" % action.id)
         self.assertEqual(self._rs(self.manager).browse(report_id).report_mode, "qweb")
 
     def test_role_field(self):
@@ -120,14 +120,14 @@ class TestRoles(TransactionCase):
 
     def test_only_managers_change_roles(self):
         user = new_test_user(self.env, login="rs_target", groups="base.group_user")
-        # "Diritti di accesso" senza ruolo Report Studio: non può assegnare ruoli RS.
+        # "Access rights" without Report Studio role: cannot assign RS roles.
         access_admin = new_test_user(
             self.env, login="rs_access_admin", groups="base.group_user,base.group_erp_manager"
         )
         with self.assertRaises(AccessError):
             user.with_user(access_admin).report_studio_role = "editor"
         self.assertEqual(user.report_studio_role, "none")
-        # Con anche il ruolo Amministratore Report Studio invece può.
+        # With the Report Studio Administrator role too, it can.
         rs_admin = new_test_user(
             self.env, login="rs_access_admin_rs",
             groups="base.group_user,base.group_erp_manager,report_studio.group_rs_manager",

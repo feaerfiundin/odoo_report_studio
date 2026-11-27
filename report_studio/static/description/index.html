@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.20.1: https://docutils.sourceforge.io/" />
+<title>Report Studio</title>
+
+</head>
+<body>
+<div class="document" id="report-studio">
+<h1 class="title">Report Studio</h1>
+
+<!-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! This file is generated from the readme/ fragments !!
+!! with the structure of oca-gen-addon-readme.      !!
+!! Changes here may be overwritten: edit readme/.    !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
+<p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Alpha" src="https://img.shields.io/badge/maturity-Alpha-red.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/agpl-3.0-standalone.html"><img alt="License: AGPL-3" src="https://img.shields.io/badge/licence-AGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/feaerfiundin/odoo_report_studio/tree/18.0/report_studio"><img alt="feaerfiundin/odoo_report_studio" src="https://img.shields.io/badge/github-feaerfiundin%2Fodoo__report__studio-lightgray.png?logo=github" /></a></p>
+<p>Visual designer for QWeb/PDF reports, built with blocks and with a
+permanent version history.</p>
+<p>Reports are designed in an editor with three panels: the toolbox on the
+left, the page in the center (rendered with the data of a real record, in
+the company document layout) and the properties of the selected block on
+the right.</p>
+<p>Available blocks:</p>
+<ul class="simple">
+<li><strong>Content</strong>: Text, Field (with an optional label) and Table (a one2many or
+many2many field, with column widths in percent).</li>
+<li><strong>Layout</strong>: Section, Columns (2 to 4, with an optional vertical line),
+Condition, Separator, Spacer and Page Break.</li>
+</ul>
+<p>Every block can set its font (size, bold, italic, underline), text
+alignment and inner margins where it makes sense. Free Python expressions
+are never accepted: conditions only compare validated field paths with
+scalar values.</p>
+<p>Every save creates a new immutable version: earlier versions can be
+restored or copied into a new report. Native Odoo documents can be copied
+into an editable free QWeb report (Administrators only).</p>
+<p>Texts, field labels and table headers can be translated, and a report can
+be printed in the language of the customer, like the native Odoo documents.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">This is an alpha version, the data model and design can change at any time without warning.
+Only for development or testing purpose, do not use in production.</p>
+</div>
+<p><strong>Table of contents</strong></p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#configuration" id="toc-entry-1">Configuration</a></li>
+<li><a class="reference internal" href="#usage" id="toc-entry-2">Usage</a></li>
+<li><a class="reference internal" href="#known-issues-roadmap" id="toc-entry-3">Known issues / Roadmap</a></li>
+<li><a class="reference internal" href="#bug-tracker" id="toc-entry-4">Bug Tracker</a></li>
+<li><a class="reference internal" href="#credits" id="toc-entry-5">Credits</a><ul>
+<li><a class="reference internal" href="#authors" id="toc-entry-6">Authors</a></li>
+<li><a class="reference internal" href="#contributors" id="toc-entry-7">Contributors</a></li>
+<li><a class="reference internal" href="#maintainers" id="toc-entry-8">Maintainers</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="configuration">
+<h1><a class="toc-backref" href="#toc-entry-1">Configuration</a></h1>
+<p>Give users a Report Studio role from the <strong>Report Studio</strong> tab of the user
+form (Settings → Users):</p>
+<ul class="simple">
+<li><strong>User</strong>: prints the reports, no access to the designer.</li>
+<li><strong>Viewer</strong>: sees the designer, the history and the preview, read only.</li>
+<li><strong>Editor</strong>: creates reports, saves and restores versions, manages the
+Print menu entries.</li>
+<li><strong>Administrator</strong>: also edits free QWeb and changes the Report Studio roles
+of the other users.</li>
+</ul>
+<p>Languages: activate them in Settings → Languages. The editor offers every
+active language; the main one is the default language of contacts.</p>
+</div>
+<div class="section" id="usage">
+<h1><a class="toc-backref" href="#toc-entry-2">Usage</a></h1>
+<ol class="arabic simple">
+<li>Open <strong>Report Studio → Saved Layouts</strong> and press <strong>New</strong>.</li>
+<li>Enter the name, choose the model (e.g. <tt class="docutils literal">sale.order</tt>) or a starting
+document, and press <strong>Open Visual Editor</strong>.</li>
+<li>Add blocks from the toolbox: a block goes inside the selected Section,
+Column or Condition, or after the selected block. Click a block in the
+page to edit its properties.</li>
+<li>Press <strong>Preview</strong> for the PDF, <strong>Save</strong> to create a new version.</li>
+<li>To translate the texts, choose a language in the language menu of the
+top bar and write the texts in that language; empty texts are printed in
+the main language. Click an empty spot of the page and enable <strong>Print in
+the customer language</strong> to print in the language of the contact.</li>
+</ol>
+<p>To print from the business documents (e.g. from the customer invoice), open
+<strong>Report Studio → Reports</strong>, open the report and press <strong>Add to Print
+Menu</strong>. The report is then listed in the Print menu of its model. Paper
+format, printed file name and attachment are set on the same page.</p>
+</div>
+<div class="section" id="known-issues-roadmap">
+<h1><a class="toc-backref" href="#toc-entry-3">Known issues / Roadmap</a></h1>
+<ul class="simple">
+<li>Semantic blocks (company header, addresses, totals).</li>
+<li>Report templates (&quot;Template&quot;, &quot;Save as Template&quot;), test print and help,
+shown as &quot;coming soon&quot; in the editor.</li>
+<li>Drag and drop of blocks (today they are moved with the arrows).</li>
+</ul>
+</div>
+<div class="section" id="bug-tracker">
+<h1><a class="toc-backref" href="#toc-entry-4">Bug Tracker</a></h1>
+<p>Bugs are tracked on <a class="reference external" href="https://github.com/feaerfiundin/odoo_report_studio/issues">GitHub Issues</a>.
+In case of trouble, please check there if your issue has already been reported.</p>
+</div>
+<div class="section" id="credits">
+<h1><a class="toc-backref" href="#toc-entry-5">Credits</a></h1>
+<div class="section" id="authors">
+<h2><a class="toc-backref" href="#toc-entry-6">Authors</a></h2>
+<ul class="simple">
+<li>feaerfiundin</li>
+</ul>
+</div>
+<div class="section" id="contributors">
+<h2><a class="toc-backref" href="#toc-entry-7">Contributors</a></h2>
+<ul class="simple">
+<li>feaerfiundin</li>
+</ul>
+</div>
+<div class="section" id="maintainers">
+<h2><a class="toc-backref" href="#toc-entry-8">Maintainers</a></h2>
+<p>This module is maintained by feaerfiundin.</p>
+<p>This module is part of the <a class="reference external" href="https://github.com/feaerfiundin/odoo_report_studio/tree/18.0/report_studio">feaerfiundin/odoo_report_studio</a> project on GitHub.</p>
+<p>You are welcome to contribute.</p>
+</div>
+</div>
+</div>
+</body>
+</html>

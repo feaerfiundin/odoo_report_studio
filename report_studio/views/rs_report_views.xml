@@ -1,25 +1,39 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <odoo>
-    <!-- Elenco Saved Layouts: vista standard di Odoo, così ricerca, filtri,
-         raggruppamenti, preferiti e ordinamento per colonna sono quelli nativi.
-         js_class apre l'editor (azione client) al posto del form. -->
+    <!-- Saved Layouts list: standard Odoo view, so search, filters, groupings,
+         favorites and sorting by column are the native ones.
+         js_class opens the editor (client action) instead of the form. -->
     <record id="rs_report_view_list" model="ir.ui.view">
         <field name="name">rs.report.list</field>
         <field name="model">rs.report</field>
         <field name="arch" type="xml">
-            <list string="Saved Layouts" js_class="rs_report_list" default_order="write_date desc"
-                  decoration-muted="not active">
-                <field name="name" string="Report"/>
-                <field name="model_name" string="Modello"/>
-                <field name="report_mode" string="Modalità"/>
-                <field name="write_uid" string="Modificato da" optional="hide"/>
-                <field name="write_date" string="Ultima modifica"/>
-                <!-- Chi può modificare i report attiva/disattiva dall'elenco;
-                     il visualizzatore vede solo lo stato. -->
-                <field name="active" string="Attivo" widget="boolean_toggle"
-                       groups="report_studio.group_rs_editor,base.group_system"/>
-                <field name="active" string="Attivo" readonly="1"
-                       groups="!report_studio.group_rs_editor,!base.group_system"/>
+            <list
+                string="Saved Layouts"
+                js_class="rs_report_list"
+                default_order="write_date desc"
+                decoration-muted="not active"
+            >
+                <field name="name" string="Report" />
+                <field name="model_name" string="Model" />
+                <field name="report_mode" string="Mode" />
+                <field name="write_uid" string="Modified by" optional="hide" />
+                <field name="write_date" string="Last Modified" />
+                <!-- Who can edit reports activates/archives them from the list;
+                     the viewer only sees the state. -->
+                <field
+                    name="active"
+                    string="Active"
+                    widget="boolean_toggle"
+                    groups="report_studio.group_rs_editor,base.group_system"
+                />
+                <field
+                    name="active"
+                    string="Active"
+                    readonly="1"
+                    groups="!report_studio.group_rs_editor,!base.group_system"
+                />
             </list>
         </field>
     </record>
@@ -29,67 +43,130 @@
         <field name="model">rs.report</field>
         <field name="arch" type="xml">
             <search string="Saved Layouts">
-                <field name="name" string="Report"/>
-                <field name="model_name" string="Modello (nome tecnico)"/>
-                <field name="model_id" string="Modello"/>
-                <field name="report_mode" string="Modalità"/>
-                <field name="write_uid" string="Modificato da"/>
-                <field name="create_uid" string="Creato da"/>
-                <filter name="filter_active" string="Attivi" domain="[('active', '=', True)]"/>
-                <filter name="filter_archived" string="Archiviati" domain="[('active', '=', False)]"/>
-                <separator/>
-                <filter name="filter_print_menu" string="Nel menu Stampa" domain="[('in_print_menu', '=', True), ('active', '=', True)]"/>
-                <filter name="filter_not_print_menu" string="Non nel menu Stampa" domain="['|', ('in_print_menu', '=', False), ('active', '=', False)]"/>
-                <separator/>
-                <filter name="filter_blocks" string="Blocchi" domain="[('report_mode', '=', 'blocks')]"/>
-                <filter name="filter_qweb" string="QWeb libero" domain="[('report_mode', '=', 'qweb')]"/>
-                <separator/>
-                <filter name="filter_write_date" string="Ultima modifica" date="write_date"/>
-                <filter name="filter_mine" string="Modificati da me" domain="[('write_uid', '=', uid)]"/>
+                <field name="name" string="Report" />
+                <field name="model_name" string="Model (technical name)" />
+                <field name="model_id" string="Model" />
+                <field name="report_mode" string="Mode" />
+                <field name="write_uid" string="Modified by" />
+                <field name="create_uid" string="Created by" />
+                <filter
+                    name="filter_active"
+                    string="Active Reports"
+                    domain="[('active', '=', True)]"
+                />
+                <filter
+                    name="filter_archived"
+                    string="Archived Reports"
+                    domain="[('active', '=', False)]"
+                />
+                <separator />
+                <filter
+                    name="filter_print_menu"
+                    string="In Print Menu"
+                    domain="[('in_print_menu', '=', True), ('active', '=', True)]"
+                />
+                <filter
+                    name="filter_not_print_menu"
+                    string="Not in Print Menu"
+                    domain="['|', ('in_print_menu', '=', False), ('active', '=', False)]"
+                />
+                <separator />
+                <filter
+                    name="filter_blocks"
+                    string="Blocks"
+                    domain="[('report_mode', '=', 'blocks')]"
+                />
+                <filter
+                    name="filter_qweb"
+                    string="Free QWeb"
+                    domain="[('report_mode', '=', 'qweb')]"
+                />
+                <separator />
+                <filter
+                    name="filter_write_date"
+                    string="Last Modified"
+                    date="write_date"
+                />
+                <filter
+                    name="filter_mine"
+                    string="Modified by Me"
+                    domain="[('write_uid', '=', uid)]"
+                />
                 <group>
-                    <filter name="group_model" string="Modello" context="{'group_by': 'model_name'}"/>
-                    <filter name="group_mode" string="Modalità" context="{'group_by': 'report_mode'}"/>
-                    <filter name="group_active" string="Attivo" context="{'group_by': 'active'}"/>
-                    <filter name="group_print_menu" string="Nel menu Stampa" context="{'group_by': 'in_print_menu'}"/>
-                    <filter name="group_write_uid" string="Modificato da" context="{'group_by': 'write_uid'}"/>
-                    <filter name="group_write_date" string="Ultima modifica" context="{'group_by': 'write_date:month'}"/>
+                    <filter
+                        name="group_model"
+                        string="Model"
+                        context="{'group_by': 'model_name'}"
+                    />
+                    <filter
+                        name="group_mode"
+                        string="Mode"
+                        context="{'group_by': 'report_mode'}"
+                    />
+                    <filter
+                        name="group_active"
+                        string="Active"
+                        context="{'group_by': 'active'}"
+                    />
+                    <filter
+                        name="group_print_menu"
+                        string="In Print Menu"
+                        context="{'group_by': 'in_print_menu'}"
+                    />
+                    <filter
+                        name="group_write_uid"
+                        string="Modified by"
+                        context="{'group_by': 'write_uid'}"
+                    />
+                    <filter
+                        name="group_write_date"
+                        string="Last Modified"
+                        context="{'group_by': 'write_date:month'}"
+                    />
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- active_test=False: i report archiviati restano in elenco (colonna Attivo)
-         e si isolano con i filtri Attivi / Archiviati. -->
+    <!-- active_test=False: archived reports stay in the list (Active column)
+         and are isolated with the Active / Archived filters. -->
     <record id="action_rs_report_list" model="ir.actions.act_window">
         <field name="name">Saved Layouts</field>
         <field name="res_model">rs.report</field>
         <field name="view_mode">list</field>
-        <field name="view_id" ref="rs_report_view_list"/>
-        <field name="search_view_id" ref="rs_report_view_search"/>
-        <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
+        <field name="view_id" ref="rs_report_view_list" />
+        <field name="search_view_id" ref="rs_report_view_search" />
+        <field
+            name="context"
+        >{'active_test': False, 'search_default_filter_active': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nessun report</p>
-            <p>Premi "Nuovo" per crearne uno.</p>
+            <p class="o_view_nocontent_smiling_face">No report</p>
+            <p>Press "New" to create one.</p>
         </field>
     </record>
 
-    <!-- Pagina Report: come Impostazioni > Tecnico > Report, ma solo per i report
-         di Report Studio. Qui si decide se un report compare nel menu Stampa del
-         suo modello (es. nella fattura) e come viene stampato. I report si creano
-         e si disegnano da Saved Layouts: qui niente Nuovo né Elimina. -->
+    <!-- Reports page: like Settings > Technical > Reports, but only for the
+         Report Studio reports. Here you choose whether a report is listed in the
+         Print menu of its model (e.g. on the invoice) and how it is printed.
+         Reports are created and designed from Saved Layouts: no New nor Delete here. -->
     <record id="rs_report_print_view_list" model="ir.ui.view">
         <field name="name">rs.report.print.list</field>
         <field name="model">rs.report</field>
         <field name="priority">20</field>
         <field name="arch" type="xml">
-            <list string="Report" create="0" delete="0" decoration-muted="not active">
-                <field name="name" string="Report"/>
-                <field name="print_name" optional="show"/>
-                <field name="model_name" string="Modello"/>
-                <field name="report_key" optional="hide"/>
-                <field name="paperformat_id" optional="show"/>
-                <field name="in_print_menu" widget="boolean" readonly="1"/>
-                <field name="active" string="Attivo" readonly="1"/>
+            <list
+                string="Reports"
+                create="0"
+                delete="0"
+                decoration-muted="not active"
+            >
+                <field name="name" string="Report" />
+                <field name="print_name" optional="show" />
+                <field name="model_name" string="Model" />
+                <field name="report_key" optional="hide" />
+                <field name="paperformat_id" optional="show" />
+                <field name="in_print_menu" widget="boolean" readonly="1" />
+                <field name="active" string="Active" readonly="1" />
             </list>
         </field>
     </record>
@@ -101,42 +178,77 @@
         <field name="arch" type="xml">
             <form string="Report" create="0" delete="0" duplicate="0">
                 <header>
-                    <button name="action_add_print_menu" type="object" class="btn-primary o_rs_add_print_menu"
-                            string="Aggiungi al menu Stampa" icon="fa-print"
-                            invisible="in_print_menu or not active"
-                            groups="report_studio.group_rs_editor,base.group_system"/>
-                    <button name="action_remove_print_menu" type="object" class="o_rs_remove_print_menu"
-                            string="Rimuovi dal menu Stampa"
-                            invisible="not in_print_menu"
-                            groups="report_studio.group_rs_editor,base.group_system"/>
+                    <button
+                        name="action_add_print_menu"
+                        type="object"
+                        class="btn-primary o_rs_add_print_menu"
+                        string="Add to Print Menu"
+                        icon="fa-print"
+                        invisible="in_print_menu or not active"
+                        groups="report_studio.group_rs_editor,base.group_system"
+                    />
+                    <button
+                        name="action_remove_print_menu"
+                        type="object"
+                        class="o_rs_remove_print_menu"
+                        string="Remove from Print Menu"
+                        invisible="not in_print_menu"
+                        groups="report_studio.group_rs_editor,base.group_system"
+                    />
                 </header>
                 <sheet>
                     <div class="alert alert-warning" role="alert" invisible="active">
-                        Report archiviato: non compare nel menu Stampa. Riattivalo da Saved Layouts.
+                        Archived report: it is not listed in the Print menu. Restore it from Saved Layouts.
                     </div>
-                    <div class="alert alert-info o_rs_print_menu_info" role="status" invisible="not in_print_menu or not active">
-                        Il report è nel menu Stampa del modello <field name="model_name" class="fw-bold" readonly="1"/>.
+                    <div
+                        class="alert alert-info o_rs_print_menu_info"
+                        role="status"
+                        invisible="not in_print_menu or not active"
+                    >
+                        The report is in the Print menu of the model <field
+                            name="model_name"
+                            class="fw-bold"
+                            readonly="1"
+                        />.
                     </div>
                     <div class="oe_title">
-                        <h1><field name="name" readonly="1"/></h1>
+                        <h1>
+                            <field name="name" readonly="1" />
+                        </h1>
                     </div>
                     <group>
                         <group string="Report">
-                            <field name="model_id" readonly="1" options="{'no_open': True}"/>
-                            <field name="report_mode" readonly="1"/>
-                            <field name="report_key" readonly="1"/>
-                            <field name="in_print_menu" readonly="1"/>
-                            <field name="active" invisible="1"/>
+                            <field
+                                name="model_id"
+                                readonly="1"
+                                options="{'no_open': True}"
+                            />
+                            <field name="report_mode" readonly="1" />
+                            <field name="report_key" readonly="1" />
+                            <field name="in_print_menu" readonly="1" />
+                            <field name="active" invisible="1" />
                         </group>
-                        <group string="Stampa">
-                            <field name="print_name" placeholder="come il nome del report"/>
-                            <field name="paperformat_id" options="{'no_create': True}"
-                                   placeholder="formato carta dell'azienda"/>
-                            <field name="print_report_name" placeholder="'Fattura - %s' % object.name"/>
+                        <group string="Printing">
+                            <field
+                                name="print_name"
+                                placeholder="same as the report name"
+                            />
+                            <field
+                                name="paperformat_id"
+                                options="{'no_create': True}"
+                                placeholder="company paper format"
+                            />
+                            <field
+                                name="print_report_name"
+                                placeholder="'Invoice - %s' % object.name"
+                            />
                         </group>
-                        <group string="Allegato">
-                            <field name="attachment" placeholder="(object.name + '.pdf')"/>
-                            <field name="attachment_use"/>
+                        <group string="Attachment">
+                            <field
+                                name="attachment"
+                                placeholder="(object.name + '.pdf')"
+                            />
+                            <field name="attachment_use" />
                         </group>
                     </group>
                 </sheet>
@@ -145,17 +257,22 @@
     </record>
 
     <record id="action_rs_report_print" model="ir.actions.act_window">
-        <field name="name">Report</field>
+        <field name="name">Reports</field>
         <field name="res_model">rs.report</field>
         <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="rs_report_view_search"/>
-        <field name="view_ids" eval="[(5, 0, 0),
+        <field name="search_view_id" ref="rs_report_view_search" />
+        <field
+            name="view_ids"
+            eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'list', 'view_id': ref('rs_report_print_view_list')}),
-            (0, 0, {'view_mode': 'form', 'view_id': ref('rs_report_print_view_form')})]"/>
-        <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
+            (0, 0, {'view_mode': 'form', 'view_id': ref('rs_report_print_view_form')})]"
+        />
+        <field
+            name="context"
+        >{'active_test': False, 'search_default_filter_active': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nessun report</p>
-            <p>I report si creano da Saved Layouts.</p>
+            <p class="o_view_nocontent_smiling_face">No report</p>
+            <p>Reports are created from Saved Layouts.</p>
         </field>
     </record>
 </odoo>

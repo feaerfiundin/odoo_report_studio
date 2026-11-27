@@ -1,8 +1,10 @@
-# -*- coding: utf-8 -*-
-"""Test del compilatore puro, eseguibili senza Odoo:
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+"""Tests of the pure compiler, runnable without Odoo:
 
     python3 report_studio/tests/test_compiler.py
 """
+
 import importlib.util
 import os
 import unittest
@@ -58,13 +60,12 @@ def compile_(children, layout=None):
 
 
 class TestCompiler(unittest.TestCase):
-
     def test_template_wrapper(self):
         xml = compile_([])
         self.assertIn('t-name="report_studio.test_v1"', xml)
         self.assertIn('t-call="web.html_container"', xml)
         self.assertIn('t-foreach="docs" t-as="o"', xml)
-        self.assertIn("web.external_layout", xml)  # layout predefinito: quello di Odoo
+        self.assertIn("web.external_layout", xml)  # default layout: the Odoo one
 
     def test_external_layout(self):
         self.assertIn("web.external_layout", compile_([], layout="external"))
@@ -82,17 +83,17 @@ class TestCompiler(unittest.TestCase):
         xml = compile_([{
             "type": "table",
             "source": "order_line",
-            "columns": [{"path": "name", "label": "Descrizione"},
-                        {"path": "product_uom_qty", "label": "Q.tà"}],
+            "columns": [{"path": "name", "label": "Description"},
+                        {"path": "product_uom_qty", "label": "Qty"}],
         }])
         self.assertIn('t-foreach="o.order_line"', xml)
         self.assertIn('t-field="line_1.name"', xml)
-        self.assertIn("<th>Descrizione</th>", xml)
+        self.assertIn("<th>Description</th>", xml)
 
     def test_if_block_with_literal(self):
         xml = compile_([{
             "type": "if", "path": "amount_total", "op": ">", "value": 0,
-            "children": [{"type": "text", "content": "Totale positivo"}],
+            "children": [{"type": "text", "content": "Positive total"}],
         }])
         self.assertIn('t-if="o.amount_total &gt; 0"', xml)
 
@@ -124,7 +125,7 @@ class TestCompiler(unittest.TestCase):
 
     def test_unknown_field_rejected(self):
         with self.assertRaises(compiler.CompileError):
-            compile_([{"type": "field", "path": "campo_inesistente"}])
+            compile_([{"type": "field", "path": "missing_field"}])
 
     def test_table_on_many2one_rejected(self):
         with self.assertRaises(compiler.CompileError):
@@ -165,7 +166,6 @@ class TestCompiler(unittest.TestCase):
         with self.assertRaises(compiler.CompileError):
             compile_([block])
 
-
     def test_qweb_mode_rekeys_template(self):
         arch = '<t t-name="sale.report_saleorder"><t t-call="web.html_container"/></t>'
         xml = compiler.compile_definition(
@@ -185,7 +185,7 @@ class TestCompiler(unittest.TestCase):
             compiler.compile_definition({"mode": "qweb", "arch": " "}, "sale.order", "report_studio.test_q3")
 
 
-    # ----- vista visuale dell'editor (annotate=True) -----
+    # ----- visual view of the editor (annotate=True) -----
 
     def _annotated(self, children):
         return compiler.compile_definition(
@@ -194,7 +194,7 @@ class TestCompiler(unittest.TestCase):
 
     def test_annotate_marks_blocks_with_tree_path(self):
         arch = self._annotated([
-            {"type": "text", "content": "Ciao"},
+            {"type": "text", "content": "Hello"},
             {"type": "section", "children": [{"type": "field", "path": "name"}]},
         ])
         self.assertIn('data-rs-path="0" data-rs-type="text"', arch)
@@ -205,11 +205,11 @@ class TestCompiler(unittest.TestCase):
     def test_annotate_invalid_block_is_placeholder(self):
         arch = self._annotated([
             {"type": "field", "path": ""},
-            {"type": "field", "path": "campo_<inesistente>"},
+            {"type": "field", "path": "field_<missing>"},
             {"type": "text", "content": "ok"},
         ])
         self.assertIn('o_rs_cv_invalid', arch)
-        self.assertNotIn("<inesistente>", arch)  # messaggio escapato
+        self.assertNotIn("<missing>", arch)  # escaped message
         self.assertIn('data-rs-path="2" data-rs-type="text"', arch)
         etree_ok(arch)
 
@@ -218,12 +218,12 @@ class TestCompiler(unittest.TestCase):
                                  "children": [{"type": "text", "content": "x"}]}])
         self.assertIn('data-rs-path="0.0"', arch)
         self.assertIn('t-else=""', arch)
-        self.assertIn("Se amount_total &gt; 0", arch)
+        self.assertIn("If amount_total &gt; 0", arch)
         etree_ok(arch)
 
     def test_saved_templates_are_not_annotated(self):
         arch = compiler.compile_definition(
-            {"children": [{"type": "text", "content": "Ciao"}]}, "sale.order", KEY, resolver=resolver
+            {"children": [{"type": "text", "content": "Hello"}]}, "sale.order", KEY, resolver=resolver
         )
         self.assertNotIn("data-rs-path", arch)
         with self.assertRaises(compiler.CompileError):
@@ -232,27 +232,27 @@ class TestCompiler(unittest.TestCase):
             )
 
 
-    # ----- carattere, etichetta del campo, larghezza colonne -----
+    # ----- font, field label, column widths -----
 
     def test_text_font(self):
-        xml = compile_([{"type": "text", "content": "Ciao",
+        xml = compile_([{"type": "text", "content": "Hello",
                          "font": {"size": 14, "bold": True, "italic": True, "underline": True}}])
         self.assertIn('<p style="font-size: 14pt; font-weight: bold; font-style: italic; '
-                      'text-decoration: underline">Ciao</p>', xml)
+                      'text-decoration: underline">Hello</p>', xml)
 
     def test_empty_font_adds_no_style(self):
-        xml = compile_([{"type": "text", "content": "Ciao", "font": {"size": None, "bold": False}}])
-        self.assertIn("<p>Ciao</p>", xml)
+        xml = compile_([{"type": "text", "content": "Hello", "font": {"size": None, "bold": False}}])
+        self.assertIn("<p>Hello</p>", xml)
 
     def test_invalid_font_rejected(self):
-        for font in ({"size": 200}, {"size": "12"}, {"bold": "si"}, {"color": "red"}, "grassetto"):
+        for font in ({"size": 200}, {"size": "12"}, {"bold": "yes"}, {"color": "red"}, "bold"):
             with self.assertRaises(compiler.CompileError, msg=font):
                 compile_([{"type": "text", "content": "x", "font": font}])
 
     def test_field_label_and_fonts(self):
-        xml = compile_([{"type": "field", "path": "name", "label": "DDT <num>:",
+        xml = compile_([{"type": "field", "path": "name", "label": "Delivery <no>:",
                          "label_font": {"bold": True}, "font": {"size": 10}}])
-        self.assertIn('<span class="o_rs_label" style="font-weight: bold">DDT &lt;num&gt;:</span>&#160;'
+        self.assertIn('<span class="o_rs_label" style="font-weight: bold">Delivery &lt;no&gt;:</span>&#160;'
                       '<span t-field="o.name" style="font-size: 10pt"/>', xml)
 
     def test_field_without_label_unchanged(self):
@@ -264,18 +264,18 @@ class TestCompiler(unittest.TestCase):
         xml = compile_([{
             "type": "table", "source": "order_line",
             "head_font": {"bold": True}, "body_font": {"size": 9},
-            "columns": [{"path": "name", "label": "Descrizione", "width": 70, "locked": True},
-                        {"path": "product_uom_qty", "label": "Qtà", "width": 30}],
+            "columns": [{"path": "name", "label": "Description", "width": 70, "locked": True},
+                        {"path": "product_uom_qty", "label": "Qty", "width": 30}],
         }])
         self.assertIn('<table class="table table-sm" style="table-layout: fixed; width: 100%">', xml)
-        self.assertIn('<th style="width: 70%; font-weight: bold">Descrizione</th>', xml)
+        self.assertIn('<th style="width: 70%; font-weight: bold">Description</th>', xml)
         self.assertIn('<td style="font-size: 9pt"><span t-field="line_1.product_uom_qty"/></td>', xml)
 
     def test_table_without_widths_unchanged(self):
         xml = compile_([{"type": "table", "source": "order_line",
-                         "columns": [{"path": "name", "label": "Descrizione"}]}])
+                         "columns": [{"path": "name", "label": "Description"}]}])
         self.assertIn('<table class="table table-sm">', xml)
-        self.assertIn("<th>Descrizione</th>", xml)
+        self.assertIn("<th>Description</th>", xml)
 
     def test_invalid_width_rejected(self):
         for width in (0, 120, "50", True):
@@ -284,7 +284,7 @@ class TestCompiler(unittest.TestCase):
                            "columns": [{"path": "name", "width": width}]}])
 
 
-    # ----- separatore, spaziatore, interruzione, colonne, margini -----
+    # ----- separator, spacer, page break, columns, margins -----
 
     def _cols(self, n, **extra):
         return dict({"type": "columns", "children": [
@@ -300,7 +300,7 @@ class TestCompiler(unittest.TestCase):
         self.assertIn("border-top: 2px dashed #333", xml)
         self.assertIn('<div style="height: 15mm"></div>', xml)
         self.assertIn("page-break-after: always", xml)
-        self.assertNotIn("Interruzione di pagina", xml)  # etichetta solo nell'editor
+        self.assertNotIn("Page break", xml)  # label only in the editor
 
     def test_separator_and_spacer_validation(self):
         for block in ({"type": "separator", "style": "double"}, {"type": "separator", "thickness": 9},
@@ -315,11 +315,11 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('<div style="padding: 5mm 0mm 0mm 0mm">', xml)
         self.assertEqual(xml.count("<td "), 3)
         self.assertIn("width: 33.33%; vertical-align: top; padding: 0mm 3mm 0mm 3mm; border-left: 1px solid #333", xml)
-        self.assertNotIn("width: 33.33%; vertical-align: top; border-left", xml.split("<td")[1])  # prima colonna senza riga
+        self.assertNotIn("width: 33.33%; vertical-align: top; border-left", xml.split("<td")[1])  # first column without line
         self.assertIn("C2", xml)
 
     def test_columns_count_and_content_validated(self):
-        for block in (self._cols(1), self._cols(5), self._cols(2, divider="si"),
+        for block in (self._cols(1), self._cols(5), self._cols(2, divider="yes"),
                       {"type": "columns", "children": [{"type": "text", "content": "x"}] * 2},
                       {"type": "column", "children": []}):
             with self.assertRaises(compiler.CompileError, msg=block):
@@ -342,10 +342,10 @@ class TestCompiler(unittest.TestCase):
 
     def test_annotate_page_break_label(self):
         arch = self._annotated([{"type": "page_break"}])
-        self.assertIn("Interruzione di pagina", arch)
+        self.assertIn("Page break", arch)
 
 
-    # ----- allineamento del testo -----
+    # ----- text alignment -----
 
     def test_document_is_left_aligned(self):
         self.assertIn('<div class="page" style="text-align: left">', compile_([]))
@@ -354,30 +354,30 @@ class TestCompiler(unittest.TestCase):
         cols = self._cols(2, align="right")
         cols["children"][0]["align"] = "justify"
         xml = compile_([{"type": "section", "align": "left", "children": [
-            {"type": "text", "content": "Titolo", "align": "center", "font": {"bold": True}},
-            {"type": "text", "content": "Normale"},
+            {"type": "text", "content": "Title", "align": "center", "font": {"bold": True}},
+            {"type": "text", "content": "Normal"},
             cols,
         ]}])
         self.assertIn('<div style="text-align: left">', xml)
-        self.assertIn('<p style="text-align: center; font-weight: bold">Titolo</p>', xml)
-        self.assertIn("<p>Normale</p>", xml)  # eredita dalla sezione
+        self.assertIn('<p style="text-align: center; font-weight: bold">Title</p>', xml)
+        self.assertIn("<p>Normal</p>", xml)  # inherited from the section
         self.assertIn('<div style="text-align: right">', xml)
         self.assertIn("vertical-align: top; text-align: justify", xml)
 
     def test_table_and_column_align(self):
         xml = compile_([{"type": "table", "source": "order_line", "align": "center", "columns": [
-            {"path": "name", "label": "Descrizione", "align": "left"},
-            {"path": "product_uom_qty", "label": "Qtà"},
+            {"path": "name", "label": "Description", "align": "left"},
+            {"path": "product_uom_qty", "label": "Qty"},
         ]}])
         self.assertIn('<table class="table table-sm" style="text-align: center">', xml)
-        self.assertIn('<th style="text-align: left">Descrizione</th>', xml)
+        self.assertIn('<th style="text-align: left">Description</th>', xml)
         self.assertIn('<td style="text-align: left"><span t-field="line_1.name"/></td>', xml)
-        self.assertIn('<th style="text-align: center">Qtà</th>', xml)  # come la tabella
+        self.assertIn('<th style="text-align: center">Qty</th>', xml)  # as the table
 
     def test_text_line_breaks(self):
-        xml = compile_([{"type": "text", "content": "Riga 1\nRiga <2>\r\nRiga 3"}])
-        self.assertIn("<p>Riga 1<br/>Riga &lt;2&gt;<br/>Riga 3</p>", xml)
-        self.assertIn("<p>Una riga</p>", compile_([{"type": "text", "content": "Una riga"}]))
+        xml = compile_([{"type": "text", "content": "Line 1\nLine <2>\r\nLine 3"}])
+        self.assertIn("<p>Line 1<br/>Line &lt;2&gt;<br/>Line 3</p>", xml)
+        self.assertIn("<p>One line</p>", compile_([{"type": "text", "content": "One line"}]))
 
     def test_table_margins(self):
         table = {"type": "table", "source": "order_line", "columns": [{"path": "name"}]}
@@ -387,21 +387,21 @@ class TestCompiler(unittest.TestCase):
         with self.assertRaises(compiler.CompileError):
             compile_([dict(table, margins={"top": 500})])
 
-    # ----- lingue -----
+    # ----- languages -----
 
     def test_translations_choose_text_by_lang(self):
         xml = compile_([
             {"type": "text", "content": "Hello\nWorld", "translations": {"it_IT": "Ciao\nMondo", "fr_FR": ""}},
             {"type": "field", "path": "name", "label": "Order", "label_translations": {"it_IT": "Ordine"}},
             {"type": "table", "source": "order_line", "columns": [
-                {"path": "name", "label": "Qty", "label_translations": {"de_DE": "Menge", "it_IT": "Qtà"}}]},
+                {"path": "name", "label": "Qty", "label_translations": {"de_DE": "Menge", "it_IT": "Qty"}}]},
         ])
         self.assertIn('<t t-set="rs_lang" t-value="lang"/>', xml)
         self.assertIn("<p><t t-if=\"rs_lang == 'it_IT'\">Ciao<br/>Mondo</t>"
                       "<t t-else=\"\">Hello<br/>World</t></p>", xml)
-        self.assertNotIn("fr_FR", xml)  # traduzione vuota: testo base
+        self.assertNotIn("fr_FR", xml)  # empty translation: base text
         self.assertIn("<t t-if=\"rs_lang == 'it_IT'\">Ordine</t><t t-else=\"\">Order</t>", xml)
-        self.assertIn("<t t-if=\"rs_lang == 'de_DE'\">Menge</t><t t-elif=\"rs_lang == 'it_IT'\">Qtà</t>"
+        self.assertIn("<t t-if=\"rs_lang == 'de_DE'\">Menge</t><t t-elif=\"rs_lang == 'it_IT'\">Qty</t>"
                       "<t t-else=\"\">Qty</t>", xml)
 
     def test_translations_validated(self):
@@ -425,33 +425,61 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('<t t-name="%s_document">' % KEY, document)
         self.assertIn('<span t-field="o.name"/>', document)
         self.assertNotIn("t-field", main)
-        # disattivata o vista dell'editor: un solo template
+        # disabled, or editor view: a single template
         off = dict(definition, print_lang={"enabled": False})
         self.assertEqual(len(compiler.compile_templates(off, "sale.order", KEY, resolver=resolver)), 1)
         self.assertEqual(len(compiler.compile_templates(definition, "sale.order", KEY,
                                                         resolver=resolver, annotate=True)), 1)
 
     def test_print_lang_field_must_be_partner(self):
-        for field in ("name", "order_line", "inesistente", "partner_id.name"):
+        for field in ("name", "order_line", "missing", "partner_id.name"):
             with self.assertRaises(compiler.CompileError, msg=field):
                 compiler.compile_templates({"print_lang": {"enabled": True, "field": field}, "children": []},
                                            "sale.order", KEY, resolver=resolver)
 
     def test_field_align(self):
-        # Senza allineamento il campo resta in linea, come prima.
+        # Without alignment the field stays inline, as before.
         self.assertIn('<span t-field="o.name"/>', compile_([{"type": "field", "path": "name"}]))
         xml = compile_([
             {"type": "field", "path": "name", "align": "right"},
-            {"type": "field", "path": "name", "label": "Ordine n.", "align": "center"},
+            {"type": "field", "path": "name", "label": "Order no.", "align": "center"},
         ])
         self.assertIn('<div style="text-align: right"><span t-field="o.name"/></div>', xml)
-        self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">Ordine n.</span>', xml)
+        self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">Order no.</span>', xml)
         with self.assertRaises(compiler.CompileError):
             compile_([{"type": "field", "path": "name", "align": "middle"}])
         canvas = self._annotated([{"type": "field", "path": "name", "align": "right"},
                                {"type": "field", "path": "name"}])
         self.assertIn('<div class="o_rs_cv_block o_rs_cv_field" data-rs-path="0"', canvas)
         self.assertIn('<span class="o_rs_cv_block o_rs_cv_field" data-rs-path="1"', canvas)
+
+    # ----- translation of messages -----
+
+    def test_messages_are_marked_and_translatable(self):
+        italian = {
+            "Invalid field path: %r": "Percorso di campo non valido: %r",
+            "Empty column": "Colonna vuota",
+            "%(what)s is not valid: %(value)r (%(low)g to %(high)g)":
+                "%(what)s non valido: %(value)r (da %(low)g a %(high)g)",
+            "Spacer height (mm)": "Altezza dello spaziatore (mm)",
+        }
+        gettext = lambda text: italian.get(text, text)  # noqa: E731
+        with self.assertRaises(compiler.CompileError) as error:
+            compile_([{"type": "field", "path": "a b"}])
+        self.assertEqual(str(error.exception), "Invalid field path: 'a b'")
+        self.assertEqual(error.exception.translate(gettext), "Percorso di campo non valido: 'a b'")
+        with self.assertRaises(compiler.CompileError) as error:
+            compile_([{"type": "spacer", "height": 0}])
+        self.assertEqual(error.exception.translate(gettext),
+                         "Altezza dello spaziatore (mm) non valido: 0 (da 1 a 200)")
+        arch = compiler.compile_definition(
+            {"children": [self._cols(2)]}, "sale.order", KEY, resolver=resolver, annotate=True,
+            gettext=gettext)
+        self.assertNotIn("Colonna vuota", arch)  # columns are not empty
+        arch = compiler.compile_definition(
+            {"children": [{"type": "columns", "children": [{"type": "column", "children": []}] * 2}]},
+            "sale.order", KEY, resolver=resolver, annotate=True, gettext=gettext)
+        self.assertIn("Colonna vuota", arch)
 
     def test_invalid_align_rejected(self):
         for block in ({"type": "text", "content": "x", "align": "middle"},
@@ -463,9 +491,10 @@ class TestCompiler(unittest.TestCase):
 
 
 def etree_ok(arch):
-    """Il template annotato è XML ben formato."""
+    """The annotated template is well formed XML."""
     import xml.dom.minidom
     xml.dom.minidom.parseString(arch)
+
 
 if __name__ == "__main__":
     unittest.main()

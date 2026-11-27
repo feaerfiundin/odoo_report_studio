@@ -1,29 +1,38 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <odoo>
     <record id="action_report_studio_editor" model="ir.actions.client">
         <field name="name">Report Studio</field>
         <field name="tag">report_studio.editor</field>
     </record>
 
-    <!-- Menu di primo livello: in questa installazione base.menu_reporting non esiste.
-         Visibile ai ruoli Report Studio e agli amministratori di sistema, che hanno
-         già pieno accesso ai report (ACL) anche senza un ruolo Report Studio. -->
-    <menuitem id="menu_report_studio_root"
-              name="Report Studio"
-              action="action_rs_report_list"
-              sequence="90"
-              groups="report_studio.group_rs_viewer,base.group_system"/>
+    <!-- Top level menu: base.menu_reporting does not exist in every installation.
+         Visible to the Report Studio roles and to system administrators, who
+         already have full access to reports (ACL) even without a Report Studio role. -->
+    <menuitem
+        id="menu_report_studio_root"
+        name="Report Studio"
+        action="action_rs_report_list"
+        sequence="90"
+        groups="report_studio.group_rs_viewer,base.group_system"
+    />
 
-    <menuitem id="menu_report_studio_layouts"
-              name="Saved Layouts"
-              parent="menu_report_studio_root"
-              action="action_rs_report_list"
-              sequence="10"/>
+    <menuitem
+        id="menu_report_studio_layouts"
+        name="Saved Layouts"
+        parent="menu_report_studio_root"
+        action="action_rs_report_list"
+        sequence="10"
+    />
 
-    <!-- Report: stampa e menu Stampa dei report (come Impostazioni > Tecnico > Report). -->
-    <menuitem id="menu_report_studio_print"
-              name="Report"
-              parent="menu_report_studio_root"
-              action="action_rs_report_print"
-              sequence="20"/>
+    <!-- Reports: printing and Print menu of the reports
+         (like Settings > Technical > Reports). -->
+    <menuitem
+        id="menu_report_studio_print"
+        name="Reports"
+        parent="menu_report_studio_root"
+        action="action_rs_report_print"
+        sequence="20"
+    />
 </odoo>

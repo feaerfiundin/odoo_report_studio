@@ -1,28 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <odoo>
-    <!-- Gruppi Report Studio. Il ruolo di ogni utente è scelto dal campo
-         report_studio_role (res.users), che imposta il gruppo corrispondente. -->
+    <!-- Report Studio groups. The role of each user is chosen with the
+         report_studio_role field (res.users), which sets the matching group. -->
 
-    <!-- Utente: può stampare i report, nessun accesso al designer. -->
+    <!-- User: can print reports, no access to the designer. -->
     <record id="group_rs_user" model="res.groups">
-        <field name="name">Report Studio / Utente</field>
+        <field name="name">Report Studio / User</field>
     </record>
 
-    <!-- Visualizzatore: vede il designer, lo storico e l'anteprima, senza modificare. -->
+    <!-- Viewer: sees the designer, the history and the preview, without editing. -->
     <record id="group_rs_viewer" model="res.groups">
-        <field name="name">Report Studio / Visualizzatore</field>
-        <field name="implied_ids" eval="[(4, ref('group_rs_user'))]"/>
+        <field name="name">Report Studio / Viewer</field>
+        <field name="implied_ids" eval="[(4, ref('group_rs_user'))]" />
     </record>
 
-    <!-- Editor: crea report e nuove versioni, ripristina versioni precedenti. -->
+    <!-- Editor: creates reports and new versions, restores earlier versions. -->
     <record id="group_rs_editor" model="res.groups">
         <field name="name">Report Studio / Editor</field>
-        <field name="implied_ids" eval="[(4, ref('group_rs_viewer'))]"/>
+        <field name="implied_ids" eval="[(4, ref('group_rs_viewer'))]" />
     </record>
 
-    <!-- Amministratore: gestisce i ruoli degli altri utenti, archivia e copia report. -->
+    <!-- Administrator: manages the roles of the other users and edits free QWeb. -->
     <record id="group_rs_manager" model="res.groups">
-        <field name="name">Report Studio / Amministratore</field>
-        <field name="implied_ids" eval="[(4, ref('group_rs_editor'))]"/>
+        <field name="name">Report Studio / Administrator</field>
+        <field name="implied_ids" eval="[(4, ref('group_rs_editor'))]" />
     </record>
 </odoo>

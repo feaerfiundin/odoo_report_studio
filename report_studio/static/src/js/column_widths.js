@@ -1,10 +1,12 @@
 /** @odoo-module **/
-// Larghezze delle colonne di una tabella, in percentuale intera (totale 100).
-// Funzioni pure sugli oggetti colonna {width, locked}: modificano le colonne
-// passate e non dipendono dall'editor, così si possono provare da sole.
+// Copyright 2026 feaerfiundin
+// License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+// Widths of the columns of a table, as integer percentages (total 100).
+// Pure functions on column objects {width, locked}: they change the given
+// columns and do not depend on the editor, so they can be tested alone.
 
-// Divide `total` in interi proporzionali ai pesi (metodo dei resti più grandi),
-// con almeno `min` per elemento quando il totale lo permette.
+// Split `total` into integers proportional to the weights (largest remainder
+// method), with at least `min` per item when the total allows it.
 export function distribute(total, weights, min = 1) {
     const n = weights.length;
     if (!n) return [];
@@ -29,7 +31,7 @@ export function distribute(total, weights, min = 1) {
 const lockedSum = (columns, except) =>
     columns.reduce((a, c) => a + (c !== except && c.locked ? c.width || 0 : 0), 0);
 
-// Colonne senza larghezza (report creati prima di questa funzione): parti uguali.
+// Columns without width (reports created before this feature): equal parts.
 export function ensureWidths(columns) {
     if (columns.length && columns.some((c) => !(c.width > 0))) {
         distribute(100, columns.map(() => 1)).forEach((w, i) => {
@@ -39,9 +41,9 @@ export function ensureWidths(columns) {
     }
 }
 
-// Imposta la larghezza di una colonna; le altre non bloccate si dividono lo
-// spazio rimasto in proporzione ai valori che avevano. Il valore si ferma a
-// quanto lasciano libero le colonne bloccate (almeno 1% per ogni altra libera).
+// Set the width of a column; the other unlocked ones share the remaining space
+// in proportion to their previous values. The value stops at what the locked
+// columns leave free (at least 1% for every other free column).
 export function setWidth(columns, column, value) {
     const others = columns.filter((c) => c !== column && !c.locked);
     const available = 100 - lockedSum(columns, column);
@@ -57,9 +59,9 @@ export function setWidth(columns, column, value) {
     return column.width;
 }
 
-// Nuova colonna (non bloccata): riceve la sua parte dello spazio libero e le
-// altre colonne libere si restringono in proporzione.
-// 1 colonna 100 -> 2 colonne 50/50 -> 3 colonne 34/33/33.
+// New column (unlocked): it gets its share of the free space and the other
+// free columns shrink in proportion.
+// 1 column 100 -> 2 columns 50/50 -> 3 columns 34/33/33.
 export function addColumn(columns, column) {
     const free = columns.filter((c) => !c.locked);
     const available = 100 - lockedSum(columns, null);
@@ -72,7 +74,7 @@ export function addColumn(columns, column) {
     columns.push(column);
 }
 
-// Colonna rimossa: la sua larghezza va alle colonne libere, in proporzione.
+// Removed column: its width goes to the free columns, in proportion.
 export function removeColumn(columns, column) {
     const index = columns.indexOf(column);
     if (index < 0) return;

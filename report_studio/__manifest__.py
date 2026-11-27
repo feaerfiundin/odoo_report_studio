@@ -1,10 +1,14 @@
-# -*- coding: utf-8 -*-
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 {
     "name": "Report Studio",
-    "summary": "Editor WYSIWYG a blocchi per report QWeb/PDF in Odoo",
+    "summary": "Block based visual designer for QWeb/PDF reports, with versioning",
     "version": "18.0.0.2.0",
+    "development_status": "Alpha",
     "category": "Reporting",
+    "website": "https://github.com/feaerfiundin/odoo_report_studio",
     "author": "feaerfiundin",
+    "maintainers": ["feaerfiundin"],
     "license": "AGPL-3",
     "depends": ["base", "web"],
     "data": [

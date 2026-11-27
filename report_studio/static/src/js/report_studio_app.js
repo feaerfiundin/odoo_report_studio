@@ -1,4 +1,6 @@
 /** @odoo-module **/
+// Copyright 2026 feaerfiundin
+// License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import { Component, useState, useRef, useEffect, onWillStart, onWillUnmount } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -7,62 +9,55 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { user } from "@web/core/user";
+import { _t } from "@web/core/l10n/translation";
 import { addColumn, ensureWidths, removeColumn, setWidth, totalWidth } from "./column_widths";
 
-// Dimensioni del carattere proposte (pt); vuoto = quella del layout.
+// Proposed font sizes (pt); empty = the layout one.
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36];
-// Proprietà carattere per tipo di blocco.
+// Font properties per block type.
 const FONT_KEYS = {
     text: ["font"],
     field: ["label_font", "font"],
     table: ["head_font", "body_font"],
 };
 
-// Cassetta degli strumenti (colonna sinistra), per gruppi.
+// Toolbox (left column), by group. Labels come from the server
+// (rs.report.get_editor_labels): see there why.
 const BLOCK_GROUPS = [
     {
-        label: "Contenuto",
+        key: "content",
         items: [
-            { type: "text", label: "Testo", icon: "fa-font" },
-            { type: "field", label: "Campo", icon: "fa-database" },
-            { type: "table", label: "Tabella", icon: "fa-table" },
+            { type: "text", icon: "fa-font" },
+            { type: "field", icon: "fa-database" },
+            { type: "table", icon: "fa-table" },
         ],
     },
     {
-        label: "Impaginazione",
+        key: "layout",
         items: [
-            { type: "section", label: "Sezione", icon: "fa-square-o" },
-            { type: "columns", label: "Colonne", icon: "fa-columns" },
-            { type: "if", label: "Condizione", icon: "fa-code-fork" },
-            { type: "separator", label: "Separatore", icon: "fa-minus" },
-            { type: "spacer", label: "Spaziatore", icon: "fa-arrows-v" },
-            { type: "page_break", label: "Interruzione di pagina", icon: "fa-file-o" },
+            { type: "section", icon: "fa-square-o" },
+            { type: "columns", icon: "fa-columns" },
+            { type: "if", icon: "fa-code-fork" },
+            { type: "separator", icon: "fa-minus" },
+            { type: "spacer", icon: "fa-arrows-v" },
+            { type: "page_break", icon: "fa-file-o" },
         ],
     },
 ];
-const BLOCK_LABELS = {
-    ...Object.fromEntries(BLOCK_GROUPS.flatMap((g) => g.items.map((i) => [i.type, i.label]))),
-    column: "Colonna",
-};
-// Blocchi con i 4 margini interni (mm).
+// Blocks with the 4 inner margins (mm).
 const MARGIN_TYPES = ["section", "columns", "column", "table"];
-const MARGIN_SIDES = [
-    ["top", "Sopra"],
-    ["right", "Destra"],
-    ["bottom", "Sotto"],
-    ["left", "Sinistra"],
-];
+const MARGIN_SIDES = ["top", "right", "bottom", "left"];
 const COLUMN_COUNTS = [2, 3, 4];
-// Allineamento del testo: vuoto = come il contenitore (il documento è a sinistra).
+// Text alignment: empty = as the container (the document is left aligned).
 const ALIGN_TYPES = ["text", "field", "section", "columns", "column", "table"];
 const ALIGNMENTS = [
-    ["left", "Sinistra", "fa-align-left"],
-    ["center", "Centro", "fa-align-center"],
-    ["right", "Destra", "fa-align-right"],
-    ["justify", "Giustificato", "fa-align-justify"],
+    ["left", "fa-align-left"],
+    ["center", "fa-align-center"],
+    ["right", "fa-align-right"],
+    ["justify", "fa-align-justify"],
 ];
 
-// Proprietà facoltative sempre presenti nell'editor (reattività dei pannelli).
+// Optional properties always present in the editor (panel reactivity).
 function ensureEditorKeys(block) {
     if (ALIGN_TYPES.includes(block.type) && block.align === undefined) block.align = "";
     for (const column of block.type === "table" ? block.columns || [] : []) {
@@ -70,13 +65,9 @@ function ensureEditorKeys(block) {
     }
     return block;
 }
-const SEPARATOR_STYLES = [
-    ["solid", "Continua"],
-    ["dashed", "Tratteggiata"],
-    ["dotted", "Puntinata"],
-];
+const SEPARATOR_STYLES = ["solid", "dashed", "dotted"];
 const zeroMargins = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
-// Nuova colonna: un po' di margine ai lati, così il testo non tocca la riga verticale.
+// New column: some side margin, so the text does not touch the vertical line.
 const newColumn = () => ({
     _uid: nextUid(),
     type: "column",
@@ -85,7 +76,7 @@ const newColumn = () => ({
     children: [],
 });
 
-// Stile iniettato nella vista visuale (iframe): contorni, selezione, segnaposto.
+// Style injected into the visual view (iframe): outlines, selection, placeholders.
 const CANVAS_STYLE = `
 [data-rs-path] { cursor: pointer; outline: 1px dashed rgba(113, 75, 103, .25); outline-offset: 2px; }
 [data-rs-path]:hover { outline: 1px dashed rgba(113, 75, 103, .8); }
@@ -123,7 +114,7 @@ function baseBlock(type) {
         case "page_break":
             return base;
         case "text":
-            return { ...base, content: "Testo", class: "", font: {} };
+            return { ...base, content: "", class: "", font: {} };
         case "field":
             return { ...base, path: "", label: "", label_font: {}, font: {} };
         case "table":
@@ -141,8 +132,8 @@ function baseBlock(type) {
     return base;
 }
 
-// Aggiunge _uid ai blocchi e alle colonne, solo per l'editor, e completa i
-// blocchi salvati prima dei controlli carattere e delle larghezze.
+// Add _uid to blocks and columns, for the editor only, and complete the
+// blocks saved before the font controls and the column widths existed.
 function withUids(block) {
     const copy = { ...block, _uid: nextUid() };
     if (Array.isArray(block.children)) copy.children = block.children.map(withUids);
@@ -158,7 +149,7 @@ function withUids(block) {
     return ensureEditorKeys(copy);
 }
 
-// Solo le proprietà carattere impostate; undefined se nessuna.
+// Only the font properties that are set; undefined when none.
 function cleanFont(font) {
     const out = {};
     if (font?.size) out.size = Number(font.size);
@@ -177,7 +168,7 @@ function parseLiteral(text) {
     return String(text);
 }
 
-// Traduzioni {lingua: testo} senza quelle vuote; undefined se nessuna.
+// Translations {language: text} without the empty ones; undefined when none.
 function cleanTranslations(translations) {
     const out = Object.fromEntries(
         Object.entries(translations || {}).filter(([, text]) => typeof text === "string" && text.trim())
@@ -185,10 +176,11 @@ function cleanTranslations(translations) {
     return Object.keys(out).length ? out : undefined;
 }
 
-// Chiave delle traduzioni per ogni testo traducibile: content -> translations, label -> label_translations.
+// Translation key of each translatable text: content -> translations,
+// label -> label_translations.
 const TRANSLATION_KEY = { content: "translations", label: "label_translations" };
 
-// Lingue in cui il report ha almeno un testo tradotto.
+// Languages in which the report has at least one translated text.
 function translatedLangs(blocks, found = new Set()) {
     for (const block of blocks) {
         for (const tr of [block.translations, block.label_translations,
@@ -200,7 +192,7 @@ function translatedLangs(blocks, found = new Set()) {
     return found;
 }
 
-// Toglie gli _uid e normalizza i valori prima dell'invio al server.
+// Remove the _uid and normalize the values before sending to the server.
 function cleanBlock(block) {
     const { _uid, ...rest } = block;
     const out = { ...rest };
@@ -229,7 +221,7 @@ function cleanBlock(block) {
     if (block.type === "field" && !block.label?.trim()) delete out.label;
     if (MARGIN_TYPES.includes(block.type)) {
         const margins = Object.fromEntries(
-            MARGIN_SIDES.map(([side]) => [side, Number(block.margins?.[side]) || 0])
+            MARGIN_SIDES.map((side) => [side, Number(block.margins?.[side]) || 0])
         );
         if (Object.values(margins).some((v) => v)) out.margins = margins;
         else delete out.margins;
@@ -249,7 +241,7 @@ function cleanDefinition(definition) {
     return out;
 }
 
-// Messaggio leggibile da un errore RPC di Odoo (UserError, ValidationError...).
+// Readable message from an Odoo RPC error (UserError, ValidationError...).
 function errorMessage(error, fallback) {
     return error?.data?.message || (typeof error?.message === "string" && error.message) || fallback;
 }
@@ -266,7 +258,7 @@ function findNode(children, target) {
     return null;
 }
 
-// Anteprima PDF in un popup, con la scelta del record.
+// PDF preview in a popup, with the choice of the record.
 class PreviewDialog extends Component {
     static template = "report_studio.PreviewDialog";
     static components = { Dialog };
@@ -292,7 +284,7 @@ class PreviewDialog extends Component {
 
     async load() {
         if (!this.state.recordId) {
-            this.state.error = "Nessun record disponibile per l'anteprima.";
+            this.state.error = _t("No record available for the preview.");
             return;
         }
         this.state.loading = true;
@@ -306,7 +298,7 @@ class PreviewDialog extends Component {
             const response = await fetch("/report_studio/preview", { method: "POST", body });
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
-                this.state.error = err.error || "Anteprima non riuscita";
+                this.state.error = err.error || _t("Preview failed");
                 this.notification.add(this.state.error, { type: "danger" });
                 return;
             }
@@ -329,20 +321,15 @@ export class ReportStudioApp extends Component {
         this.notification = useService("notification");
         this.dialog = useService("dialog");
         this.action = useService("action");
-        this.blockGroups = BLOCK_GROUPS;
-        this.blockLabels = BLOCK_LABELS;
         this.fontSizes = FONT_SIZES;
-        this.marginSides = MARGIN_SIDES;
         this.columnCounts = COLUMN_COUNTS;
-        this.separatorStyles = SEPARATOR_STYLES;
-        this.alignments = ALIGNMENTS;
         this.totalWidth = totalWidth;
         this.canvasRef = useRef("canvas");
         this.canvasTimer = null;
         this.state = useState({
-            // new | edit (l'elenco è la vista standard action_rs_report_list)
+            // new | edit (the list is the standard action_rs_report_list view)
             view: "new",
-            // nuovo report
+            // new report
             newName: "",
             newModel: "",
             newSource: "",
@@ -366,11 +353,11 @@ export class ReportStudioApp extends Component {
             comment: "",
             copyName: "",
             dirty: false,
-            // vista visuale
+            // visual view
             canvasHtml: "",
             canvasError: "",
             canvasLoading: false,
-            // lingue: quella dei testi base (principale), quella che si sta modificando
+            // languages: the one of the base texts (main), the one being edited
             langs: [],
             mainLang: "",
             editLang: "",
@@ -381,7 +368,11 @@ export class ReportStudioApp extends Component {
                 user.hasGroup("base.group_system"),
             ]);
             this.state.canWrite = editor || system;
-            const languages = await this.orm.call("rs.report", "get_languages", []);
+            const [languages, labels] = await Promise.all([
+                this.orm.call("rs.report", "get_languages", []),
+                this.orm.call("rs.report", "get_editor_labels", []),
+            ]);
+            this.setLabels(labels);
             this.state.langs = languages.langs;
             this.state.mainLang = languages.main;
             const params = this.props.action?.params || {};
@@ -390,13 +381,13 @@ export class ReportStudioApp extends Component {
             } else if (params.new) {
                 await this.openNew();
             } else {
-                // Aperta senza parametri (vecchio menu, URL ricaricato): va all'elenco.
+                // Opened without parameters (old menu, reloaded URL): go to the list.
                 this.goToList();
             }
         });
         onWillUnmount(() => clearTimeout(this.canvasTimer));
-        // Nuovo HTML della vista visuale: lo carica nell'iframe mantenendo lo scroll.
-        // Riparte anche quando l'iframe compare (passaggio da "Nuovo" all'editor).
+        // New HTML of the visual view: load it in the iframe keeping the scroll.
+        // Also runs when the iframe appears (from "New" to the editor).
         useEffect(
             (html, frame) => {
                 if (!frame || !html) return;
@@ -406,17 +397,30 @@ export class ReportStudioApp extends Component {
             },
             () => [this.state.canvasHtml, this.canvasRef.el]
         );
-        // Selezione cambiata: aggiorna solo l'evidenziazione, senza ridisegnare.
+        // Selection changed: only update the highlight, without redrawing.
         useEffect(
             () => this.highlightSelection(),
             () => [this.state.selectedUid]
         );
     }
 
-    // ----- elenco -----
+    // Translated labels of toolbox, margins, alignments and separator styles.
+    setLabels(labels) {
+        this.labels = labels;
+        this.blockLabels = labels.blocks;
+        this.blockGroups = BLOCK_GROUPS.map((group) => ({
+            label: labels.groups[group.key],
+            items: group.items.map((item) => ({ ...item, label: labels.blocks[item.type] })),
+        }));
+        this.marginSides = MARGIN_SIDES.map((side) => [side, labels.margins[side]]);
+        this.alignments = ALIGNMENTS.map(([key, icon]) => [key, labels.aligns[key], icon]);
+        this.separatorStyles = SEPARATOR_STYLES.map((key) => [key, labels.separators[key]]);
+    }
 
-    // Torna all'elenco Saved Layouts: ripristina quello da cui si è arrivati
-    // (con ricerca, filtri e raggruppamenti), altrimenti lo apre da capo.
+    // ----- list -----
+
+    // Back to the Saved Layouts list: restore the one we came from (with its
+    // search, filters and groupings), otherwise open it from scratch.
     async goToList() {
         const stack = this.env.config?.breadcrumbs || [];
         if (stack.length > 1) {
@@ -424,7 +428,7 @@ export class ReportStudioApp extends Component {
                 await this.action.restore();
                 return;
             } catch {
-                // nessun controller precedente: apre l'elenco da capo
+                // no previous controller: open the list from scratch
             }
         }
         await this.action.doAction("report_studio.action_rs_report_list", { clearBreadcrumbs: true });
@@ -434,7 +438,7 @@ export class ReportStudioApp extends Component {
         return this.goToList();
     }
 
-    // ----- nuovo report -----
+    // ----- new report -----
 
     async openNew() {
         this.state.newName = "";
@@ -446,11 +450,11 @@ export class ReportStudioApp extends Component {
     }
 
     get nativeSources() {
-        return this.state.sources.filter((s) => s.group === "Documenti Odoo");
+        return this.state.sources.filter((s) => s.key.startsWith("action:"));
     }
 
     get studioSources() {
-        return this.state.sources.filter((s) => s.group === "Report Studio");
+        return this.state.sources.filter((s) => s.key.startsWith("report:"));
     }
 
     onNewSourceChange(ev) {
@@ -459,7 +463,7 @@ export class ReportStudioApp extends Component {
 
     onOpenVisualEditor() {
         if (!this.state.newName) {
-            this.notification.add("Inserisci il nome del report", { type: "warning" });
+            this.notification.add(_t("Enter the report name"), { type: "warning" });
             return;
         }
         if (this.state.newSource) {
@@ -471,7 +475,7 @@ export class ReportStudioApp extends Component {
 
     async createNew() {
         if (!this.state.newModel) {
-            this.notification.add("Scegli il modello", { type: "warning" });
+            this.notification.add(_t("Choose the model"), { type: "warning" });
             return;
         }
         const newId = await this.orm.call("rs.report", "create_new_report", [], {
@@ -483,9 +487,11 @@ export class ReportStudioApp extends Component {
 
     confirmCopy() {
         this.dialog.add(ConfirmationDialog, {
-            title: "Crea copia editabile",
-            body: "Verrà creata una copia modificabile del documento selezionato, con il suo modello. L'originale non verrà modificato. Vuoi continuare?",
-            confirmLabel: "Crea copia",
+            title: _t("Create Editable Copy"),
+            body: _t(
+                "An editable copy of the selected document will be created, with its model. The original will not be changed. Do you want to continue?"
+            ),
+            confirmLabel: _t("Create Copy"),
             confirm: async () => {
                 const newId = await this.orm.call("rs.report", "create_from_source", [], {
                     name: this.state.newName,
@@ -504,7 +510,7 @@ export class ReportStudioApp extends Component {
         this.state.view = "edit";
     }
 
-    // Campi di un modello, letti una sola volta e tenuti in cache.
+    // Fields of a model, read once and cached.
     async fetchFields(model) {
         if (!this.state.fieldCache[model]) {
             this.state.fieldCache[model] = await this.orm.call("rs.report", "get_model_fields", [model]);
@@ -512,7 +518,7 @@ export class ReportStudioApp extends Component {
         return this.state.fieldCache[model];
     }
 
-    // Carica i campi dei modelli collegati alle tabelle, per suggerire le colonne.
+    // Load the fields of the models linked to tables, to suggest the columns.
     async loadTableFields(blocks) {
         for (const block of blocks) {
             if (block.type === "table") {
@@ -570,7 +576,7 @@ export class ReportStudioApp extends Component {
         } else {
             this.state.definition = {
                 layout: parsed.layout,
-                // Report senza lingua base (creati prima): la principale di Odoo.
+                // Reports without base language (created before): the main Odoo one.
                 base_lang: parsed.base_lang || this.state.mainLang,
                 print_lang: { enabled: false, field: "partner_id", ...(parsed.print_lang || {}) },
                 children: (parsed.children || []).map(withUids),
@@ -597,8 +603,8 @@ export class ReportStudioApp extends Component {
 
     // ----- vista visuale -----
 
-    // Ridisegna la pagina dopo una pausa nelle modifiche (le digitazioni non
-    // generano una chiamata al server per ogni tasto).
+    // Redraw the page after a pause in the changes (typing does not call the
+    // server for every key).
     scheduleCanvas() {
         clearTimeout(this.canvasTimer);
         this.canvasTimer = setTimeout(() => this.refreshCanvas(), CANVAS_DELAY);
@@ -608,7 +614,10 @@ export class ReportStudioApp extends Component {
         clearTimeout(this.canvasTimer);
         if (this.state.mode === "qweb" || !this.state.reportId) return;
         if (!this.state.recordId) {
-            this.state.canvasError = `Nessun record di ${this.state.modelName} da mostrare: creane uno per vedere la pagina.`;
+            this.state.canvasError = _t(
+                "No %s record to show: create one to see the page.",
+                this.state.modelName
+            );
             return;
         }
         this.state.canvasLoading = true;
@@ -620,7 +629,7 @@ export class ReportStudioApp extends Component {
             this.state.canvasError = "";
             this.state.canvasHtml = html;
         } catch (error) {
-            this.state.canvasError = errorMessage(error, "Impossibile disegnare la pagina");
+            this.state.canvasError = errorMessage(error, _t("Unable to draw the page"));
         } finally {
             this.state.canvasLoading = false;
         }
@@ -651,7 +660,7 @@ export class ReportStudioApp extends Component {
         }
     }
 
-    // Posizione nell'albero ("0.2.1") <-> _uid del blocco nell'editor.
+    // Position in the tree ("0.2.1") <-> _uid of the block in the editor.
     uidAtPath(path) {
         let list = this.state.definition.children;
         let node = null;
@@ -677,7 +686,7 @@ export class ReportStudioApp extends Component {
         return null;
     }
 
-    // ----- blocchi e proprietà -----
+    // ----- blocks and properties -----
 
     get selected() {
         if (!this.state.selectedUid) return null;
@@ -711,13 +720,16 @@ export class ReportStudioApp extends Component {
     onAddBlock(ev) {
         const type = ev.currentTarget.dataset.type;
         const block = defaultBlock(type);
+        if (type === "text") {
+            block.content = this.labels.blocks.text;
+        }
         let target = this.state.definition.children;
         let index = null;
         const sel = this.selected;
         if (sel && sel.children && sel.type !== "columns") {
-            target = sel.children; // dentro Sezione, Condizione, Colonna
+            target = sel.children; // inside Section, Condition, Column
         } else if (sel) {
-            // dopo il blocco selezionato (un blocco Colonne accetta solo colonne)
+            // after the selected block (a Columns block only accepts columns)
             const found = findNode(this.state.definition.children, sel._uid);
             target = found.list;
             index = found.index + 1;
@@ -755,13 +767,13 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // Larghezza in %: le altre colonne libere si ricalcolano in proporzione.
+    // Width in %: the other free columns are recomputed in proportion.
     onColumnWidth(uid, ev) {
         const sel = this.selected;
         const column = sel?.columns?.find((c) => c._uid === uid);
         if (!column) return;
         setWidth(sel.columns, column, ev.target.value);
-        ev.target.value = column.width; // mostra il valore effettivo (limitato)
+        ev.target.value = column.width; // show the actual (limited) value
         this.markDirty();
     }
 
@@ -772,7 +784,7 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // ----- controlli carattere -----
+    // ----- font controls -----
 
     onFontSize(font, ev) {
         font.size = ev.target.value ? Number(ev.target.value) : null;
@@ -784,7 +796,7 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // Numero di colonne: i blocchi delle colonne tolte passano nell'ultima rimasta.
+    // Number of columns: the blocks of removed columns move to the last one left.
     onColumnsCount(ev) {
         const sel = this.selected;
         if (!sel || sel.type !== "columns") return;
@@ -797,13 +809,13 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // Secondo clic sul pulsante attivo: torna a "come il contenitore".
+    // Second click on the active button: back to "as the container".
     setAlign(target, value) {
         target.align = target.align === value ? "" : value;
         this.markDirty();
     }
 
-    // ----- lingue -----
+    // ----- languages -----
 
     get baseLang() {
         return this.state.definition.base_lang || this.state.mainLang;
@@ -821,13 +833,18 @@ export class ReportStudioApp extends Component {
         return (code || "").split("_")[0].toUpperCase();
     }
 
-    // Voci del menu lingua: lingue attive di Odoo, principale e tradotte marcate.
+    // Language menu entries: active Odoo languages, main and translated marked.
     get langOptions() {
         const translated = translatedLangs(this.state.definition.children);
         return this.state.langs.map((l) => ({
             code: l.code,
-            label: `${this.langShort(l.code)} - ${l.name}` +
-                (l.code === this.baseLang ? " (principale)" : translated.has(l.code) ? " ✓" : ""),
+            label:
+                `${this.langShort(l.code)} - ${l.name}` +
+                (l.code === this.baseLang
+                    ? " " + _t("(main)")
+                    : translated.has(l.code)
+                    ? " ✓"
+                    : ""),
         }));
     }
 
@@ -836,7 +853,7 @@ export class ReportStudioApp extends Component {
         this.refreshCanvas();
     }
 
-    // Testo traducibile (content / label) nella lingua che si sta modificando.
+    // Translatable text (content / label) in the language being edited.
     trValue(obj, key) {
         if (!this.isTranslating) return obj[key] || "";
         return obj[TRANSLATION_KEY[key]]?.[this.state.editLang] || "";
@@ -856,7 +873,7 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // Campi contatto (many2one a res.partner) per la lingua del cliente.
+    // Contact fields (many2one to res.partner) for the customer language.
     get partnerFields() {
         return this.state.fields.filter((f) => f.type === "many2one" && f.relation === "res.partner");
     }
@@ -878,8 +895,8 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    // Allineamento effettivo ereditato da un blocco: quello del contenitore più
-    // vicino che ne ha uno, altrimenti il documento (sinistra).
+    // Actual alignment inherited by a block: the one of the closest container
+    // having one, otherwise the document (left).
     inheritedAlign(uid) {
         const path = this.pathOfUid(uid);
         if (!path) return "left";
@@ -894,18 +911,57 @@ export class ReportStudioApp extends Component {
         return align;
     }
 
-    // Allineamento effettivo della tabella selezionata (per le colonne "come tabella").
+    // Actual alignment of the selected table (for the "as the table" columns).
     get tableAlign() {
         const sel = this.selected;
         return sel ? sel.align || this.inheritedAlign(sel._uid) : "left";
     }
 
     alignIcon(value) {
-        return (ALIGNMENTS.find((a) => a[0] === value) || ALIGNMENTS[0])[2];
+        return (this.alignments.find((a) => a[0] === value) || this.alignments[0])[2];
     }
 
     alignLabel(value) {
-        return (ALIGNMENTS.find((a) => a[0] === value) || ALIGNMENTS[0])[1];
+        return (this.alignments.find((a) => a[0] === value) || this.alignments[0])[1];
+    }
+
+    // Title of the alignment button of a table column.
+    columnAlignTitle(column) {
+        if (column.align) return this.alignLabel(column.align);
+        return _t("As the table (%s)", this.alignLabel(this.tableAlign).toLowerCase());
+    }
+
+    // Notice shown while translating.
+    get translatingNotice() {
+        return _t(
+            "Translation in %(lang)s: texts, labels and headers are written in this language. When left empty, the text in %(base)s is printed (in grey).",
+            { lang: this.langName(this.state.editLang), base: this.langName(this.baseLang) }
+        );
+    }
+
+    // Placeholders of the translatable inputs.
+    get labelPlaceholder() {
+        return _t("e.g. Delivery no.:");
+    }
+
+    get columnLabelPlaceholder() {
+        return _t("label");
+    }
+
+    // Titles of the font control groups.
+    get fontTitles() {
+        return {
+            font: _t("Font"),
+            label: _t("Label Font"),
+            value: _t("Value Font"),
+            head: _t("Header Font"),
+            body: _t("Row Font"),
+        };
+    }
+
+    // Toolbar buttons not available yet.
+    get soonButtons() {
+        return this.labels.soon;
     }
 
     onMargin(margins, side, ev) {
@@ -940,17 +996,19 @@ export class ReportStudioApp extends Component {
         this.refreshCanvas();
     }
 
-    // ----- barra in alto -----
+    // ----- top bar -----
 
     async onToggleActive(ev) {
         const active = ev.target.checked;
         try {
             await this.orm.write("rs.report", [this.state.reportId], { active });
             this.state.active = active;
-            this.notification.add(active ? "Report attivato" : "Report archiviato", { type: "info" });
+            this.notification.add(active ? _t("Report restored") : _t("Report archived"), {
+                type: "info",
+            });
         } catch (error) {
             ev.target.checked = this.state.active;
-            this.notification.add(errorMessage(error, "Modifica non riuscita"), { type: "danger" });
+            this.notification.add(errorMessage(error, _t("Change failed")), { type: "danger" });
         }
     }
 
@@ -963,9 +1021,9 @@ export class ReportStudioApp extends Component {
             this.state.comment = "";
             this.state.dirty = false;
             await this.loadVersions();
-            this.notification.add("Versione salvata", { type: "success" });
+            this.notification.add(_t("Version saved"), { type: "success" });
         } catch (error) {
-            this.notification.add(errorMessage(error, "Salvataggio non riuscito"), { type: "danger" });
+            this.notification.add(errorMessage(error, _t("Save failed")), { type: "danger" });
         }
     }
 
@@ -978,24 +1036,24 @@ export class ReportStudioApp extends Component {
         });
     }
 
-    // ----- versioni -----
+    // ----- versions -----
 
     async restoreVersion(ev) {
         const versionId = parseInt(ev.currentTarget.dataset.id);
         await this.orm.call("rs.report", "restore_version_by_id", [[this.state.reportId], versionId]);
         await this.selectReport(this.state.reportId);
-        this.notification.add("Versione ripristinata come nuova versione", { type: "success" });
+        this.notification.add(_t("Version restored as a new version"), { type: "success" });
     }
 
     async copyVersion(ev) {
         const versionId = parseInt(ev.currentTarget.dataset.id);
-        const name = this.state.copyName || `${this.state.reportName} (copia)`;
+        const name = this.state.copyName || _t("%s (copy)", this.state.reportName);
         const newId = await this.orm.call(
             "rs.report", "copy_version_by_id", [[this.state.reportId], versionId, name]
         );
         this.state.copyName = "";
         await this.openEditor(newId);
-        this.notification.add("Nuovo report creato dalla copia", { type: "success" });
+        this.notification.add(_t("New report created from the copy"), { type: "success" });
     }
 }
 

@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import json
 import uuid
 from contextlib import contextmanager
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 from odoo.addons.base.models.ir_qweb import QWebException
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import test_python_expr
@@ -14,7 +15,7 @@ EMPTY_DEFINITION = json.dumps({"children": []})
 
 
 def _is_qweb_definition(definition):
-    """True se la definizione (stringa JSON) è in modalità QWeb libero."""
+    """True when the definition (JSON string) is in free QWeb mode."""
     try:
         parsed = json.loads(definition)
     except (TypeError, ValueError):
@@ -23,17 +24,18 @@ def _is_qweb_definition(definition):
 
 
 class RsReport(models.Model):
-    """Report disegnato con Report Studio.
+    """Report designed with Report Studio.
 
-    Il record contiene l'identità del report, il modello Odoo di riferimento,
-    l'azione di stampa collegata e il puntatore alla versione attiva.
-    Il contenuto vive nelle versioni (rs.report.version): in modalità a blocchi
-    è una definizione JSON, in modalità QWeb libero è un template QWeb.
+    The record holds the identity of the report, the Odoo model it runs on,
+    the linked print action and the pointer to the active version. The
+    content lives in the versions (rs.report.version): a JSON definition in
+    blocks mode, a QWeb template in free QWeb mode.
 
-    Nota sui permessi: gli utenti normali non possono leggere ir.model,
-    ir.model.fields e ir.ui.view. Per questo il nome tecnico del modello è
-    memorizzato in ``model_name`` e l'editor usa get_model_options() e
-    get_model_fields() invece di leggere quei modelli direttamente.
+    Note on access rights: regular users cannot read ir.model,
+    ir.model.fields and ir.ui.view. That is why the technical name of the
+    model is stored in ``model_name`` and the editor uses
+    get_model_options() and get_model_fields() instead of reading those
+    models directly.
     """
 
     _name = "rs.report"
@@ -43,76 +45,78 @@ class RsReport(models.Model):
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
     report_mode = fields.Selection(
-        [("blocks", "Blocchi"), ("qweb", "QWeb libero")],
+        [("blocks", "Blocks"), ("qweb", "Free QWeb")],
         default="blocks",
         required=True,
-        string="Modalità",
+        string="Mode",
     )
     model_id = fields.Many2one(
         "ir.model",
-        string="Modello Odoo",
+        string="Odoo Model",
         required=True,
         ondelete="cascade",
-        help="Modello su cui il report viene eseguito (es. sale.order).",
+        help="Model the report runs on (e.g. sale.order).",
     )
     model_name = fields.Char(
         related="model_id.model",
         store=True,
         readonly=True,
         index=True,
-        string="Modello tecnico",
+        string="Technical Model Name",
     )
     action_id = fields.Many2one(
         "ir.actions.report",
-        string="Azione di stampa",
+        string="Print Action",
         readonly=True,
         copy=False,
         ondelete="set null",
     )
     report_key = fields.Char(
-        related="action_id.report_name", string="Nome tecnico del template",
+        related="action_id.report_name",
+        string="Template Technical Name",
     )
 
-    # ----- stampa (pagina Report) -----
-    # Copiati sull'azione di stampa (ir.actions.report) a ogni modifica: gli
-    # editor non hanno accesso in scrittura alle azioni, il modulo le aggiorna
-    # in sudo solo per i report che gestisce.
+    # ----- printing (Reports page) -----
+    # Copied to the print action (ir.actions.report) on every change: editors
+    # have no write access to actions, the module updates them in sudo, only
+    # for the reports it manages.
     in_print_menu = fields.Boolean(
-        string="Nel menu Stampa",
+        string="In Print Menu",
         copy=False,
-        help="Il report compare nel menu Stampa del suo modello (es. dalla fattura). "
-             "Un report archiviato non compare comunque.",
+        help="The report is listed in the Print menu of its model (e.g. on the "
+        "invoice). An archived report is never listed.",
     )
     print_name = fields.Char(
-        string="Nome nel menu Stampa",
-        help="Voce nel menu Stampa. Vuoto: il nome del report.",
+        string="Print Menu Name",
+        help="Entry in the Print menu. Empty: the report name.",
     )
-    paperformat_id = fields.Many2one("report.paperformat", string="Formato carta")
+    paperformat_id = fields.Many2one("report.paperformat", string="Paper Format")
     print_report_name = fields.Char(
-        string="Nome del file stampato",
-        help="Espressione Python per il nome del PDF, con il record in 'object'. "
-             "Es.: 'Fattura - %s' % object.name",
+        string="Printed Report Name",
+        help="Python expression for the PDF file name, with the record in "
+        "'object'. E.g.: 'Invoice - %s' % object.name",
     )
     attachment_use = fields.Boolean(
-        string="Riusa l'allegato alla ristampa",
-        help="Se il PDF è già stato salvato come allegato, la ristampa usa quello.",
+        string="Reload from Attachment",
+        help="When the PDF was already saved as an attachment, printing again "
+        "uses it.",
     )
     attachment = fields.Char(
-        string="Salva come allegato",
-        help="Espressione Python per il nome dell'allegato; vuoto: non salvato. "
-             "Es.: (object.name + '.pdf')",
+        string="Save as Attachment",
+        help="Python expression for the attachment name; empty: not saved. "
+        "E.g.: (object.name + '.pdf')",
     )
 
     version_ids = fields.One2many(
-        "rs.report.version", "report_id", string="Versioni"
+        "rs.report.version", "report_id", string="Versions"
     )
     current_version_id = fields.Many2one(
         "rs.report.version",
-        string="Versione attiva",
+        string="Active Version",
         copy=False,
     )
     version_count = fields.Integer(
-        compute="_compute_version_count", string="N. versioni"
+        compute="_compute_version_count", string="Number of Versions"
     )
 
     @api.depends("version_ids")
@@ -120,29 +124,37 @@ class RsReport(models.Model):
         for report in self:
             report.version_count = len(report.version_ids)
 
-    # ----- ciclo di vita -----
+    # ----- life cycle -----
 
     @api.model_create_multi
     def create(self, vals_list):
         reports = super().create(vals_list)
         definition = self.env.context.get("rs_initial_definition") or EMPTY_DEFINITION
-        comment = self.env.context.get("rs_initial_comment") or _("Versione iniziale")
+        comment = self.env.context.get("rs_initial_comment") or self.env._("Initial version")
         for report in reports:
             report._create_version(definition, comment=comment)
         return reports
 
-    # Campi del report che finiscono sull'azione di stampa.
+    # Report fields copied to the print action.
     _PRINT_FIELDS = (
-        "name", "active", "in_print_menu", "print_name", "paperformat_id",
-        "print_report_name", "attachment_use", "attachment",
+        "name",
+        "active",
+        "in_print_menu",
+        "print_name",
+        "paperformat_id",
+        "print_report_name",
+        "attachment_use",
+        "attachment",
     )
 
     def _print_action_vals(self):
-        """Valori dell'azione di stampa. Nel menu Stampa solo se attivo e aggiunto."""
+        """Print action values. In the Print menu only when active and added."""
         self.ensure_one()
         return {
             "name": self.print_name or self.name,
-            "binding_model_id": self.model_id.id if self.active and self.in_print_menu else False,
+            "binding_model_id": self.model_id.id
+            if self.active and self.in_print_menu
+            else False,
             "paperformat_id": self.paperformat_id.id,
             "print_report_name": self.print_report_name or False,
             "attachment_use": self.attachment_use,
@@ -156,8 +168,13 @@ class RsReport(models.Model):
                 expr = report[field]
                 message = expr and test_python_expr(expr.strip(), mode="eval")
                 if message:
-                    raise ValidationError(_("%(field)s: espressione non valida.\n%(error)s",
-                                            field=report._fields[field].string, error=message))
+                    raise ValidationError(
+                        self.env._(
+                            "%(field)s: invalid expression.\n%(error)s",
+                            field=report._fields[field]._description_string(self.env),
+                            error=message,
+                        )
+                    )
 
     def write(self, vals):
         result = super().write(vals)
@@ -167,25 +184,30 @@ class RsReport(models.Model):
         return result
 
     def action_add_print_menu(self):
-        """Pulsante "Aggiungi al menu Stampa" (pagina Report)."""
+        """Button "Add to Print Menu" (Reports page)."""
         self.check_access("write")
         if self.filtered(lambda r: not r.active):
-            raise UserError(_("Un report archiviato non può stare nel menu Stampa: riattivalo prima."))
+            raise UserError(
+                self.env._(
+                    "An archived report cannot be in the Print menu: "
+                    "restore it first."
+                )
+            )
         self.write({"in_print_menu": True})
         return True
 
     def action_remove_print_menu(self):
-        """Pulsante "Rimuovi dal menu Stampa" (pagina Report)."""
+        """Button "Remove from Print Menu" (Reports page)."""
         self.check_access("write")
         self.write({"in_print_menu": False})
         return True
 
     def unlink(self):
-        """Elimina anche viste QWeb e azioni di stampa generate dal report.
+        """Also delete the QWeb views and print actions generated by the report.
 
-        Le versioni vengono eliminate dal database (ondelete cascade) senza
-        passare da rs.report.version.unlink(), che le protegge dall'eliminazione
-        singola.
+        Versions are deleted by the database (ondelete cascade) without going
+        through rs.report.version.unlink(), which protects them from being
+        deleted one by one.
         """
         reports = self.sudo()
         views = reports.version_ids.view_id | reports.version_ids.document_view_id
@@ -195,15 +217,15 @@ class RsReport(models.Model):
         actions.exists().unlink()
         return result
 
-    # ----- permessi -----
+    # ----- access rights -----
 
     def _check_model_access(self):
-        """L'utente può lavorare sui report solo dei modelli che può leggere."""
+        """Users can only work on reports of models they can read."""
         self.ensure_one()
         self.env[self.model_name].check_access("read")
 
     def _can_edit_qweb(self):
-        """Il QWeb libero può eseguire codice sul server: solo gli Amministratori."""
+        """Free QWeb can run code on the server: Administrators only."""
         return (
             self.env.user.has_group("report_studio.group_rs_manager")
             or self.env.user.has_group("base.group_system")
@@ -211,12 +233,14 @@ class RsReport(models.Model):
 
     def _check_definition_permission(self, definition):
         if _is_qweb_definition(definition) and not self._can_edit_qweb():
-            raise UserError(_("Solo gli Amministratori di Report Studio possono modificare il QWeb libero."))
+            raise UserError(
+                self.env._("Only Report Studio Administrators can edit free QWeb.")
+            )
 
-    # ----- compilazione, viste e azione di stampa -----
+    # ----- compilation, views and print action -----
 
     def _resolve_field(self, model_name, path):
-        """Ritorna (tipo, modello_relazione) per un percorso di campo, None se non valido."""
+        """Return (type, comodel) for a field path, None when not valid."""
         current = model_name
         ftype = comodel = None
         parts = path.split(".")
@@ -234,48 +258,84 @@ class RsReport(models.Model):
                 current = comodel
         return ftype, comodel
 
+    def _gettext(self, text):
+        """Translate a compiler message in the user interface language.
+
+        The visual view is rendered in the language being edited
+        (``render_canvas``), while its placeholders and errors belong to the
+        editor: ``rs_ui_lang`` keeps the language of the user interface.
+        """
+        ui_lang = self.env.context.get("rs_ui_lang")
+        env = self.with_context(lang=ui_lang).env if ui_lang else self.env
+        return env._(text)
+
     def _compile(self, definition, report_key, annotate=False):
-        """Compila la definizione nei template QWeb [(chiave, xml)]; errori come UserError."""
+        """Compile the definition into QWeb templates [(key, xml)].
+
+        Errors are raised as UserError, in the user language.
+        """
         self.ensure_one()
         try:
             return compile_templates(
-                definition, self.model_name, report_key,
-                resolver=self._resolve_field, annotate=annotate,
+                definition,
+                self.model_name,
+                report_key,
+                resolver=self._resolve_field,
+                annotate=annotate,
+                gettext=self._gettext,
             )
         except CompileError as exc:
-            raise UserError(_("Definizione del report non valida: %s") % exc) from exc
+            raise UserError(
+                self.env._(
+                    "Invalid report definition: %s", exc.translate(self._gettext)
+                )
+            ) from exc
 
     def _create_qweb_views(self, name, templates):
-        """Una vista QWeb per template; la prima è la principale."""
-        return [self._create_qweb_view(name if index == 0 else "%s - pagina" % name, key, arch)
-                for index, (key, arch) in enumerate(templates)]
+        """One QWeb view per template; the first one is the main one."""
+        return [
+            self._create_qweb_view(name if index == 0 else "%s - page" % name, key, arch)
+            for index, (key, arch) in enumerate(templates)
+        ]
 
     def _create_qweb_view(self, name, key, arch):
-        return self.env["ir.ui.view"].sudo().create({
-            "name": name,
-            "type": "qweb",
-            "key": key,
-            "arch": arch,
-        })
+        return (
+            self.env["ir.ui.view"]
+            .sudo()
+            .create(
+                {
+                    "name": name,
+                    "type": "qweb",
+                    "key": key,
+                    "arch": arch,
+                }
+            )
+        )
 
     def _ensure_report_action(self, report_key):
-        """Crea l'azione di stampa al primo uso, poi punta sempre alla versione attiva."""
+        """Create the print action on first use, then point it to the active version."""
         self.ensure_one()
         if self.action_id:
             self.action_id.sudo().write({"report_name": report_key})
             return
-        self.action_id = self.env["ir.actions.report"].sudo().create({
-            **self._print_action_vals(),
-            "model": self.model_name,
-            "report_type": "qweb-pdf",
-            "report_name": report_key,
-            "binding_type": "report",
-        })
+        self.action_id = (
+            self.env["ir.actions.report"]
+            .sudo()
+            .create(
+                {
+                    **self._print_action_vals(),
+                    "model": self.model_name,
+                    "report_type": "qweb-pdf",
+                    "report_name": report_key,
+                    "binding_type": "report",
+                }
+            )
+        )
 
-    # ----- versioni -----
+    # ----- versions -----
 
     def _create_version(self, definition, comment=False):
-        """Compila la definizione, crea una nuova versione immutabile e la rende attiva."""
+        """Compile the definition, create a new immutable version and activate it."""
         self.ensure_one()
         self.check_access("write")
         self._check_model_access()
@@ -285,54 +345,62 @@ class RsReport(models.Model):
         report_key = "report_studio.rs_report_%s_v%s" % (self.id, next_no)
         templates = self._compile(definition, report_key)
         views = self._create_qweb_views("%s - v%s" % (self.name, next_no), templates)
-        version = self.env["rs.report.version"].create({
-            "report_id": self.id,
-            "version_no": next_no,
-            "definition": definition,
-            "comment": comment,
-            "arch": "\n".join(arch for _key, arch in templates),
-            "view_id": views[0].id,
-            "document_view_id": views[1].id if len(views) > 1 else False,
-        })
+        version = self.env["rs.report.version"].create(
+            {
+                "report_id": self.id,
+                "version_no": next_no,
+                "definition": definition,
+                "comment": comment,
+                "arch": "\n".join(arch for _key, arch in templates),
+                "view_id": views[0].id,
+                "document_view_id": views[1].id if len(views) > 1 else False,
+            }
+        )
         self.current_version_id = version
         self._ensure_report_action(report_key)
         return version
 
     def _get_own_version(self, version):
-        """Verifica che la versione (record o id) appartenga a questo report."""
+        """Check that the version (record or id) belongs to this report."""
         self.ensure_one()
         if isinstance(version, int):
             version = self.env["rs.report.version"].browse(version)
         version = version.exists()
         if not version or version.report_id != self:
-            raise UserError(_("La versione non appartiene a questo report."))
+            raise UserError(self.env._("The version does not belong to this report."))
         return version
 
     @contextmanager
     def _temporary_report(self, definition, annotate=False):
-        """Vista QWeb e azione di stampa temporanee per una definizione non salvata.
+        """Temporary QWeb views and print action for an unsaved definition.
 
-        Restituisce la chiave del template; vista e azione vengono eliminate
-        sempre all'uscita, anche in caso di errore.
+        Yield the template key; views and action are always deleted on exit,
+        errors included.
         """
         self.ensure_one()
         definition = definition or EMPTY_DEFINITION
         self._check_definition_permission(definition)
         key = "report_studio.preview_%s_%s" % (self.id, uuid.uuid4().hex)
         templates = self._compile(definition, key, annotate=annotate)
-        views = self._create_qweb_views("%s - anteprima" % self.name, templates)
-        action = self.env["ir.actions.report"].sudo().create({
-            "name": "%s - anteprima" % self.name,
-            "model": self.model_name,
-            "report_type": "qweb-pdf",
-            "report_name": key,
-        })
+        views = self._create_qweb_views("%s - preview" % self.name, templates)
+        action = (
+            self.env["ir.actions.report"]
+            .sudo()
+            .create(
+                {
+                    "name": "%s - preview" % self.name,
+                    "model": self.model_name,
+                    "report_type": "qweb-pdf",
+                    "report_name": key,
+                }
+            )
+        )
         try:
             yield key
         except QWebException as exc:
-            # Permessi e errori utente sollevati durante il rendering arrivano
-            # avvolti in QWebException: li riporta come tali al chiamante.
-            if isinstance(exc.__cause__, (AccessError, UserError)):
+            # Access and user errors raised while rendering come wrapped in a
+            # QWebException: give them back to the caller as they are.
+            if isinstance(exc.__cause__, AccessError | UserError):
                 raise exc.__cause__ from None
             raise
         finally:
@@ -341,68 +409,128 @@ class RsReport(models.Model):
                 view.unlink()
 
     def _render_preview_pdf(self, definition, res_id):
-        """PDF di anteprima da una definizione non ancora salvata.
+        """Preview PDF from a definition not saved yet.
 
-        Il rendering avviene con l'utente corrente (non in sudo), così rispetta
-        i diritti di lettura su record e campi collegati; il chiamante verifica
-        comunque i permessi di lettura sul record.
+        Rendering happens with the current user (not in sudo), so it respects
+        the read access on the record and related fields; the caller checks
+        the read access on the record anyway.
         """
         with self._temporary_report(definition) as key:
-            pdf, _fmt = self.env["ir.actions.report"]._render_qweb_pdf(key, res_ids=[res_id])
+            pdf, _fmt = self.env["ir.actions.report"]._render_qweb_pdf(
+                key, res_ids=[res_id]
+            )
             return pdf
 
     def render_canvas(self, definition, res_id, lang=None):
-        """HTML della vista visuale dell'editor per un record.
+        """HTML of the visual view of the editor for a record.
 
-        È la stessa pagina del PDF (layout aziendale compreso) con i blocchi
-        marcati da ``data-rs-path`` per la selezione; i blocchi incompleti
-        compaiono come segnaposto invece di generare un errore. ``lang`` è la
-        lingua che si sta modificando: testi tradotti e campi di Odoo sono
-        mostrati in quella lingua (solo lingue attive).
+        It is the same page as the PDF (company layout included) with the
+        blocks marked by ``data-rs-path`` for selection; incomplete blocks
+        are shown as placeholders instead of raising an error. ``lang`` is
+        the language being edited: translated texts and Odoo fields are shown
+        in that language (active languages only).
         """
         self.ensure_one()
         self.check_access("read")
         if lang and lang in self._active_lang_codes():
-            self = self.with_context(lang=lang)  # noqa: PLW0642
+            self = self.with_context(lang=lang, rs_ui_lang=self.env.lang)  # noqa: PLW0642
         record = self.env[self.model_name].browse(int(res_id)).exists()
         if not record:
-            raise UserError(_("Record non trovato."))
+            raise UserError(self.env._("Record not found."))
         record.check_access("read")
         with self._temporary_report(definition, annotate=True) as key:
-            html, _fmt = self.env["ir.actions.report"]._render_qweb_html(key, docids=[record.id])
+            html, _fmt = self.env["ir.actions.report"]._render_qweb_html(
+                key, docids=[record.id]
+            )
         return html.decode() if isinstance(html, bytes) else html
 
-    # ----- lingue -----
+    # ----- languages -----
 
     def _active_lang_codes(self):
         return [code for code, _name in self.env["res.lang"].get_installed()]
 
     @api.model
     def _main_lang(self):
-        """Lingua principale di Odoo: quella predefinita dei contatti, poi
-        quella dell'azienda, poi la prima attiva."""
+        """Main Odoo language: the default one of contacts, then the company
+        one, then the first active one."""
         codes = self._active_lang_codes()
-        for code in (self.env["ir.default"]._get("res.partner", "lang"),
-                     self.env.company.partner_id.lang):
+        for code in (
+            self.env["ir.default"]._get("res.partner", "lang"),
+            self.env.company.partner_id.lang,
+        ):
             if code in codes:
                 return code
         return codes[0] if codes else "en_US"
 
     @api.model
     def get_languages(self):
-        """Lingue per l'editor: le attive in Odoo e la principale."""
+        """Languages for the editor: the active ones in Odoo and the main one."""
         return {
             "main": self._main_lang(),
-            "langs": [{"code": code, "name": name} for code, name in self.env["res.lang"].get_installed()],
+            "langs": [
+                {"code": code, "name": name}
+                for code, name in self.env["res.lang"].get_installed()
+            ],
         }
 
-    # ----- dati per l'editor -----
+    # ----- data for the editor -----
+
+    @api.model
+    def get_editor_labels(self):
+        """Labels of the editor, translated on the server.
+
+        Short common words (Table, Solid, Top...) would get the translation of
+        other modules in the web client, where JS translations are global;
+        Python translations are per module, so these stay the module's own.
+        """
+        _ = self.env._
+        return {
+            "groups": {"content": _("Content"), "layout": _("Layout")},
+            "blocks": {
+                "text": _("Text"),
+                "field": _("Field"),
+                "table": _("Table"),
+                "section": _("Section"),
+                "columns": _("Columns"),
+                "column": _("Column"),
+                "if": _("Condition"),
+                "separator": _("Separator"),
+                "spacer": _("Spacer"),
+                "page_break": _("Page Break"),
+            },
+            "margins": {
+                "top": _("Top"),
+                "right": _("Right"),
+                "bottom": _("Bottom"),
+                "left": _("Left"),
+            },
+            "aligns": {
+                "left": _("Left"),
+                "center": _("Center"),
+                "right": _("Right"),
+                "justify": _("Justify"),
+            },
+            "separators": {
+                "solid": _("Solid"),
+                "dashed": _("Dashed"),
+                "dotted": _("Dotted"),
+            },
+            "soon": {
+                "template": _("Template"),
+                "saveTemplate": _("Save as Template"),
+                "testPrint": _("Test Print"),
+                "help": _("Help"),
+            },
+        }
 
     @api.model
     def get_model_options(self):
-        """Modelli disponibili per un nuovo report: solo quelli che l'utente può leggere."""
+        """Models available for a new report: only those the user can read."""
         options = []
-        for model in self.env["ir.model"].sudo().search([("transient", "=", False)], order="model"):
+        models_ = self.env["ir.model"].sudo().search(
+            [("transient", "=", False)], order="model"
+        )
+        for model in models_:
             if model.model not in self.env:
                 continue
             records = self.env[model.model]
@@ -413,9 +541,9 @@ class RsReport(models.Model):
 
     @api.model
     def get_model_fields(self, model_name):
-        """Campi di un modello per i suggerimenti dell'editor."""
+        """Fields of a model for the editor suggestions."""
         if model_name not in self.env:
-            raise UserError(_("Modello %s non trovato.") % model_name)
+            raise UserError(self.env._("Model %s not found.", model_name))
         records = self.env[model_name]
         records.check_access("read")
         info = records.fields_get(attributes=["type", "relation", "string"])
@@ -431,10 +559,10 @@ class RsReport(models.Model):
 
     @api.model
     def get_source_catalog(self):
-        """Documenti di partenza: documenti nativi di Odoo/moduli e report Studio.
+        """Starting documents: native Odoo/module documents and Studio reports.
 
-        I documenti nativi diventano copie in QWeb libero, modificabili solo
-        dagli Amministratori: agli altri ruoli non vengono proposti.
+        Native documents become free QWeb copies, editable by Administrators
+        only: they are not offered to the other roles.
         """
         items = []
         if self._can_edit_qweb():
@@ -442,95 +570,115 @@ class RsReport(models.Model):
                 [("report_type", "=", "qweb-pdf")], order="name"
             )
             for action in actions:
-                if not action.model or (action.report_name or "").startswith("report_studio."):
+                if not action.model or (action.report_name or "").startswith(
+                    "report_studio."
+                ):
                     continue
-                items.append({
-                    "key": "action:%s" % action.id,
-                    "label": "%s (%s)" % (action.name, action.model),
-                    "group": "Documenti Odoo",
-                })
+                items.append(
+                    {
+                        "key": "action:%s" % action.id,
+                        "label": "%s (%s)" % (action.name, action.model),
+                        "group": self.env._("Odoo Documents"),
+                    }
+                )
         for report in self.search([]):
-            items.append({
-                "key": "report:%s" % report.id,
-                "label": "%s (%s)" % (report.name, report.model_name),
-                "group": "Report Studio",
-            })
+            items.append(
+                {
+                    "key": "report:%s" % report.id,
+                    "label": "%s (%s)" % (report.name, report.model_name),
+                    "group": "Report Studio",
+                }
+            )
         return items
 
-    # ----- creazione: nuovo report, copia di versione, copia di documento -----
+    # ----- creation: new report, version copy, document copy -----
 
     def _get_model(self, model_name):
         model = self.env["ir.model"]._get(model_name)
         if not model:
-            raise UserError(_("Modello %s non trovato.") % model_name)
+            raise UserError(self.env._("Model %s not found.", model_name))
         return model
 
     @api.model
     def create_new_report(self, name, model_name):
-        """Nuovo report a blocchi, vuoto, sul modello indicato."""
+        """New empty blocks report on the given model."""
         model = self._get_model(model_name)
-        return self.create({"name": name, "model_id": model.id, "report_mode": "blocks"}).id
+        return self.create(
+            {"name": name, "model_id": model.id, "report_mode": "blocks"}
+        ).id
 
     @api.model
     def create_from_source(self, name, source_key):
-        """Crea un report modificabile da un documento Odoo o da un report Studio."""
+        """Create an editable report from an Odoo document or a Studio report."""
         kind, _sep, raw_id = (source_key or "").partition(":")
         if not raw_id.isdigit():
-            raise UserError(_("Documento di partenza non valido."))
+            raise UserError(self.env._("Invalid starting document."))
         if kind == "report":
             source = self.browse(int(raw_id)).exists()
             if not source:
-                raise UserError(_("Report di partenza non trovato."))
+                raise UserError(self.env._("Starting report not found."))
             definition = source.current_version_id.definition
             model_name = source.model_name
             mode = source.report_mode
-            comment = _("Copia da %s") % source.name
+            comment = self.env._("Copy of %s", source.name)
         elif kind == "action":
             action = self.env["ir.actions.report"].browse(int(raw_id)).exists()
             if not action:
-                raise UserError(_("Documento di partenza non trovato."))
+                raise UserError(self.env._("Starting document not found."))
             view = self.env["ir.ui.view"].sudo().search(
                 [("key", "=", action.report_name), ("type", "=", "qweb")], limit=1
             )
             if not view:
-                raise UserError(_("Template QWeb del documento %s non trovato.") % action.name)
+                raise UserError(
+                    self.env._("QWeb template of document %s not found.", action.name)
+                )
             definition = json.dumps({"mode": "qweb", "arch": view.arch_db})
             model_name = action.model
             mode = "qweb"
-            comment = _("Copia del documento Odoo %s") % action.name
+            comment = self.env._("Copy of Odoo document %s", action.name)
         else:
-            raise UserError(_("Documento di partenza non valido."))
+            raise UserError(self.env._("Invalid starting document."))
         model = self._get_model(model_name)
-        return self.with_context(
-            rs_initial_definition=definition,
-            rs_initial_comment=comment,
-        ).create({"name": name, "model_id": model.id, "report_mode": mode}).id
+        return (
+            self.with_context(
+                rs_initial_definition=definition,
+                rs_initial_comment=comment,
+            )
+            .create({"name": name, "model_id": model.id, "report_mode": mode})
+            .id
+        )
 
     def action_copy_version_to_new_report(self, version, name=None):
-        """Crea un nuovo report con la definizione di una versione, senza storico.
+        """Create a new report from the definition of a version, without history.
 
-        Il nuovo report parte dalla versione 1 e non eredita le versioni
-        precedenti dell'originale.
+        The new report starts from version 1 and does not inherit the earlier
+        versions of the original.
         """
         version = self._get_own_version(version)
         return self.with_context(
             rs_initial_definition=version.definition,
-            rs_initial_comment=_("Copia da %s, versione %s") % (self.name, version.version_no),
-        ).create({
-            "name": name or _("%s (copia)") % self.name,
-            "model_id": self.model_id.id,
-            "report_mode": self.report_mode,
-        })
+            rs_initial_comment=self.env._(
+                "Copy of %(name)s, version %(version)s",
+                name=self.name,
+                version=version.version_no,
+            ),
+        ).create(
+            {
+                "name": name or self.env._("%s (copy)", self.name),
+                "model_id": self.model_id.id,
+                "report_mode": self.report_mode,
+            }
+        )
 
     def action_restore_version(self, version):
-        """Ripristina una versione creando una nuova versione copiata da essa."""
+        """Restore a version by creating a new version copied from it."""
         version = self._get_own_version(version)
         return self._create_version(
             version.definition,
-            comment=_("Ripristino dalla versione %s") % version.version_no,
+            comment=self.env._("Restored from version %s", version.version_no),
         )
 
-    # ----- metodi pubblici chiamati dall'editor (restituiscono id) -----
+    # ----- public methods called by the editor (they return ids) -----
 
     def action_save_version(self, definition, comment=False):
         self.ensure_one()

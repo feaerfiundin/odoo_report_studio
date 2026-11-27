@@ -1,0 +1,1764 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* report_studio
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0-20261112\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-27 21:53+0000\n"
+"PO-Revision-Date: 2026-11-27 21:53+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid ""
+"%(field)s: invalid expression.\n"
+"%(error)s"
+msgstr "%(field)s: espressione non valida.\n%(error)s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "%(what)s is not valid: %(value)r (%(low)g to %(high)g)"
+msgstr "%(what)s non valido: %(value)r (da %(low)g a %(high)g)"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "%s (copy)"
+msgstr "%s (copia)"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "'Invoice - %s' % object.name"
+msgstr "'Fattura - %s' % object.name"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "'children' must be a list"
+msgstr "'children' deve essere una lista"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "'columns' must be a non empty list"
+msgstr "'columns' deve essere una lista non vuota"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "'content' must be a string"
+msgstr "'content' deve essere una stringa"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "'divider' must be true or false"
+msgstr "'divider' deve essere vero o falso"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "(main)"
+msgstr "(principale)"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "(object.name + '.pdf')"
+msgstr "(object.name + '.pdf')"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "+ column"
+msgstr "+ colonna"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "A column can only be inside a Columns block"
+msgstr "Una colonna può stare solo dentro un blocco Colonne"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__active
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__is_active
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Active"
+msgstr "Attivo"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Active Reports"
+msgstr "Attivi"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__current_version_id
+msgid "Active Version"
+msgstr "Versione attiva"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "Add to Print Menu"
+msgstr "Aggiungi al menu Stampa"
+
+#. module: report_studio
+#: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__manager
+msgid "Administrator"
+msgstr "Amministratore"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Alignment"
+msgstr "Allineamento"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Alignment not allowed: %r"
+msgstr "Allineamento non ammesso: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "An archived report cannot be in the Print menu: restore it first."
+msgstr "Un report archiviato non può stare nel menu Stampa: riattivalo prima."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid ""
+"An editable copy of the selected document will be created, with its model. "
+"The original will not be changed. Do you want to continue?"
+msgstr "Verrà creata una copia modificabile del documento selezionato, con il suo modello. L'originale non verrà modificato. Vuoi continuare?"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__arch
+msgid "Arch"
+msgstr "Arch"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Archived Reports"
+msgstr "Archiviati"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid ""
+"Archived report: it is not listed in the Print menu. Restore it from Saved "
+"Layouts."
+msgstr "Report archiviato: non compare nel menu Stampa. Riattivalo da Saved Layouts."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "As the table"
+msgstr "Come la tabella"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "As the table (%s)"
+msgstr "Come la tabella (%s)"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "Attachment"
+msgstr "Allegato"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__user_id
+msgid "Author"
+msgstr "Autore"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields.selection,name:report_studio.selection__rs_report__report_mode__blocks
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Blocks"
+msgstr "Blocchi"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Bold"
+msgstr "Grassetto"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Bottom"
+msgstr "Sotto"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Bottom margin (mm)"
+msgstr "Margine inferiore (mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "CSS Class"
+msgstr "Classe CSS"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Center"
+msgstr "Centro"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Change failed"
+msgstr "Modifica non riuscita"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Choose the model"
+msgstr "Scegli il modello"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Close"
+msgstr "Chiudi"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Column"
+msgstr "Colonna"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Columns"
+msgstr "Colonne"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Coming soon"
+msgstr "In arrivo"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__comment
+msgid "Comment"
+msgstr "Commento"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Comment of the next saved version"
+msgstr "Commento della prossima versione salvata"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Comparison value not allowed: %r"
+msgstr "Valore di confronto non ammesso: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Condition"
+msgstr "Condizione"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Condition false for this record: content hidden"
+msgstr "Condizione falsa per questo record: contenuto nascosto"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Content"
+msgstr "Contenuto"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Copy"
+msgstr "Copia"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Copy of %(name)s, version %(version)s"
+msgstr "Copia da %(name)s, versione %(version)s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Copy of %s"
+msgstr "Copia da %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Copy of Odoo document %s"
+msgstr "Copia del documento Odoo %s"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Create Copy"
+msgstr "Crea copia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Create Editable Copy"
+msgstr "Crea copia editabile"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__create_uid
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__create_uid
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Created by"
+msgstr "Creato da"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__create_date
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__create_date
+msgid "Created on"
+msgstr "Creato il"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Dashed"
+msgstr "Tratteggiata"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__definition
+msgid "Definition"
+msgstr "Definizione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Delete Block"
+msgstr "Elimina blocco"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Discard"
+msgstr "Abbandona"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__display_name
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__display_name
+msgid "Display Name"
+msgstr "Nome visualizzato"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Dotted"
+msgstr "Puntinata"
+
+#. module: report_studio
+#: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__editor
+msgid "Editor"
+msgstr "Editor"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Empty column"
+msgstr "Colonna vuota"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Empty page: add a block from the left column."
+msgstr "Pagina vuota: aggiungi un blocco dalla colonna di sinistra."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Empty section: select it and add blocks"
+msgstr "Sezione vuota: selezionala e aggiungi blocchi"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Enter the report name"
+msgstr "Inserisci il nome del report"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__print_name
+msgid "Entry in the Print menu. Empty: the report name."
+msgstr "Voce nel menu Stampa. Vuoto: il nome del report."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/controllers/preview.py:0
+msgid "Error while rendering the preview: %s"
+msgstr "Errore durante il rendering dell'anteprima: %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Every block must be an object"
+msgstr "Ogni blocco deve essere un oggetto"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Every column must be an object"
+msgstr "Ogni colonna deve essere un oggetto"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Field"
+msgstr "Campo"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Field %(path)r does not exist on model %(model)s"
+msgstr "Il campo %(path)r non esiste sul modello %(model)s"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Font"
+msgstr "Carattere"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Font properties not allowed: %s"
+msgstr "Proprietà del carattere non ammesse: %s"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "For a copy the model is the one of the starting document."
+msgstr "Per una copia il modello è quello del documento di partenza."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields.selection,name:report_studio.selection__rs_report__report_mode__qweb
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Free QWeb"
+msgstr "QWeb libero"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Free QWeb mode: the template is edited in the center."
+msgstr "Modalità QWeb libero: il template si modifica al centro."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Generating the PDF…"
+msgstr "Generazione del PDF…"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Header Font"
+msgstr "Carattere intestazione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Height (mm)"
+msgstr "Altezza (mm)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Help"
+msgstr "Guida"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__id
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__id
+msgid "ID"
+msgstr "ID"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "If %(path)s %(op)s %(value)s"
+msgstr "Se %(path)s %(op)s %(value)s"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__in_print_menu
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "In Print Menu"
+msgstr "Nel menu Stampa"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "In the PDF the following content starts on a new page."
+msgstr "Nel PDF il contenuto successivo inizia su una nuova pagina."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Initial version"
+msgstr "Versione iniziale"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid 'print in the customer language' option"
+msgstr "Opzione 'stampa nella lingua del cliente' non valida"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid CSS class: %r"
+msgstr "Classe CSS non valida: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid JSON: %s"
+msgstr "JSON non valido: %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid column width: %r (in %%, 0 to 100)"
+msgstr "Larghezza della colonna non valida: %r (in %%, da 0 a 100)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid field label"
+msgstr "Etichetta del campo non valida"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid field path: %r"
+msgstr "Percorso di campo non valido: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid font size: %(size)r (%(low)d to %(high)d pt)"
+msgstr "Dimensione del carattere non valida: %(size)r (da %(low)d a %(high)d pt)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid language code: %r"
+msgstr "Codice lingua non valido: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid main language: %r"
+msgstr "Lingua principale non valida: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid margins: %r"
+msgstr "Margini non validi: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/controllers/preview.py:0
+msgid "Invalid parameters"
+msgstr "Parametri non validi"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Invalid report definition: %s"
+msgstr "Definizione del report non valida: %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid report key: %r"
+msgstr "Chiave del report non valida: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Invalid starting document."
+msgstr "Documento di partenza non valido."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid translation (%(what)s, %(code)s)"
+msgstr "Traduzione non valida (%(what)s, %(code)s)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid translations (%s)"
+msgstr "Traduzioni non valide (%s)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid value for %(key)s: %(value)r"
+msgstr "Valore non valido per %(key)s: %(value)r"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Italic"
+msgstr "Corsivo"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report_version__definition
+msgid "JSON definition of the report blocks."
+msgstr "Definizione JSON dei blocchi del report."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Justify"
+msgstr "Giustificato"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Label"
+msgstr "Etichetta"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Label Font"
+msgstr "Carattere etichetta"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Language of the texts you are editing; the page in the center shows it"
+msgstr "Lingua dei testi che stai modificando; la pagina centrale la mostra"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Language read from the contact"
+msgstr "Lingua letta dal contatto"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Last Modified"
+msgstr "Ultima modifica"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__write_uid
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__write_uid
+msgid "Last Updated by"
+msgstr "Ultimo aggiornamento di"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__write_date
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__write_date
+msgid "Last Updated on"
+msgstr "Ultimo aggiornamento il"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Layout"
+msgstr "Impaginazione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Layout default"
+msgstr "Predefinita del layout"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Layout not allowed: %r"
+msgstr "Layout non ammesso: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Left"
+msgstr "Sinistra"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Left margin (mm)"
+msgstr "Margine sinistro (mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Line Style"
+msgstr "Stile della riga"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Lock the width"
+msgstr "Blocca la larghezza"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Lock: it does not change when the other columns change"
+msgstr "Blocca: non cambia quando si modificano le altre colonne"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Main language of the texts:"
+msgstr "Lingua principale dei testi:"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Margins (mm)"
+msgstr "Margini (mm)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Maximum block depth exceeded"
+msgstr "Profondità massima dei blocchi superata"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__report_mode
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Mode"
+msgstr "Modalità"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Model"
+msgstr "Modello"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Model %s not found."
+msgstr "Modello %s non trovato."
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Model (technical name)"
+msgstr "Modello (nome tecnico)"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__model_id
+msgid "Model the report runs on (e.g. sale.order)."
+msgstr "Modello su cui il report viene eseguito (es. sale.order)."
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Modified by"
+msgstr "Modificato da"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Modified by Me"
+msgstr "Modificati da me"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__name
+msgid "Name"
+msgstr "Nome"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Name of the copy"
+msgstr "Nome della copia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/rs_report_list.js:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "New Report"
+msgstr "Nuovo report"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "New report created from the copy"
+msgstr "Nuovo report creato dalla copia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "No %s record to show: create one to see the page."
+msgstr "Nessun record di %s da mostrare: creane uno per vedere la pagina."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "No record available for the preview."
+msgstr "Nessun record disponibile per l'anteprima."
+
+#. module: report_studio
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_list
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_print
+msgid "No report"
+msgstr "Nessun report"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Not in Print Menu"
+msgstr "Non nel menu Stampa"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Number of Columns"
+msgstr "Numero di colonne"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__version_count
+msgid "Number of Versions"
+msgstr "N. versioni"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Odoo Documents"
+msgstr "Documenti Odoo"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__model_id
+msgid "Odoo Model"
+msgstr "Modello Odoo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Off = archived report"
+msgstr "Spento = report archiviato"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Off: printed in the language of the user printing."
+msgstr "Spenta: si stampa nella lingua di chi stampa."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Only Report Studio Administrators can edit free QWeb."
+msgstr "Solo gli Amministratori di Report Studio possono modificare il QWeb libero."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/res_users.py:0
+msgid "Only a Report Studio Administrator can change Report Studio roles."
+msgstr "Solo un Amministratore di Report Studio può modificare i ruoli Report Studio."
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report_version__document_view_id
+msgid ""
+"Only when printing in the customer language: the page, called by the main "
+"view with t-lang."
+msgstr "Solo con la stampa nella lingua del cliente: la pagina, chiamata dalla vista principale con t-lang."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Open Visual Editor"
+msgstr "Open Visual Editor"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Operator"
+msgstr "Operatore"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Operator not allowed: %r"
+msgstr "Operatore non ammesso: %r"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "PDF Preview"
+msgstr "Anteprima PDF"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Page"
+msgstr "Pagina"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Page Break"
+msgstr "Interruzione di pagina"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__document_view_id
+msgid "Page QWeb View"
+msgstr "Vista QWeb della pagina"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Page break"
+msgstr "Interruzione di pagina"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__paperformat_id
+msgid "Paper Format"
+msgstr "Formato carta"
+
+#. module: report_studio
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_list
+msgid "Press \"New\" to create one."
+msgstr "Premi \"Nuovo\" per crearne uno."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Preview"
+msgstr "Anteprima"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Preview failed"
+msgstr "Anteprima non riuscita"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__action_id
+msgid "Print Action"
+msgstr "Azione di stampa"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__print_name
+msgid "Print Menu Name"
+msgstr "Nome nel menu Stampa"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Print in the customer language"
+msgstr "Stampa nella lingua del cliente"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__print_report_name
+msgid "Printed Report Name"
+msgstr "Nome del file stampato"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "Printing"
+msgstr "Stampa"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Properties"
+msgstr "Proprietà"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__print_report_name
+msgid ""
+"Python expression for the PDF file name, with the record in 'object'. E.g.: "
+"'Invoice - %s' % object.name"
+msgstr "Espressione Python per il nome del PDF, con il record in 'object'. Es.: 'Fattura - %s' % object.name"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__attachment
+msgid ""
+"Python expression for the attachment name; empty: not saved. E.g.: "
+"(object.name + '.pdf')"
+msgstr "Espressione Python per il nome dell'allegato; vuoto: non salvato. Es.: (object.name + '.pdf')"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__view_id
+msgid "QWeb View"
+msgstr "Vista QWeb"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report_version__arch
+msgid "QWeb template generated from the definition."
+msgstr "Template QWeb generato dalla definizione."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "QWeb template of document %s not found."
+msgstr "Template QWeb del documento %s non trovato."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "QWeb template. Layout and style come from Odoo."
+msgstr "Template QWeb. Layout e stile vengono da Odoo."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Record"
+msgstr "Record"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/controllers/preview.py:0
+msgid "Record not found"
+msgstr "Record non trovato"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Record not found."
+msgstr "Record non trovato."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Record used for the page data"
+msgstr "Record usato per i dati della pagina"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Refresh preview"
+msgstr "Aggiorna anteprima"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__attachment_use
+msgid "Reload from Attachment"
+msgstr "Riusa l'allegato alla ristampa"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Remove column"
+msgstr "Rimuovi colonna"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "Remove from Print Menu"
+msgstr "Rimuovi dal menu Stampa"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__report_id
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Report"
+msgstr "Report"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.actions.client,name:report_studio.action_report_studio_editor
+#: model:ir.model.fields,field_description:report_studio.field_res_users__report_studio_role
+#: model:ir.ui.menu,name:report_studio.menu_report_studio_root
+#: model_terms:ir.ui.view,arch_db:report_studio.view_users_form_report_studio
+msgid "Report Studio"
+msgstr "Report Studio"
+
+#. module: report_studio
+#: model:ir.model,name:report_studio.model_rs_report
+msgid "Report Studio - Report"
+msgstr "Report Studio - Report"
+
+#. module: report_studio
+#: model:ir.model,name:report_studio.model_rs_report_version
+msgid "Report Studio - Version"
+msgstr "Report Studio - Versione"
+
+#. module: report_studio
+#: model:res.groups,name:report_studio.group_rs_manager
+msgid "Report Studio / Administrator"
+msgstr "Report Studio / Amministratore"
+
+#. module: report_studio
+#: model:res.groups,name:report_studio.group_rs_editor
+msgid "Report Studio / Editor"
+msgstr "Report Studio / Editor"
+
+#. module: report_studio
+#: model:res.groups,name:report_studio.group_rs_user
+msgid "Report Studio / User"
+msgstr "Report Studio / Utente"
+
+#. module: report_studio
+#: model:res.groups,name:report_studio.group_rs_viewer
+msgid "Report Studio / Viewer"
+msgstr "Report Studio / Visualizzatore"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_res_users__report_studio_role
+msgid "Report Studio role. Empty = no access."
+msgstr "Ruolo di Report Studio. Vuoto = nessun accesso."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Report archived"
+msgstr "Report archiviato"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Report name"
+msgstr "Nome del report"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/controllers/preview.py:0
+msgid "Report not found"
+msgstr "Report non trovato"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Report restored"
+msgstr "Report attivato"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report_version.py:0
+msgid ""
+"Report versions are immutable. Create a new version to change their content."
+msgstr "Le versioni dei report sono immutabili. Crea una nuova versione per modificarne il contenuto."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report_version.py:0
+msgid "Report versions cannot be deleted: the history is permanent."
+msgstr "Le versioni dei report non possono essere eliminate: lo storico è permanente."
+
+#. module: report_studio
+#: model:ir.actions.act_window,name:report_studio.action_rs_report_print
+#: model:ir.ui.menu,name:report_studio.menu_report_studio_print
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
+msgid "Reports"
+msgstr "Report"
+
+#. module: report_studio
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_print
+msgid "Reports are created from Saved Layouts."
+msgstr "I report si creano da Saved Layouts."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Restore"
+msgstr "Ripristina"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Restored from version %s"
+msgstr "Ripristino dalla versione %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Right"
+msgstr "Destra"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Right margin (mm)"
+msgstr "Margine destro (mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Row Font"
+msgstr "Carattere righe"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Save"
+msgstr "Salva"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__attachment
+msgid "Save as Attachment"
+msgstr "Salva come allegato"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Save as Template"
+msgstr "Salva come template"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Save as a new version"
+msgstr "Salva come nuova versione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Save failed"
+msgstr "Salvataggio non riuscito"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.actions.act_window,name:report_studio.action_rs_report_list
+#: model:ir.ui.menu,name:report_studio.menu_report_studio_layouts
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
+msgid "Saved Layouts"
+msgstr "Saved Layouts"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Section"
+msgstr "Sezione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Select a block in the page to edit its properties."
+msgstr "Seleziona un blocco nella pagina per modificarne le proprietà."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Separator"
+msgstr "Separatore"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Separator style not allowed: %r"
+msgstr "Stile del separatore non ammesso: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Separator thickness (px)"
+msgstr "Spessore del separatore (px)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Size (pt)"
+msgstr "Dimensione (pt)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Solid"
+msgstr "Continua"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Source (one2many / many2many)"
+msgstr "Sorgente (one2many / many2many)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Spacer"
+msgstr "Spaziatore"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Spacer height (mm)"
+msgstr "Altezza dello spaziatore (mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Starting Document"
+msgstr "Documento di partenza"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Starting document not found."
+msgstr "Documento di partenza non trovato."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Starting report not found."
+msgstr "Report di partenza non trovato."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Structure"
+msgstr "Struttura"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Table"
+msgstr "Tabella"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__model_name
+msgid "Technical Model Name"
+msgstr "Modello tecnico"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Template"
+msgstr "Template"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__report_key
+msgid "Template Technical Name"
+msgstr "Nome tecnico del template"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Test Print"
+msgstr "Stampa di prova"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Text"
+msgstr "Testo"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The Columns block can only contain columns"
+msgstr "Il blocco Colonne può contenere solo colonne"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The Columns block must have %(low)d to %(high)d columns"
+msgstr "Il blocco Colonne deve avere da %(low)d a %(high)d colonne"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The QWeb template is empty"
+msgstr "Il template QWeb è vuoto"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"The block goes inside the selected one (Section, Column, Condition) or after"
+" it."
+msgstr "Il blocco va dentro quello selezionato (Sezione, Colonna, Condizione) oppure dopo di esso."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "The blocks added from the left column go into this column."
+msgstr "I blocchi aggiunti dalla colonna di sinistra vanno in questa colonna."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The column 'locked' value must be true or false"
+msgstr "Il valore 'locked' della colonna deve essere vero o falso"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The definition must be a JSON object"
+msgstr "La definizione deve essere un oggetto JSON"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The field %r is not a contact (many2one to res.partner)"
+msgstr "Il campo %r non è un contatto (many2one a res.partner)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The font must be an object"
+msgstr "Il carattere deve essere un oggetto"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"The one configured in Odoo (Settings → Companies → Document Layout). It "
+"applies to all documents."
+msgstr "Quella configurata in Odoo (Impostazioni → Società → Layout documenti). Vale per tutti i documenti."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report_version.py:0
+msgid "The report definition is not valid JSON: %s"
+msgstr "La definizione del report non è JSON valido: %s"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "The report is in the Print menu of the model"
+msgstr "Il report è nel menu Stampa del modello"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__in_print_menu
+msgid ""
+"The report is listed in the Print menu of its model (e.g. on the invoice). "
+"An archived report is never listed."
+msgstr "Il report compare nel menu Stampa del suo modello (es. dalla fattura). Un report archiviato non compare comunque."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The table source %r must be a one2many or many2many field"
+msgstr "La sorgente della tabella %r deve essere un campo one2many o many2many"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "The version does not belong to this report."
+msgstr "La versione non appartiene a questo report."
+
+#. module: report_studio
+#: model:ir.model.constraint,message:report_studio.constraint_rs_report_version_report_version_unique
+msgid "The version number must be unique per report."
+msgstr "Il numero di versione deve essere unico per report."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Thickness"
+msgstr "Spessore"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"To add blocks or set the margins of a column, click inside the column in the"
+" page."
+msgstr "Per aggiungere blocchi o impostare i margini di una colonna, clicca dentro la colonna nella pagina."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Too many blocks on the same level"
+msgstr "Troppi blocchi nello stesso livello"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Top"
+msgstr "Sopra"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Top margin (mm)"
+msgstr "Margine superiore (mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Total"
+msgstr "Totale"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Translated texts and Odoo fields (products, dates, selections) are printed "
+"in the language of the contact; when the contact has no language, in the one"
+" of the user printing."
+msgstr "Testi tradotti e campi di Odoo (prodotti, date, selezioni) escono nella lingua del contatto; se il contatto non ha lingua, in quella di chi stampa."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid ""
+"Translation in %(lang)s: texts, labels and headers are written in this "
+"language. When left empty, the text in %(base)s is printed (in grey)."
+msgstr "Traduzione in %(lang)s: testi, etichette e intestazioni si scrivono in questa lingua. Se lasci vuoto, si stampa il testo in %(base)s (in grigio)."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Unable to draw the page"
+msgstr "Impossibile disegnare la pagina"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Underline"
+msgstr "Sottolineato"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Unknown block type: %r"
+msgstr "Tipo di blocco sconosciuto: %r"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Unsaved changes"
+msgstr "Modifiche non salvate"
+
+#. module: report_studio
+#: model:ir.model,name:report_studio.model_res_users
+#: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__user
+msgid "User"
+msgstr "Utente"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Value"
+msgstr "Valore"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Value Font"
+msgstr "Carattere valore"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report_version__version_no
+msgid "Version"
+msgstr "Versione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Version comment"
+msgstr "Commento versione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Version restored as a new version"
+msgstr "Versione ripristinata come nuova versione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Version saved"
+msgstr "Versione salvata"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__version_ids
+msgid "Versions"
+msgstr "Versioni"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Vertical line between the columns"
+msgstr "Riga verticale tra le colonne"
+
+#. module: report_studio
+#: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__viewer
+msgid "Viewer"
+msgstr "Visualizzatore"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_report__attachment_use
+msgid ""
+"When the PDF was already saved as an attachment, printing again uses it."
+msgstr "Se il PDF è già stato salvato come allegato, la ristampa usa quello."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Width %"
+msgstr "Largh. %"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "active"
+msgstr "attiva"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "as the container"
+msgstr "come il contenitore"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "company paper format"
+msgstr "formato carta dell'azienda"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "different from"
+msgstr "diverso da"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "e.g. Delivery no.:"
+msgstr "es. DDT num:"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "equal to"
+msgstr "uguale a"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "field"
+msgstr "campo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "greater or equal"
+msgstr "maggiore o uguale"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "greater than"
+msgstr "maggiore di"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "header"
+msgstr "intestazione"
+
+#. module: report_studio
+#. odoo-javascript
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "label"
+msgstr "etichetta"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "less or equal"
+msgstr "minore o uguale"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "less than"
+msgstr "minore di"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "pt"
+msgstr "pt"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "px"
+msgstr "px"
+
+#. module: report_studio
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
+msgid "same as the report name"
+msgstr "come il nome del report"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "text"
+msgstr "testo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "v"
+msgstr "v"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "— choose the model —"
+msgstr "— scegli il modello —"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "— none: empty blocks report —"
+msgstr "— nessuno: report vuoto a blocchi —"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "← Saved Layouts"
+msgstr "← Saved Layouts"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "↖ Select the container"
+msgstr "↖ Seleziona il contenitore"

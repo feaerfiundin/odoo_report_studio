@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import logging
 
 from odoo import http
@@ -13,45 +14,47 @@ def _error(message, status):
 
 
 class ReportStudioPreview(http.Controller):
-
     @http.route("/report_studio/preview", type="http", auth="user", methods=["POST"])
     def preview(self, report_id, res_id, definition, **kwargs):
-        """Anteprima PDF di una definizione (anche non salvata) su un record reale.
+        """PDF preview of a definition (even unsaved) on a real record.
 
-        Parametri (form-encoded, con csrf_token):
-          report_id  - id di rs.report
-          res_id     - id del record del modello del report
-          definition - definizione JSON dei blocchi
+        Parameters (form-encoded, with csrf_token):
+          report_id  - id of rs.report
+          res_id     - id of the record of the report model
+          definition - JSON definition of the blocks
 
-        Errori: JSON {"error": messaggio} con stato 400 (dati o permessi),
-        404 (report o record inesistente) o 500 (errore di rendering).
+        Errors: JSON {"error": message} with status 400 (data or access
+        rights), 404 (missing report or record) or 500 (rendering error).
         """
+        env = request.env
         try:
             report_id = int(report_id)
             res_id = int(res_id)
         except (TypeError, ValueError):
-            return _error("Parametri non validi", 400)
+            return _error(env._("Invalid parameters"), 400)
 
-        report = request.env["rs.report"].browse(report_id)
+        report = env["rs.report"].browse(report_id)
         try:
             if not report.exists():
-                return _error("Report non trovato", 404)
+                return _error(env._("Report not found"), 404)
             report.check_access("read")
-            record = request.env[report.model_name].browse(res_id)
+            record = env[report.model_name].browse(res_id)
             if not record.exists():
-                return _error("Record non trovato", 404)
+                return _error(env._("Record not found"), 404)
             record.check_access("read")
             pdf = report._render_preview_pdf(definition, record.id)
         except (AccessError, UserError) as exc:
             return _error(str(exc), 400)
-        except Exception as exc:  # errori QWeb o di wkhtmltopdf: messaggio all'editor
-            _logger.exception("Anteprima Report Studio non riuscita (report %s, record %s)", report_id, res_id)
-            return _error("Errore durante il rendering dell'anteprima: %s" % exc, 500)
+        except Exception as exc:  # QWeb or wkhtmltopdf errors: message to the editor
+            _logger.exception(
+                "Report Studio preview failed (report %s, record %s)", report_id, res_id
+            )
+            return _error(env._("Error while rendering the preview: %s", exc), 500)
 
         return request.make_response(
             pdf,
             headers=[
                 ("Content-Type", "application/pdf"),
-                ("Content-Disposition", "inline; filename=anteprima.pdf"),
+                ("Content-Disposition", "inline; filename=preview.pdf"),
             ],
         )

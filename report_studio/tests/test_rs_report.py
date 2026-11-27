@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# Copyright 2026 feaerfiundin
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import json
 
 from odoo.exceptions import AccessError, UserError, ValidationError
@@ -8,7 +9,6 @@ from odoo.tools.safe_eval import safe_eval
 
 @tagged("post_install", "-at_install")
 class TestRsReport(TransactionCase):
-
     def setUp(self):
         super().setUp()
         self.model = self.env["ir.model"]._get("sale.order")
@@ -27,7 +27,7 @@ class TestRsReport(TransactionCase):
 
     def test_new_version_and_restore(self):
         definition = {"type": "page", "children": [{"type": "text", "content": "Ciao"}]}
-        v2 = self.report._create_version(json.dumps(definition), comment="prova")
+        v2 = self.report._create_version(json.dumps(definition), comment="test")
         self.assertEqual(self.report.current_version_id, v2)
         self.assertEqual(self.report.action_id.report_name, v2.view_id.key)
         v1 = self.report.version_ids.filtered(lambda v: v.version_no == 1)
@@ -37,10 +37,10 @@ class TestRsReport(TransactionCase):
 
     def test_version_is_immutable(self):
         with self.assertRaises(UserError):
-            self.report.version_ids[0].write({"comment": "modifica"})
+            self.report.version_ids[0].write({"comment": "change"})
 
     def test_invalid_field_is_rejected(self):
-        bad = {"type": "page", "children": [{"type": "field", "path": "campo_inesistente"}]}
+        bad = {"type": "page", "children": [{"type": "field", "path": "missing_field"}]}
         with self.assertRaises(UserError):
             self.report._create_version(json.dumps(bad))
 
@@ -54,16 +54,16 @@ class TestRsReport(TransactionCase):
             self.report._create_version(json.dumps(bad))
 
     def test_preview_rejects_invalid_definition_before_rendering(self):
-        bad = {"type": "page", "children": [{"type": "field", "path": "campo_inesistente"}]}
+        bad = {"type": "page", "children": [{"type": "field", "path": "missing_field"}]}
         with self.assertRaises(UserError):
             self.report._render_preview_pdf(json.dumps(bad), res_id=1)
 
     def test_copy_version_creates_report_without_history(self):
-        definition = {"type": "page", "children": [{"type": "text", "content": "Copia"}]}
+        definition = {"type": "page", "children": [{"type": "text", "content": "Copy"}]}
         self.report._create_version(json.dumps(definition), comment="v2")
         source_version = self.report.current_version_id
-        copy = self.report.action_copy_version_to_new_report(source_version, name="Nuovo")
-        self.assertEqual(copy.name, "Nuovo")
+        copy = self.report.action_copy_version_to_new_report(source_version, name="New")
+        self.assertEqual(copy.name, "New")
         self.assertEqual(copy.version_count, 1)
         self.assertEqual(copy.current_version_id.version_no, 1)
         self.assertEqual(copy.current_version_id.definition, source_version.definition)
@@ -78,14 +78,14 @@ class TestRsReport(TransactionCase):
         self.assertEqual(self.report.action_id.binding_model_id, self.report.model_id)
 
     def test_print_menu_only_with_button(self):
-        """Un report nuovo non è nel menu Stampa finché non lo si aggiunge."""
+        """A new report is not in the Print menu until it is added."""
         action = self.report.action_id
         self.assertFalse(self.report.in_print_menu)
         self.assertFalse(action.binding_model_id)
         self.report.action_add_print_menu()
         self.assertEqual(action.binding_model_id, self.model)
         self.assertEqual(action.binding_type, "report")
-        # una nuova versione non cambia la scelta
+        # a new version does not change the choice
         self.report._create_version(json.dumps({"children": []}))
         self.assertEqual(action.binding_model_id, self.model)
         self.report.action_remove_print_menu()
@@ -97,23 +97,23 @@ class TestRsReport(TransactionCase):
     def test_print_settings_copied_to_action(self):
         paper = self.env["report.paperformat"].search([], limit=1)
         self.report.write({
-            "print_name": "Stampa ordine",
+            "print_name": "Print order",
             "paperformat_id": paper.id,
-            "print_report_name": "'Ordine - %s' % object.name",
+            "print_report_name": "'Order - %s' % object.name",
             "attachment": "(object.name + '.pdf')",
             "attachment_use": True,
         })
         action = self.report.action_id
-        self.assertEqual(action.name, "Stampa ordine")
+        self.assertEqual(action.name, "Print order")
         self.assertEqual(action.paperformat_id, paper)
-        self.assertEqual(action.print_report_name, "'Ordine - %s' % object.name")
+        self.assertEqual(action.print_report_name, "'Order - %s' % object.name")
         self.assertEqual(action.attachment, "(object.name + '.pdf')")
         self.assertTrue(action.attachment_use)
-        # nome nel menu vuoto: torna il nome del report
+        # empty menu name: back to the report name
         self.report.print_name = False
         self.assertEqual(action.name, "Test report")
         with self.assertRaises(ValidationError):
-            self.report.print_report_name = "'Ordine' %"
+            self.report.print_report_name = "'Order' %"
 
     def test_print_page_roles(self):
         editor = new_test_user(self.env, login="rs_print_editor",
@@ -123,13 +123,13 @@ class TestRsReport(TransactionCase):
         paper = self.env["report.paperformat"].search([], limit=1)
         as_editor = self.report.with_user(editor)
         as_editor.action_add_print_menu()
-        as_editor.write({"paperformat_id": paper.id, "print_name": "Da editor"})
+        as_editor.write({"paperformat_id": paper.id, "print_name": "From editor"})
         self.assertEqual(self.report.action_id.binding_model_id, self.model)
-        self.assertEqual(self.report.action_id.name, "Da editor")
+        self.assertEqual(self.report.action_id.name, "From editor")
         with self.assertRaises(AccessError):
             self.report.with_user(viewer).action_remove_print_menu()
-        self.assertTrue(self.report.with_user(viewer).in_print_menu)  # lettura ammessa
-        # pagina e menu
+        self.assertTrue(self.report.with_user(viewer).in_print_menu)  # reading allowed
+        # page and menu
         action = self.env.ref("report_studio.action_rs_report_print")
         menu = self.env.ref("report_studio.menu_report_studio_print")
         self.assertEqual(menu.action, action)
@@ -147,13 +147,13 @@ class TestRsReport(TransactionCase):
         self.assertEqual(self.env.ref("report_studio.menu_report_studio_layouts").action, action)
         context = safe_eval(action.context)
         self.assertIs(context.get("active_test"), False)
-        # Di default la ricerca parte col filtro Attivi, che si può togliere.
+        # By default the search starts with the Active filter, which can be removed.
         self.assertEqual(context.get("search_default_filter_active"), 1)
         self.report.active = False
         Report = self.env["rs.report"].with_context(context)
         self.assertIn(self.report, Report.search([]))
         self.assertIn(self.report, Report.search([("active", "=", False)]))
-        # Elenco e ricerca si caricano; Attivo segue Ultima modifica.
+        # List and search load; Active follows Last Modified.
         views = Report.get_views([(action.view_id.id, "list"), (action.search_view_id.id, "search")])
         arch = views["views"]["list"]["arch"]
         self.assertIn('js_class="rs_report_list"', arch)
@@ -165,16 +165,16 @@ class TestRsReport(TransactionCase):
             {"type": "field", "path": "name"},
             {"type": "field", "path": ""},
             {"type": "if", "path": "amount_total", "op": "<", "value": 0,
-             "children": [{"type": "text", "content": "Nascosto"}]},
+             "children": [{"type": "text", "content": "Hidden"}]},
         ]})
         views_before = self.env["ir.ui.view"].sudo().search_count([])
         html = self.report.render_canvas(definition, order.id)
         self.assertIn('data-rs-path="0"', html)
         self.assertIn(order.name, html)
-        self.assertIn("o_rs_cv_invalid", html)          # campo vuoto: segnaposto
-        self.assertIn("Condizione falsa", html)          # if sempre selezionabile
-        self.assertNotIn("Nascosto", html)
-        # vista e azione temporanee eliminate
+        self.assertIn("o_rs_cv_invalid", html)          # empty field: placeholder
+        self.assertIn("Condition false", html)  # "if" always selectable
+        self.assertNotIn("Hidden", html)
+        # temporary view and action deleted
         self.assertEqual(self.env["ir.ui.view"].sudo().search_count([]), views_before)
         with self.assertRaises(UserError):
             self.report.render_canvas(definition, 0)
@@ -182,19 +182,19 @@ class TestRsReport(TransactionCase):
     def test_fonts_label_and_widths_in_pdf_template(self):
         order = self._sale_order()
         definition = json.dumps({"children": [
-            {"type": "text", "content": "Titolo", "font": {"size": 18, "bold": True}},
-            {"type": "field", "path": "name", "label": "Ordine n.", "label_font": {"italic": True}},
+            {"type": "text", "content": "Title", "font": {"size": 18, "bold": True}},
+            {"type": "field", "path": "name", "label": "Order no.", "label_font": {"italic": True}},
             {"type": "table", "source": "order_line", "head_font": {"underline": True},
              "margins": {"left": 4},
-             "columns": [{"path": "name", "label": "Descrizione", "width": 75, "locked": True},
-                         {"path": "product_uom_qty", "label": "Qtà", "width": 25}]},
+             "columns": [{"path": "name", "label": "Description", "width": 75, "locked": True},
+                         {"path": "product_uom_qty", "label": "Qty", "width": 25}]},
         ]})
         version = self.report._create_version(definition)
         self.assertIn("font-size: 18pt; font-weight: bold", version.arch)
         self.assertIn("width: 75%", version.arch)
         self.assertIn('<div style="padding: 0mm 0mm 0mm 4mm">', version.arch)
         html = self.report.render_canvas(definition, order.id)
-        self.assertIn("Ordine n.", html)
+        self.assertIn("Order no.", html)
         self.assertIn(order.name, html)
 
     def test_layout_blocks_save_and_canvas(self):
@@ -215,50 +215,50 @@ class TestRsReport(TransactionCase):
         self.assertIn("page-break-after: always", version.arch)
         html = self.report.render_canvas(definition, order.id)
         self.assertIn('data-rs-path="0.0.1" data-rs-type="column"', html)
-        self.assertIn("Colonna vuota", html)
-        self.assertIn("Interruzione di pagina", html)
+        self.assertIn("Empty column", html)
+        self.assertIn("Page break", html)
         self.assertIn(order.name, html)
 
     def test_text_alignment_child_wins(self):
         order = self._sale_order()
         definition = json.dumps({"children": [
             {"type": "section", "align": "right", "children": [
-                {"type": "text", "content": "Centrato\nSeconda riga", "align": "center"},
+                {"type": "text", "content": "Centered\nSecond line", "align": "center"},
                 {"type": "field", "path": "name"},
                 {"type": "field", "path": "name", "label": "N.", "align": "center"},
             ]},
             {"type": "table", "source": "order_line", "align": "center",
-             "columns": [{"path": "name", "label": "Descrizione", "align": "left"}]},
+             "columns": [{"path": "name", "label": "Description", "align": "left"}]},
         ]})
         version = self.report._create_version(definition)
         self.assertIn('<div class="page" style="text-align: left">', version.arch)
         self.assertIn('<div style="text-align: right">', version.arch)
-        self.assertIn('<p style="text-align: center">Centrato<br/>Seconda riga</p>', version.arch)
-        self.assertIn('<th style="text-align: left">Descrizione</th>', version.arch)
+        self.assertIn('<p style="text-align: center">Centered<br/>Second line</p>', version.arch)
+        self.assertIn('<th style="text-align: left">Description</th>', version.arch)
         self.assertIn('<div style="text-align: center"><span><span class="o_rs_label">N.</span>', version.arch)
-        self.assertIn("Centrato", self.report.render_canvas(definition, order.id))
+        self.assertIn("Centered", self.report.render_canvas(definition, order.id))
 
     def test_print_in_customer_language(self):
         self.env["res.lang"]._activate_lang("it_IT")
         order = self._sale_order()
         order.partner_id.lang = "it_IT"
         children = [{"type": "text", "content": "Hello", "translations": {"it_IT": "Ciao"}},
-                    {"type": "field", "path": "name", "label": "Order", "label_translations": {"it_IT": "Ordine"}}]
+                    {"type": "field", "path": "name", "label": "Order", "label_translations": {"it_IT": "Order"}}]
         on = {"print_lang": {"enabled": True, "field": "partner_id"}, "children": children}
         html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(on), order.id)
         self.assertIn(b"Ciao", html)
-        self.assertIn(b"Ordine", html)
+        self.assertIn(b"Order", html)
         self.assertNotIn(b"Hello", html)
-        # senza l'opzione: lingua di chi stampa
+        # without the option: language of the user printing
         off = {"children": children}
         html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(off), order.id)
         self.assertIn(b"Hello", html)
         self.assertNotIn(b"Ciao", html)
-        # cliente senza lingua: lingua di chi stampa
+        # customer without language: language of the user printing
         order.partner_id.lang = False
         html = self.report.with_context(lang="en_US")._render_preview_pdf(json.dumps(on), order.id)
         self.assertIn(b"Hello", html)
-        # versione salvata: due viste, la stampa vera usa la pagina tradotta
+        # saved version: two views, the real print uses the translated page
         order.partner_id.lang = "it_IT"
         version = self.report._create_version(json.dumps(on))
         self.assertTrue(version.document_view_id)
@@ -277,7 +277,7 @@ class TestRsReport(TransactionCase):
             {"type": "text", "content": "Hello", "translations": {"it_IT": "Ciao"}}]})
         self.assertIn("Ciao", self.report.render_canvas(definition, order.id, lang="it_IT"))
         self.assertIn("Hello", self.report.with_context(lang="en_US").render_canvas(definition, order.id))
-        # lingua non attiva: ignorata
+        # inactive language: ignored
         self.assertIn("Hello", self.report.with_context(lang="en_US").render_canvas(definition, order.id, lang="xx_XX"))
         langs = self.report.get_languages()
         self.assertIn("it_IT", [lang["code"] for lang in langs["langs"]])
@@ -288,21 +288,44 @@ class TestRsReport(TransactionCase):
         with self.assertRaises(UserError):
             self.report._create_version(json.dumps(bad))
 
+    def test_messages_translated_in_user_language(self):
+        """Compiler errors and editor placeholders follow the user language."""
+        self.env["res.lang"]._activate_lang("it_IT")
+        bad = json.dumps({"children": [{"type": "field", "path": "missing_field"}]})
+        with self.assertRaises(UserError) as error:
+            self.report.with_context(lang="en_US")._create_version(bad)
+        self.assertIn("Invalid report definition", str(error.exception))
+        self.assertIn("does not exist on model", str(error.exception))
+        with self.assertRaises(UserError) as error:
+            self.report.with_context(lang="it_IT")._create_version(bad)
+        self.assertIn("Definizione del report non valida", str(error.exception))
+        self.assertIn("non esiste sul modello", str(error.exception))
+        order = self._sale_order()
+        definition = json.dumps({"children": [{"type": "page_break"}]})
+        html = self.report.with_context(lang="it_IT").render_canvas(definition, order.id)
+        self.assertIn("Interruzione di pagina", html)
+        html = self.report.with_context(lang="en_US").render_canvas(definition, order.id)
+        self.assertIn("Page break", html)
+        # Editing the Italian texts with an English interface: placeholders in English.
+        html = self.report.with_context(lang="en_US").render_canvas(definition, order.id, lang="it_IT")
+        self.assertIn("Page break", html)
+        self.assertNotIn("Interruzione di pagina", html)
+
     def _sale_order(self):
-        partner = self.env["res.partner"].create({"name": "Cliente anteprima"})
+        partner = self.env["res.partner"].create({"name": "Preview customer"})
         return self.env["sale.order"].create({"partner_id": partner.id})
 
     def test_preview_renders_definition(self):
         order = self._sale_order()
-        definition = {"children": [{"type": "text", "content": "Testo anteprima"},
+        definition = {"children": [{"type": "text", "content": "Preview text"},
                                    {"type": "field", "path": "name"}]}
-        # In modalità test Odoo restituisce l'HTML del report invece del PDF.
+        # In test mode Odoo returns the report HTML instead of the PDF.
         html = self.report._render_preview_pdf(json.dumps(definition), order.id)
-        self.assertIn(b"Testo anteprima", html)
+        self.assertIn(b"Preview text", html)
         self.assertIn(order.name.encode(), html)
 
     def test_preview_respects_record_access(self):
-        """L'anteprima non deve leggere i dati in sudo."""
+        """The preview must not read the data in sudo."""
         order = self._sale_order()
         viewer = new_test_user(
             self.env, login="rs_viewer_no_sales",
@@ -316,8 +339,8 @@ class TestRsReport(TransactionCase):
         self.assertEqual(self.report.model_name, "sale.order")
 
     def test_rename_updates_print_action(self):
-        self.report.name = "Nuovo nome"
-        self.assertEqual(self.report.action_id.name, "Nuovo nome")
+        self.report.name = "New name"
+        self.assertEqual(self.report.action_id.name, "New name")
 
     def test_unlink_removes_views_and_action(self):
         self.report._create_version(json.dumps({"children": []}))
@@ -329,7 +352,7 @@ class TestRsReport(TransactionCase):
         self.assertFalse(action.exists())
 
     def test_version_of_other_report_is_rejected(self):
-        other = self.env["rs.report"].create({"name": "Altro", "model_id": self.model.id})
+        other = self.env["rs.report"].create({"name": "Other", "model_id": self.model.id})
         with self.assertRaises(UserError):
             self.report.restore_version_by_id(other.current_version_id.id)
         with self.assertRaises(UserError):
@@ -338,9 +361,9 @@ class TestRsReport(TransactionCase):
             self.report.restore_version_by_id(999999999)
 
     def test_create_from_studio_report(self):
-        definition = {"layout": "basic", "children": [{"type": "text", "content": "Origine"}]}
+        definition = {"layout": "basic", "children": [{"type": "text", "content": "Source"}]}
         self.report._create_version(json.dumps(definition))
-        new_id = self.env["rs.report"].create_from_source("Copia", "report:%s" % self.report.id)
+        new_id = self.env["rs.report"].create_from_source("Copy", "report:%s" % self.report.id)
         copy = self.env["rs.report"].browse(new_id)
         self.assertEqual(copy.model_name, "sale.order")
         self.assertEqual(copy.report_mode, "blocks")
@@ -348,7 +371,7 @@ class TestRsReport(TransactionCase):
 
     def test_create_from_odoo_document(self):
         action = self.env.ref("sale.action_report_saleorder")
-        new_id = self.env["rs.report"].create_from_source("Ordine", "action:%s" % action.id)
+        new_id = self.env["rs.report"].create_from_source("Order", "action:%s" % action.id)
         copy = self.env["rs.report"].browse(new_id)
         self.assertEqual(copy.report_mode, "qweb")
         self.assertEqual(copy.model_name, "sale.order")
