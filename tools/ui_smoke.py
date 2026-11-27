@@ -628,8 +628,9 @@ with sync_playwright() as p:
             raise RuntimeError(res["error"].get("data", {}).get("message", res["error"]))
         return res["result"]
 
-    # Seconda lingua per la prova delle traduzioni: se l'italiano non è attivo
-    # lo attiva (senza caricare le traduzioni di Odoo) e alla fine lo disattiva.
+    # Per la prova delle traduzioni servono due lingue attive: se l'italiano non
+    # è attivo lo attiva (senza caricare le traduzioni di Odoo) e alla fine lo
+    # disattiva. La prova traduce in una lingua diversa dalla principale.
     lang_state = {"activated": []}
 
     def ensure_second_lang():
@@ -642,13 +643,16 @@ with sync_playwright() as p:
 
     def translations():
         """Menu lingua: traduzione IT di un testo; pagina centrale nella lingua scelta."""
-        base = page.locator(f"{topbar} .o_rs_lang_select").input_value()
-        options = page.locator(f"{topbar} .o_rs_lang_select option").all_inner_texts()
-        expect(any("(principale)" in o for o in options) and any(o.startswith("IT") for o in options),
-               f"menu lingua: {options}")
+        select = page.locator(f"{topbar} .o_rs_lang_select")
+        base = select.input_value()
+        options = select.locator("option").all_inner_texts()
+        codes = select.locator("option").evaluate_all("els => els.map(e => e.value)")
+        other = next((c for c in codes if c != base), None)
+        expect(other and any("(principale)" in o for o in options), f"menu lingua: {options}")
+        short = other.split("_")[0].upper()
         canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
         page.wait_for_selector(".o_rs_props_title:text-is('Testo')")
-        page.select_option(f"{topbar} .o_rs_lang_select", "it_IT")
+        page.select_option(f"{topbar} .o_rs_lang_select", other)
         page.wait_for_selector(".o_rs_props .o_rs_translating")
         area = page.locator(".o_rs_props textarea.o_rs_text_content")
         expect(area.input_value() == "" and "Riga 1" in (area.get_attribute("placeholder") or ""),
@@ -657,9 +661,9 @@ with sync_playwright() as p:
         wait_canvas()
         page.wait_for_timeout(600)
         expect(canvas.locator("text=Linea uno").count() == 1, "la pagina non mostra la traduzione")
-        expect(canvas.locator("text=Riga 1").count() == 0, "in italiano la pagina mostra ancora il testo base")
-        it_label = [o for o in page.locator(f"{topbar} .o_rs_lang_select option").all_inner_texts() if o.startswith("IT")]
-        expect(it_label and "✓" in it_label[0], f"lingua tradotta non marcata: {it_label}")
+        expect(canvas.locator("text=Riga 1").count() == 0, f"in {other} la pagina mostra ancora il testo base")
+        label = [o for o in select.locator("option").all_inner_texts() if o.startswith(short)]
+        expect(label and "✓" in label[0], f"lingua tradotta non marcata: {label}")
         page.select_option(f"{topbar} .o_rs_lang_select", base)
         wait_canvas()
         page.wait_for_timeout(600)
@@ -671,7 +675,7 @@ with sync_playwright() as p:
         page.check(".o_rs_props .o_rs_print_lang")
         field = page.locator(".o_rs_props .o_rs_print_lang_field").input_value()
         expect(field == "partner_id", f"campo contatto: {field}")
-        return f"base {base}, IT tradotto, opzione lingua cliente su {field}"
+        return f"base {base}, {other} tradotto, opzione lingua cliente su {field}"
 
     def open_by_url():
         page.goto(f"{args.base}/odoo/action-report_studio.action_rs_report_list")

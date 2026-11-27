@@ -13,6 +13,7 @@ Esecuzione: vedi tools/README.md. Codice di uscita 0 se tutti i passi riescono.
 """
 import argparse
 import json
+import re
 import secrets
 import sys
 import time
@@ -154,7 +155,9 @@ def print_menu_items(page, model_action, label):
     page.wait_for_selector(".o_form_view")
     page.locator(".o_cp_action_menus button").first.click()
     page.wait_for_timeout(500)
-    printer = page.locator(".o-dropdown--menu .o-dropdown-item, .o-dropdown--menu .dropdown-toggle", has_text="Print")
+    # Voce "Print" del menu ingranaggio, nella lingua dell'utente.
+    printer = page.locator(".o-dropdown--menu .o-dropdown-item, .o-dropdown--menu .dropdown-toggle",
+                           has_text=re.compile(r"^\s*(Print|Stampa|Imprimer|Drucken)\s*$"))
     if printer.count():
         printer.first.hover()
         page.wait_for_timeout(500)
