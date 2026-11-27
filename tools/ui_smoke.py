@@ -427,7 +427,13 @@ with sync_playwright() as p:
         canvas.locator("[data-rs-type=table]").click()
         page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
         align("center")
-        page.select_option(".o_rs_props .o_rs_col_align >> nth=0", "left")
+        # Colonne non impostate: simbolo della tabella (centro), attenuato.
+        second = page.locator(".o_rs_props .o_rs_col_align").nth(1)
+        expect("o_rs_inherited" in second.get_attribute("class")
+               and second.locator("i.fa-align-center").count() == 1, "colonna senza simbolo della tabella")
+        page.locator(".o_rs_props .o_rs_col_align").nth(0).click()
+        page.locator(".o_rs_col_align_menu [data-align=left]").click()
+        page.wait_for_selector(".o_rs_props .o_rs_col_align[data-align=left] i.fa-align-left", timeout=3000)
         # Prima colonna del blocco Colonne giustificata.
         canvas.locator("td[data-rs-type=column]").first.click()
         page.wait_for_selector(".o_rs_props_title:text-is('Colonna')")

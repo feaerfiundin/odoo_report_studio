@@ -4,6 +4,8 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { user } from "@web/core/user";
 import { addColumn, ensureWidths, removeColumn, setWidth, totalWidth } from "./column_widths";
 
@@ -283,6 +285,7 @@ class PreviewDialog extends Component {
 
 export class ReportStudioApp extends Component {
     static template = "report_studio.App";
+    static components = { Dropdown, DropdownItem };
     static props = ["*"];
 
     setup() {
@@ -753,11 +756,41 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    onColumnAlign(uid, ev) {
+    setColumnAlign(uid, value) {
         const column = this.selected?.columns?.find((c) => c._uid === uid);
         if (!column) return;
-        column.align = ev.target.value;
+        column.align = value;
         this.markDirty();
+    }
+
+    // Allineamento effettivo ereditato da un blocco: quello del contenitore più
+    // vicino che ne ha uno, altrimenti il documento (sinistra).
+    inheritedAlign(uid) {
+        const path = this.pathOfUid(uid);
+        if (!path) return "left";
+        const indexes = path.split(".").map(Number);
+        let list = this.state.definition.children;
+        let align = "left";
+        for (const index of indexes.slice(0, -1)) {
+            const node = list[index];
+            if (node.align) align = node.align;
+            list = node.children;
+        }
+        return align;
+    }
+
+    // Allineamento effettivo della tabella selezionata (per le colonne "come tabella").
+    get tableAlign() {
+        const sel = this.selected;
+        return sel ? sel.align || this.inheritedAlign(sel._uid) : "left";
+    }
+
+    alignIcon(value) {
+        return (ALIGNMENTS.find((a) => a[0] === value) || ALIGNMENTS[0])[2];
+    }
+
+    alignLabel(value) {
+        return (ALIGNMENTS.find((a) => a[0] === value) || ALIGNMENTS[0])[1];
     }
 
     onMargin(margins, side, ev) {
