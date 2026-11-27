@@ -3,8 +3,9 @@
 Prova filtri, raggruppamenti (anche annidati), preferiti salvati e riapplicati
 dopo il ricaricamento, ricerca per modello, ordinamento per colonna e i ruoli
 non amministratori (editor e visualizzatore). Complementare a ui_smoke.py, che
-prova l'editor: lancialo dopo ui_smoke.py, così in elenco ci sono report
-attivi e archiviati di più modelli.
+prova l'editor. Crea da sé i report che servono (attivi e archiviati, a blocchi
+e QWeb libero, su sale.order e account.move, nome "FT <ora>") e li elimina alla
+fine: non dipende dai report già presenti nel database.
 
 Crea o aggiorna da sé gli utenti di prova rs_ui_editor e rs_ui_viewer con una
 password casuale a ogni esecuzione; il preferito di prova viene cancellato.
@@ -14,6 +15,7 @@ import argparse
 import json
 import secrets
 import sys
+import time
 
 from playwright.sync_api import sync_playwright
 
@@ -28,6 +30,7 @@ args = ap.parse_args()
 BASE = args.base
 OUT = args.out
 TEST_PASSWORD = secrets.token_urlsafe(12)
+STAMP = "FT %s" % time.strftime("%H%M%S")
 results = []
 
 
@@ -60,6 +63,8 @@ def login(page, user, pwd):
     page.goto(f"{BASE}/odoo/action-report_studio.action_rs_report_list")
     page.wait_for_selector(LIST, timeout=30000)
     page.wait_for_timeout(800)
+    # L'elenco si apre col filtro Attivi: questi test partono senza filtri.
+    clear_facets(page)
 
 
 def open_menu(page):
@@ -103,6 +108,29 @@ def ensure_test_users(page):
         rpc(page, "res.users", "write", [ids, {"report_studio_role": role}])
 
 
+def create_fixtures(page):
+    """Report di prova di questo giro; restituisce i loro id."""
+    model_id = lambda name: rpc(page, "ir.model", "search", [[["model", "=", name]]])[0]
+    ids = []
+    for label, model, active in (("ordine", "sale.order", True), ("ordine archiviato", "sale.order", False),
+                                 ("fattura", "account.move", True), ("fattura archiviata", "account.move", False)):
+        rid = rpc(page, "rs.report", "create", [{"name": f"{STAMP} {label}", "model_id": model_id(model)}])
+        if not active:
+            rpc(page, "rs.report", "write", [[rid], {"active": False}])
+        ids.append(rid)
+        time.sleep(1.1)  # date di ultima modifica diverse, per l'ordinamento
+    action = rpc(page, "ir.actions.report", "search", [[["report_name", "=", "sale.report_saleorder"]]])
+    ids.append(rpc(page, "rs.report", "create_from_source", [f"{STAMP} qweb", f"action:{action[0]}"]))
+    return ids
+
+
+def remove_fixtures(page):
+    ids = rpc(page, "rs.report", "search", [[["name", "=like", f"{STAMP}%"]]], {"context": {"active_test": False}})
+    if ids:
+        rpc(page, "rs.report", "unlink", [ids])
+    return len(ids)
+
+
 def col(page, name):
     return [t.strip() for t in page.locator(f"{ROW} td[name={name}]").all_inner_texts()]
 
@@ -118,6 +146,8 @@ with sync_playwright() as p:
     page.on("pageerror", lambda e: errors.append(str(e)))
     login(page, args.login, args.password)
     ensure_test_users(page)
+    print(f"Report di prova creati: {len(create_fixtures(page))}")
+    login(page, args.login, args.password)   # elenco ricaricato con i report nuovi
 
     def filtro_blocchi():
         open_menu(page)
@@ -283,6 +313,16 @@ with sync_playwright() as p:
 
     for name, fn in [("viewer_elenco", viewer_elenco), ("viewer_sola_lettura", viewer_non_modifica)]:
         step(page, name, fn)
+    ctx.close()
+
+    # ---------------- pulizia (non è un passo del test)
+    ctx = browser.new_context()
+    page = ctx.new_page()
+    try:
+        login(page, args.login, args.password)
+        print(f"Report di prova eliminati: {remove_fixtures(page)}")
+    except Exception as exc:  # noqa
+        print(f"Pulizia non riuscita: {exc}")
     browser.close()
 
 failed = [r for r in results if not r[0]]

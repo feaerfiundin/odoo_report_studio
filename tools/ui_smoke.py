@@ -182,7 +182,11 @@ with sync_playwright() as p:
         return f"barra: {brand}, report in elenco: {page.locator(row).count()}"
 
     def list_layout():
-        """Nuovo a sinistra del titolo, barra di ricerca, colonna Attivo dopo Ultima modifica."""
+        """Nuovo a sinistra del titolo, barra di ricerca con filtro Attivi, colonna Attivo dopo Ultima modifica."""
+        facets = " ".join(page.locator(".o_searchview .o_facet_values").all_inner_texts())
+        expect("Attivi" in facets, f"filtro Attivi assente all'apertura: {facets!r}")
+        states = [i.is_checked() for i in page.locator(f"{row} td[name=active] input").all()]
+        expect(all(states), "con il filtro Attivi compaiono archiviati")
         new_box = page.locator(".o_control_panel .o_list_button_add").bounding_box()
         title_box = page.locator(".o_control_panel .o_breadcrumb").bounding_box()
         expect(new_box["x"] < title_box["x"], "Nuovo non è a sinistra di Saved Layouts")
@@ -583,21 +587,29 @@ with sync_playwright() as p:
         text = notification_text()
         expect("Report archiviato" in text, text)
         go_list()
-        # Gli archiviati restano in elenco con Attivo spento.
-        cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] input")
-        expect(cell.count() == 1 and not cell.is_checked(), "archiviato non visibile o ancora attivo")
-        return "archiviato, visibile con Attivo spento"
+        # Filtro Attivi di default: l'archiviato non compare.
+        facets = " ".join(page.locator(".o_searchview .o_facet_values").all_inner_texts())
+        expect("Attivi" in facets, f"filtro Attivi non attivo di default: {facets!r}")
+        expect(archived["name"] not in list_names(), "archiviato visibile con il filtro Attivi")
+        return "archiviato, nascosto dal filtro Attivi di default"
 
     def filter_archived():
         page.click(".o_searchview_dropdown_toggler")
+        page.locator(".o_filter_menu .o-dropdown-item", has_text="Attivi").click()       # toglie Attivi
+        page.wait_for_timeout(600)
         page.locator(".o_filter_menu .o-dropdown-item", has_text="Archiviati").click()
         page.keyboard.press("Escape")
         page.wait_for_timeout(1000)
         names = list_names()
         expect(archived["name"] in names, f"filtro Archiviati: {names}")
+        states = [i.is_checked() for i in page.locator(f"{row} td[name=active] input").all()]
+        expect(states and not any(states), f"il filtro Archiviati mostra attivi: {states}")
+        # Senza filtri si vedono tutti, archiviati compresi, con Attivo spento.
         page.locator(".o_searchview .o_facet_remove").last.click()
         page.wait_for_timeout(800)
-        return f"archiviati: {len(names)}"
+        cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] input")
+        expect(cell.count() == 1 and not cell.is_checked(), "archiviato non visibile senza filtri")
+        return f"archiviati: {len(names)}; senza filtri visibile con Attivo spento"
 
     def reactivate_toggle():
         cell = page.locator(row, has_text=archived["name"]).first.locator("td[name=active] .o_field_boolean_toggle label, td[name=active] input").first
@@ -616,7 +628,6 @@ with sync_playwright() as p:
         ok = step(page, "apri_da_url", open_by_url)
     if ok:
         step(page, "layout_elenco", list_layout)
-        step(page, "ordina_per_nome", sort_by_name)
     if ok and step(page, "nuovo_report_vuoto", new_blank_report):
         step(page, "blocchi", build_blocks)
         step(page, "larghezze_logica", width_logic)
@@ -630,6 +641,7 @@ with sync_playwright() as p:
         step(page, "ripristina_versioni", restore_versions)
         step(page, "copia_versione", copy_version)
         step(page, "torna_elenco", back_to_list)
+        step(page, "ordina_per_nome", sort_by_name)   # qui l'elenco ha almeno due report
         step(page, "ricerca", search_by_name)
         step(page, "nuovo_da_report_studio", new_from_studio_report)
         archived["name"] = f"Da Odoo {STAMP}"

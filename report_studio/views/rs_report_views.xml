@@ -62,7 +62,7 @@
         <field name="view_mode">list</field>
         <field name="view_id" ref="rs_report_view_list"/>
         <field name="search_view_id" ref="rs_report_view_search"/>
-        <field name="context">{'active_test': False}</field>
+        <field name="context">{'active_test': False, 'search_default_filter_active': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nessun report</p>
             <p>Premi "Nuovo" per crearne uno.</p>

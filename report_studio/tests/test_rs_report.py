@@ -81,6 +81,8 @@ class TestRsReport(TransactionCase):
         self.assertEqual(self.env.ref("report_studio.menu_report_studio_root").action, action)
         context = safe_eval(action.context)
         self.assertIs(context.get("active_test"), False)
+        # Di default la ricerca parte col filtro Attivi, che si può togliere.
+        self.assertEqual(context.get("search_default_filter_active"), 1)
         self.report.active = False
         Report = self.env["rs.report"].with_context(context)
         self.assertIn(self.report, Report.search([]))

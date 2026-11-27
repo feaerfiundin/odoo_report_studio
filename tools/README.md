@@ -50,6 +50,7 @@ raggruppamenti anche annidati, salvataggio di un preferito e sua riapplicazione
 dopo il ricaricamento della pagina, ricerca per modello, ordinamento per
 colonna. Poi entra come editor (interruttore Attivo, apertura dell'editor) e
 come visualizzatore (niente "Nuovo", Attivo in sola lettura).
+Crea da sé i report che gli servono (nome "FT <ora>") e li elimina alla fine.
 
 Va lanciato dopo `ui_smoke.py`, così in elenco ci sono report attivi e
 archiviati di più modelli. Con l'utente admin crea o aggiorna gli utenti di
