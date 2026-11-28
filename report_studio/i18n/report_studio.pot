@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 13:32+0000\n"
-"PO-Revision-Date: 2026-11-28 13:32+0000\n"
+"POT-Creation-Date: 2026-11-28 14:40+0000\n"
+"PO-Revision-Date: 2026-11-28 14:40+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -1072,7 +1072,9 @@ msgstr ""
 #. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Move, drag or delete the block with the bar above it in the page."
+msgid ""
+"Move, drag, delete the block or select its container with the bar above it "
+"in the page."
 msgstr ""
 
 #. module: report_studio
@@ -1617,6 +1619,12 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Select a block in the page to edit its properties."
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Select the container"
 msgstr ""
 
 #. module: report_studio
@@ -2307,10 +2315,4 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "← Saved Layouts"
-msgstr ""
-
-#. module: report_studio
-#. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "↖ Select the container"
 msgstr ""

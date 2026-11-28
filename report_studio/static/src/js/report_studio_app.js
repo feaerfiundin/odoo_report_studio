@@ -789,9 +789,11 @@ export class ReportStudioApp extends Component {
         const caption = make("span", "o_rs_cv_caption");
         const up = make("button", "o_rs_cv_up", _t("Move the block up"), "fa-arrow-up");
         const down = make("button", "o_rs_cv_down", _t("Move the block down"), "fa-arrow-down");
+        const parent = make("button", "o_rs_cv_parent", _t("Select the container"), "fa-level-up");
         const remove = make("button", "o_rs_cv_delete", _t("Delete the block"), "fa-trash");
-        for (const button of [up, down, remove]) button.type = "button";
-        bar.append(grip, caption, up, down, remove);
+        for (const button of [up, down, parent, remove]) button.type = "button";
+        bar.append(grip, caption, up, down, parent, remove);
+        parent.addEventListener("click", () => this.selectParent());
         up.addEventListener("click", () => this.moveSelected(-1));
         down.addEventListener("click", () => this.moveSelected(1));
         remove.addEventListener("click", () => this.onDelete());
@@ -805,7 +807,7 @@ export class ReportStudioApp extends Component {
         const drop = make("div", "o_rs_cv_drop");
         drop.style.display = "none";
         doc.body.append(bar, hover, drop);
-        this.canvasTools = { bar, caption, up, down, remove, grip, hover, drop };
+        this.canvasTools = { bar, caption, up, down, parent, remove, grip, hover, drop };
 
         doc.addEventListener("mouseover", (ev) => {
             const el = ev.target.closest?.("[data-rs-path]");
@@ -849,6 +851,7 @@ export class ReportStudioApp extends Component {
         tools.caption.textContent = this.blockCaption(found.node);
         tools.grip.style.display = tools.up.style.display = tools.down.style.display =
             tools.remove.style.display = isColumn ? "none" : "";
+        tools.parent.disabled = !this.selectedParentUid;
         tools.up.disabled = found.index === 0;
         tools.down.disabled = found.index === found.list.length - 1;
         tools.hover.style.display = "none";

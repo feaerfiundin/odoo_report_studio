@@ -192,7 +192,9 @@ with sync_playwright() as p:
         wait_canvas()
 
     def select_parent():
-        page.click(".o_rs_props button:has-text('Seleziona il contenitore')")
+        """Pulsante "Seleziona il contenitore" della barra del blocco selezionato."""
+        wait_canvas()
+        canvas.locator(".o_rs_cv_toolbar .o_rs_cv_parent").click()
 
     def canvas_types():
         """Tipi dei blocchi nella pagina centrale, in ordine."""
@@ -786,12 +788,15 @@ with sync_playwright() as p:
         canvas.locator(total, has_text="Totale positivo").click()
         wait_canvas()
         caption = canvas.locator(".o_rs_cv_toolbar .o_rs_cv_caption").inner_text()
+        expect(not canvas.locator(".o_rs_cv_toolbar .o_rs_cv_parent").is_disabled(), "contenitore non selezionabile")
         expect(caption.startswith("Testo") and "Totale positivo" in caption, f"barra: {caption!r}")
         path = lambda: canvas.locator(total, has_text="Totale positivo").get_attribute("data-rs-path")
         inside_if = path()
         # Fuori dalla condizione, prima di tutto il resto della pagina.
         drag_in_canvas("[data-rs-path='0']", "before")
         expect(path() == "0", f"dopo il trascinamento in cima: {path()}")
+        expect(canvas.locator(".o_rs_cv_toolbar .o_rs_cv_parent").is_disabled(),
+               "Seleziona il contenitore attivo su un blocco senza contenitore")
         # Freccia giù: diventa il secondo blocco della pagina.
         canvas.locator(".o_rs_cv_toolbar .o_rs_cv_down").click()
         wait_canvas()

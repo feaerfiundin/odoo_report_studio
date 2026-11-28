@@ -562,10 +562,7 @@
                                 </t>
 
                                 <div class="small text-muted mt-3">
-                                    Move, drag or delete the block with the bar above it in the page.
-                                </div>
-                                <div class="mt-2" t-if="selectedParentUid">
-                                    <button class="btn btn-sm btn-link px-0" t-on-click="selectParent">↖ Select the container</button>
+                                    Move, drag, delete the block or select its container with the bar above it in the page.
                                 </div>
                             </t>
                             <t t-else="">
