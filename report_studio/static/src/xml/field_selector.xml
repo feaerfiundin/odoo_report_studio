@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<templates xml:space="preserve">
+
+    <t t-name="report_studio.FieldSelector">
+        <div t-attf-class="o_rs_field_selector o_field_many2one_selection {{ props.class or '' }}">
+            <AutoComplete
+                value="props.value or ''"
+                sources="sources"
+                placeholder="props.placeholder or ''"
+                onSelect.bind="onSelect"
+                onChange.bind="onChange"
+                class="'o_input_dropdown'"
+            />
+        </div>
+    </t>
+
+    <t t-name="report_studio.FieldSearchDialog">
+        <Dialog title.translate="Choose a Field" size="'lg'" bodyClass="'o_rs_field_search'">
+            <nav class="mb-2">
+                <ol class="breadcrumb mb-0 o_rs_field_path">
+                    <t t-foreach="state.stack" t-as="level" t-key="level_index">
+                        <li t-attf-class="breadcrumb-item {{ level_last ? 'active' : '' }}">
+                            <a t-if="!level_last" href="#" t-on-click.prevent="() => this.goTo(level_index)">
+                                <t t-esc="level.label"/>
+                            </a>
+                            <t t-else="" t-esc="level.label"/>
+                        </li>
+                    </t>
+                </ol>
+            </nav>
+            <div class="input-group mb-2">
+                <span class="input-group-text"><i class="fa fa-search"/></span>
+                <input class="form-control o_rs_field_search_input" placeholder="Search a field…"
+                       t-model="state.search" autofocus="autofocus"/>
+            </div>
+            <div class="o_rs_field_search_list">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Technical Name</th>
+                            <th>Field Type</th>
+                            <th/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="rows" t-as="field" t-key="field.name">
+                            <tr t-att-data-name="field.name"
+                                t-attf-class="o_rs_field_row {{ selectable(field) ? 'cursor-pointer' : 'text-muted' }}"
+                                t-on-click="() => this.choose(field)">
+                                <td><t t-esc="field.string"/></td>
+                                <td class="font-monospace small"><t t-esc="field.name"/></td>
+                                <td class="small"><t t-esc="field.type"/></td>
+                                <td class="text-end">
+                                    <button t-if="field.relation" type="button"
+                                            class="btn btn-sm btn-link py-0 o_rs_field_open"
+                                            title="Show the fields of this relation"
+                                            t-on-click.stop="() => this.openRelation(field)">
+                                        <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </td>
+                            </tr>
+                        </t>
+                        <tr t-if="!rows.length">
+                            <td colspan="4" class="text-muted">No field found.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="props.close">Close</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <t t-name="report_studio.TableStyleDialog">
+        <Dialog title.translate="Table Style" size="'lg'" bodyClass="'o_rs_table_style'">
+            <div class="row g-3">
+                <!-- Header row -->
+                <div class="col-md-6">
+                    <div class="fw-bold mb-2">Header</div>
+                    <t t-call="report_studio.ColorPicker">
+                        <t t-set="target" t-value="state.head"/><t t-set="key" t-value="'background'"/>
+                        <t t-set="title" t-value="labels.background"/>
+                    </t>
+                    <t t-call="report_studio.ColorPicker">
+                        <t t-set="target" t-value="state.head"/><t t-set="key" t-value="'color'"/>
+                        <t t-set="title" t-value="labels.textColor"/>
+                    </t>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <small class="text-muted o_rs_style_label">Height (mm)</small>
+                        <input type="number" min="0" max="100" step="0.5" class="form-control form-control-sm w-auto o_rs_head_height"
+                               t-att-value="state.head.height or ''" placeholder="auto"
+                               t-on-change="(ev) => this.onNumber(state.head, 'height', ev)"/>
+                    </div>
+                </div>
+                <!-- Data rows -->
+                <div class="col-md-6">
+                    <div class="fw-bold mb-2">Data Rows</div>
+                    <t t-call="report_studio.ColorPicker">
+                        <t t-set="target" t-value="state.rows"/><t t-set="key" t-value="'background'"/>
+                        <t t-set="title" t-value="labels.background"/>
+                    </t>
+                    <t t-call="report_studio.ColorPicker">
+                        <t t-set="target" t-value="state.rows"/><t t-set="key" t-value="'alt_background'"/>
+                        <t t-set="title" t-value="labels.altBackground"/>
+                    </t>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <small class="text-muted o_rs_style_label">Height (mm)</small>
+                        <input type="number" min="0" max="100" step="0.5" class="form-control form-control-sm w-auto o_rs_rows_height"
+                               t-att-value="state.rows.height or ''" placeholder="auto"
+                               t-on-change="(ev) => this.onNumber(state.rows, 'height', ev)"/>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <small class="text-muted o_rs_style_label">Vertical alignment</small>
+                        <select class="form-select form-select-sm w-auto o_rs_rows_valign" t-model="state.rows.valign">
+                            <option value="">Default</option>
+                            <t t-foreach="valigns" t-as="v" t-key="v[0]">
+                                <option t-att-value="v[0]"><t t-esc="v[1]"/></option>
+                            </t>
+                        </select>
+                    </div>
+                </div>
+                <!-- Borders -->
+                <div class="col-12">
+                    <div class="fw-bold mb-2">Borders</div>
+                    <div class="btn-group btn-group-sm flex-wrap mb-2" role="group">
+                        <button type="button" t-attf-class="btn btn-outline-secondary o_rs_preset {{ !state.borders.preset ? 'active' : '' }}"
+                                data-preset="" t-on-click="() => this.state.borders.preset = ''">Odoo default</button>
+                        <t t-foreach="presets" t-as="p" t-key="p[0]">
+                            <button type="button" t-att-data-preset="p[0]"
+                                    t-attf-class="btn btn-outline-secondary o_rs_preset {{ state.borders.preset === p[0] ? 'active' : '' }}"
+                                    t-on-click="() => this.state.borders.preset = p[0]">
+                                <t t-esc="p[1]"/>
+                            </button>
+                        </t>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select class="form-select form-select-sm w-auto o_rs_table_border_style" t-model="state.borders.style">
+                            <t t-foreach="borderStyles" t-as="st" t-key="st[0]">
+                                <option t-att-value="st[0]"><t t-esc="st[1]"/></option>
+                            </t>
+                        </select>
+                        <select class="form-select form-select-sm w-auto o_rs_table_border_width" t-model.number="state.borders.width">
+                            <t t-foreach="[1, 2, 3, 4, 5, 6]" t-as="px" t-key="px">
+                                <option t-att-value="px"><t t-esc="px"/> px</option>
+                            </t>
+                        </select>
+                        <input type="color" class="form-control form-control-color form-control-sm o_rs_table_border_color"
+                               title="Border line color" t-model="state.borders.color"/>
+                    </div>
+                </div>
+                <!-- Columns -->
+                <div class="col-12">
+                    <div class="fw-bold mb-2">Columns</div>
+                    <table class="table table-sm align-middle mb-0 o_rs_style_columns">
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th>Background</th>
+                                <th class="text-center">Left border</th>
+                                <th class="text-center">Right border</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="state.columns" t-as="col" t-key="col._uid">
+                                <tr class="o_rs_style_column" t-att-data-uid="col._uid">
+                                    <td><t t-esc="col.title"/></td>
+                                    <td>
+                                        <t t-call="report_studio.ColorPicker">
+                                            <t t-set="target" t-value="col"/><t t-set="key" t-value="'background'"/>
+                                            <t t-set="title" t-value="''"/>
+                                        </t>
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input o_rs_col_border_left" t-model="col.border_left"/>
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input o_rs_col_border_right" t-model="col.border_right"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <small class="text-muted">The column background wins over the row backgrounds; the column borders use the line chosen above.</small>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary o_rs_style_apply" t-on-click="apply">Apply</button>
+                <button class="btn btn-secondary" t-on-click="props.close">Discard</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <!-- Color with "none": a color input and a button to remove it.
+         Parameters: target (object), key (property), title (label or ''). -->
+    <t t-name="report_studio.ColorPicker">
+        <div class="d-flex align-items-center gap-1 mt-1 o_rs_color" t-att-data-key="key">
+            <small t-if="title" class="text-muted o_rs_style_label"><t t-esc="title"/></small>
+            <input type="color" class="form-control form-control-color form-control-sm"
+                   t-att-value="target[key] or '#ffffff'"
+                   t-on-input="(ev) => target[key] = ev.target.value"/>
+            <button t-if="target[key]" type="button" class="btn btn-sm btn-link px-1 o_rs_clear_color"
+                    title="No color" t-on-click="() => target[key] = ''">×</button>
+            <small t-else="" class="text-muted fst-italic">none</small>
+        </div>
+    </t>
+
+</templates>

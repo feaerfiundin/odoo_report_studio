@@ -45,6 +45,20 @@ A Section can also have a label bar on top and borders::
                "style": "solid" | "double" | "dashed" | "dotted",
                "width": 1, "color": "#333333"}
 
+A Table can have a style (all keys optional) and per column background and
+side borders::
+
+    "style": {"head": {"background": "#..", "color": "#..", "height": 8},
+              "rows": {"background": "#..", "alt_background": "#..",
+                       "height": 6, "valign": "top" | "middle" | "bottom"},
+              "borders": {"preset": "all" | "none" | "outer" | "horizontal"
+                                    | "vertical" | "header",
+                          "style": "solid", "width": 1, "color": "#333333"}}
+    column: {"background": "#..", "border_left": true, "border_right": false}
+
+The column background wins over the row backgrounds; the column borders use
+the line of the table borders.
+
 Section and Table also accept ``"margins": <margins>``. Margins (mm, all
 optional)::
 
@@ -128,6 +142,9 @@ TABLE_TYPES = ("one2many", "many2many")
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 BORDER_STYLES = ("solid", "double", "dashed", "dotted")
 BORDER_WIDTH = (1, 6)  # px
+BORDER_PRESETS = ("all", "none", "outer", "horizontal", "vertical", "header")
+VALIGNS = ("top", "middle", "bottom")
+ROW_HEIGHT = (1, 100)  # mm
 
 
 class _Term(str):
@@ -625,6 +642,89 @@ def _render_section(block, model, var, depth, ctx, tree_path):
     )
 
 
+def _check_keys(value, allowed, what):
+    if value is None:
+        return {}
+    if not isinstance(value, dict) or set(value) - set(allowed):
+        raise CompileError(_("Invalid %(what)s: %(value)r"), {"what": what, "value": value})
+    return value
+
+
+def _table_style(block):
+    """Validated table style: header, data rows and borders.
+
+    Returns a dict of ready CSS pieces; everything is optional and a table
+    without style compiles as before.
+    """
+    style = _check_keys(block.get("style"), ("head", "rows", "borders"), _("table style"))
+    head = _check_keys(
+        style.get("head"), ("background", "color", "height"), _("header style")
+    )
+    rows = _check_keys(
+        style.get("rows"),
+        ("background", "alt_background", "height", "valign"),
+        _("row style"),
+    )
+    borders = _check_keys(
+        style.get("borders"), ("preset", "style", "width", "color"), _("table borders")
+    )
+    result = {
+        "head_background": _color(head.get("background"), _("header background")),
+        "head_color": _color(head.get("color"), _("header text")),
+        "head_height": head.get("height")
+        and _number(head["height"], *ROW_HEIGHT, what=_("Header height (mm)")),
+        "rows_background": _color(rows.get("background"), _("row background")),
+        "rows_alt_background": _color(
+            rows.get("alt_background"), _("alternate row background")
+        ),
+        "rows_height": rows.get("height")
+        and _number(rows["height"], *ROW_HEIGHT, what=_("Row height (mm)")),
+        "valign": rows.get("valign") or "",
+        "preset": borders.get("preset") or "",
+    }
+    if result["valign"] not in ("",) + VALIGNS:
+        raise CompileError(_("Vertical alignment not allowed: %r"), result["valign"])
+    if result["preset"] not in ("",) + BORDER_PRESETS:
+        raise CompileError(_("Border scheme not allowed: %r"), result["preset"])
+    line_style = borders.get("style", "solid")
+    if line_style not in BORDER_STYLES:
+        raise CompileError(_("Border style not allowed: %r"), line_style)
+    width = _number(borders.get("width", 1), *BORDER_WIDTH, what=_("Border width (px)"))
+    color = _color(borders.get("color"), _("border")) or "#333333"
+    result["line"] = "%gpx %s %s" % (width, line_style, color)
+    return result
+
+
+def _cell_borders(style, header):
+    """Border CSS of a cell for the chosen scheme ([] = Odoo default)."""
+    line = style["line"]
+    preset = style["preset"]
+    if preset == "all":
+        return ["border: %s" % line]
+    if preset == "horizontal":
+        return ["border: 0", "border-top: %s" % line, "border-bottom: %s" % line]
+    if preset == "vertical":
+        return ["border: 0", "border-left: %s" % line, "border-right: %s" % line]
+    if preset == "header":
+        return ["border: 0"] + (["border-bottom: %s" % line] if header else [])
+    if preset in ("none", "outer"):
+        return ["border: 0"]
+    return []
+
+
+def _column_extra(column, style):
+    """Background and side borders of a single column."""
+    background = _color(column.get("background"), _("column background"))
+    sides = []
+    for side in ("left", "right"):
+        value = column.get("border_%s" % side, False)
+        if not isinstance(value, bool):
+            raise CompileError(_("The column border must be true or false"))
+        if value:
+            sides.append("border-%s: %s" % (side, style["line"]))
+    return background, sides
+
+
 def _render_table(block, model, var, ctx):
     source = block.get("source")
     ftype, comodel = _check_path(source, model, ctx)
@@ -638,6 +738,18 @@ def _render_table(block, model, var, ctx):
     line = ctx.new_var()
     head_css = _font_css(block.get("head_font"))
     body_css = _font_css(block.get("body_font"))
+    style = _table_style(block)
+    head_extra = [
+        "background-color: %s" % style["head_background"]
+        if style["head_background"]
+        else "",
+        "color: %s" % style["head_color"] if style["head_color"] else "",
+        "height: %gmm" % style["head_height"] if style["head_height"] else "",
+    ]
+    rows_extra = [
+        "height: %gmm" % style["rows_height"] if style["rows_height"] else "",
+        "vertical-align: %s" % style["valign"] if style["valign"] else "",
+    ]
     heads, cells, widths = [], [], []
     for column in columns:
         if not isinstance(column, dict):
@@ -651,24 +763,59 @@ def _render_table(block, model, var, ctx):
         # of Odoo reports sets the one of the headers, which would not inherit
         # it from the table.
         align = _align_css(column.get("align") or block.get("align"))
+        background, side_borders = _column_extra(column, style)
         translations = _translations(
             column.get("label_translations"), MAX_LABEL, _("header")
         )
         heads.append(
             "<th%s>%s</th>"
             % (
-                _style_attr(width, align, head_css),
+                _style_attr(
+                    width,
+                    align,
+                    head_css,
+                    *head_extra,
+                    *_cell_borders(style, True),
+                    *side_borders,
+                ),
                 _by_lang(str(label), translations, escape),
             )
         )
-        cells.append(
-            '<td%s><span t-field="%s.%s"/></td>'
-            % (_style_attr(align, body_css), line, cpath)
-        )
+        cell_css = [
+            align,
+            body_css,
+            *rows_extra,
+            *_cell_borders(style, False),
+            *side_borders,
+        ]
+        # Backgrounds: the column wins over the rows (base and alternate).
+        if background:
+            cell_css.append("background-color: %s" % background)
+            style_attr = _style_attr(*cell_css)
+        elif style["rows_alt_background"]:
+            static = "; ".join(d for d in cell_css if d)
+            dynamic = "background-color: {{ '%s' if %s_index %% 2 else '%s' }}" % (
+                style["rows_alt_background"],
+                line,
+                style["rows_background"] or "transparent",
+            )
+            style_attr = ' t-attf-style="%s"' % _attr(
+                "%s; %s" % (static, dynamic) if static else dynamic
+            )
+        else:
+            if style["rows_background"]:
+                cell_css.append("background-color: %s" % style["rows_background"])
+            style_attr = _style_attr(*cell_css)
+        cells.append('<td%s><span t-field="%s.%s"/></td>' % (style_attr, line, cpath))
     # With widths set, the table keeps them (fixed layout).
+    bordered = style["preset"] or any(
+        c.get("border_left") or c.get("border_right") for c in columns
+    )
     table_style = _style_attr(
         "table-layout: fixed; width: 100%" if any(widths) else "",
         _align_css(block.get("align")),
+        "border-collapse: collapse" if bordered else "",
+        "border: %s" % style["line"] if style["preset"] == "outer" else "",
     )
     table = [
         '<table class="table table-sm"%s>' % table_style,

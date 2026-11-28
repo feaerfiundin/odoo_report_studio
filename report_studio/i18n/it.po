@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 22:22+0000\n"
-"PO-Revision-Date: 2026-11-27 22:22+0000\n"
+"POT-Creation-Date: 2026-11-28 09:53+0000\n"
+"PO-Revision-Date: 2026-11-28 09:53+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: it\n"
@@ -146,10 +146,22 @@ msgid "Alignment not allowed: %r"
 msgstr "Allineamento non ammesso: %r"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "All"
+msgstr "Tutti"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "All borders"
 msgstr "Tutti i bordi"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/table_style_dialog.js:0
+msgid "Alternate rows"
+msgstr "Righe alterne"
 
 #. module: report_studio
 #. odoo-python
@@ -164,6 +176,12 @@ msgid ""
 "An editable copy of the selected document will be created, with its model. "
 "The original will not be changed. Do you want to continue?"
 msgstr "Verrà creata una copia modificabile del documento selezionato, con il suo modello. L'originale non verrà modificato. Vuoi continuare?"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Apply"
+msgstr "Applica"
 
 #. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__arch
@@ -206,6 +224,8 @@ msgstr "Autore"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/table_style_dialog.js:0
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Background"
 msgstr "Sfondo"
@@ -232,6 +252,7 @@ msgstr "Testo in grassetto"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Border line color"
 msgstr "Colore della riga del bordo"
@@ -241,6 +262,12 @@ msgstr "Colore della riga del bordo"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Border line style"
 msgstr "Stile della riga del bordo"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Border scheme not allowed: %r"
+msgstr "Schema dei bordi non ammesso: %r"
 
 #. module: report_studio
 #. odoo-python
@@ -256,6 +283,7 @@ msgstr "Spessore del bordo (px)"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Borders"
 msgstr "Bordi"
@@ -271,6 +299,12 @@ msgstr "Sotto"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Bottom margin (mm)"
 msgstr "Margine inferiore (mm)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Bottom of the cell"
+msgstr "In basso nella cella"
 
 #. module: report_studio
 #. odoo-javascript
@@ -292,6 +326,12 @@ msgstr "Modifica non riuscita"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Choose a Field"
+msgstr "Scegli un campo"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Choose the model"
 msgstr "Scegli il modello"
@@ -304,13 +344,16 @@ msgstr "Classi separate da uno spazio (funzionano anche le classi Bootstrap)"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Close"
 msgstr "Chiudi"
 
 #. module: report_studio
+#. odoo-javascript
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 msgid "Column"
 msgstr "Colonna"
 
@@ -318,6 +361,7 @@ msgstr "Colonna"
 #. odoo-javascript
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Columns"
 msgstr "Colonne"
@@ -419,6 +463,18 @@ msgid "Dashed"
 msgstr "Tratteggiata"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Data Rows"
+msgstr "Righe dati"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Default"
+msgstr "Predefinito"
+
+#. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__definition
 msgid "Definition"
 msgstr "Definizione"
@@ -431,6 +487,7 @@ msgstr "Elimina blocco"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Discard"
 msgstr "Abbandona"
@@ -515,6 +572,7 @@ msgstr "Ogni colonna deve essere un oggetto"
 #. odoo-javascript
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Field"
 msgstr "Campo"
@@ -524,6 +582,12 @@ msgstr "Campo"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Field %(path)r does not exist on model %(model)s"
 msgstr "Il campo %(path)r non esiste sul modello %(model)s"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Field Type"
+msgstr "Tipo campo"
 
 #. module: report_studio
 #. odoo-javascript
@@ -571,12 +635,25 @@ msgstr "Testo grigio"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Header"
+msgstr "Intestazione"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Header Font"
 msgstr "Carattere intestazione"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Header height (mm)"
+msgstr "Altezza dell'intestazione (mm)"
+
+#. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Height (mm)"
 msgstr "Altezza (mm)"
@@ -586,6 +663,12 @@ msgstr "Altezza (mm)"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Help"
 msgstr "Guida"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Horizontal lines"
+msgstr "Linee orizzontali"
 
 #. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__id
@@ -622,6 +705,12 @@ msgstr "Versione iniziale"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Inner spacing"
 msgstr "Spaziatura interna"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Invalid %(what)s: %(value)r"
+msgstr "%(what)s non valido: %(value)r"
 
 #. module: report_studio
 #. odoo-python
@@ -833,6 +922,12 @@ msgid "Left"
 msgstr "Sinistra"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Left border"
+msgstr "Bordo sinistro"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Left margin (mm)"
@@ -879,6 +974,12 @@ msgstr "Margini (mm)"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Maximum block depth exceeded"
 msgstr "Profondità massima dei blocchi superata"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Middle of the cell"
+msgstr "Al centro della cella"
 
 #. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__report_mode
@@ -962,10 +1063,23 @@ msgid "No border"
 msgstr "Nessun bordo"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "No borders"
+msgstr "Nessun bordo"
+
+#. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "No color"
 msgstr "Nessun colore"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "No field found."
+msgstr "Nessun campo trovato."
 
 #. module: report_studio
 #. odoo-javascript
@@ -1007,6 +1121,12 @@ msgstr "Documenti Odoo"
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__model_id
 msgid "Odoo Model"
 msgstr "Modello Odoo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Odoo default"
+msgstr "Predefiniti Odoo"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1056,6 +1176,12 @@ msgstr "Operatore"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Operator not allowed: %r"
 msgstr "Operatore non ammesso: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Outer"
+msgstr "Esterno"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1350,6 +1476,12 @@ msgid "Right"
 msgstr "Destra"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Right border"
+msgstr "Bordo destro"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Right margin (mm)"
@@ -1366,6 +1498,12 @@ msgstr "Angoli arrotondati"
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Row Font"
 msgstr "Carattere righe"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Row height (mm)"
+msgstr "Altezza delle righe (mm)"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1407,6 +1545,18 @@ msgid "Saved Layouts"
 msgstr "Saved Layouts"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/field_selector.js:0
+msgid "Search More..."
+msgstr "Cerca ancora..."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Search a field…"
+msgstr "Cerca un campo…"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Section"
@@ -1435,6 +1585,12 @@ msgstr "Stile del separatore non ammesso: %r"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Separator thickness (px)"
 msgstr "Spessore del separatore (px)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Show the fields of this relation"
+msgstr "Mostra i campi di questa relazione"
 
 #. module: report_studio
 #. odoo-python
@@ -1521,9 +1677,27 @@ msgid "Table"
 msgstr "Tabella"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Table Style"
+msgstr "Stile tabella"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Table style: backgrounds, borders, row height…"
+msgstr "Stile tabella: sfondi, bordi, altezza righe…"
+
+#. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__model_name
 msgid "Technical Model Name"
 msgstr "Modello tecnico"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Technical Name"
+msgstr "Nome tecnico"
 
 #. module: report_studio
 #. odoo-python
@@ -1552,6 +1726,7 @@ msgstr "Testo"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/table_style_dialog.js:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Text color"
 msgstr "Colore del testo"
@@ -1599,6 +1774,20 @@ msgstr "Il bordo deve essere un oggetto"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The column 'locked' value must be true or false"
 msgstr "Il valore 'locked' della colonna deve essere vero o falso"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid ""
+"The column background wins over the row backgrounds; the column borders use "
+"the line chosen above."
+msgstr "Lo sfondo della colonna vince su quello delle righe; i bordi di colonna usano la linea scelta sopra."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The column border must be true or false"
+msgstr "Il bordo della colonna deve essere vero o falso"
 
 #. module: report_studio
 #. odoo-python
@@ -1700,6 +1889,12 @@ msgid "Top margin (mm)"
 msgstr "Margine superiore (mm)"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Top of the cell"
+msgstr "In alto nella cella"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Total"
@@ -1727,6 +1922,12 @@ msgstr "Traduzione in %(lang)s: testi, etichette e intestazioni si scrivono in q
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Unable to draw the page"
 msgstr "Impossibile disegnare la pagina"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Under the header"
+msgstr "Sotto l'intestazione"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1802,9 +2003,27 @@ msgstr "Versioni"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "Vertical alignment"
+msgstr "Allineamento verticale"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Vertical alignment not allowed: %r"
+msgstr "Allineamento verticale non ammesso: %r"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Vertical line between the columns"
 msgstr "Riga verticale tra le colonne"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Vertical lines"
+msgstr "Linee verticali"
 
 #. module: report_studio
 #: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__viewer
@@ -1830,16 +2049,34 @@ msgid "active"
 msgstr "attiva"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "alternate row background"
+msgstr "sfondo delle righe alterne"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "as the container"
 msgstr "come il contenitore"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
+msgid "auto"
+msgstr "auto"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "border"
 msgstr "bordo"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "column background"
+msgstr "sfondo della colonna"
 
 #. module: report_studio
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
@@ -1872,7 +2109,7 @@ msgstr "uguale a"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "field"
 msgstr "campo"
 
@@ -1893,6 +2130,24 @@ msgstr "maggiore di"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "header"
 msgstr "intestazione"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "header background"
+msgstr "sfondo dell'intestazione"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "header style"
+msgstr "stile dell'intestazione"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "header text"
+msgstr "testo dell'intestazione"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1928,6 +2183,7 @@ msgstr "minore di"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "none"
 msgstr "nessuno"
@@ -1940,14 +2196,39 @@ msgstr "pt"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "px"
 msgstr "px"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "row background"
+msgstr "sfondo delle righe"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "row style"
+msgstr "stile delle righe"
+
+#. module: report_studio
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
 msgid "same as the report name"
 msgstr "come il nome del report"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "table borders"
+msgstr "bordi della tabella"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "table style"
+msgstr "stile della tabella"
 
 #. module: report_studio
 #. odoo-python

@@ -37,7 +37,11 @@ Available blocks:
   Condition, Separator, Spacer and Page Break.
 
 Every block can set its font (size, bold, italic, underline), text
-alignment and inner margins where it makes sense. Free Python expressions
+alignment and inner margins where it makes sense. Sections can have a label
+bar and borders; tables have a style popup with header, row (also
+alternate) and column backgrounds, border schemes, column borders and row
+heights. Fields are chosen like in Odoo many2one fields: a few suggestions
+and "Search More..." with a searchable list, relations included. Free Python expressions
 are never accepted: conditions only compare validated field paths with
 scalar values.
 

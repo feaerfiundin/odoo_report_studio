@@ -21,9 +21,12 @@
     "assets": {
         "web.assets_backend": [
             "report_studio/static/src/js/column_widths.js",
+            "report_studio/static/src/js/field_selector.js",
+            "report_studio/static/src/js/table_style_dialog.js",
             "report_studio/static/src/js/report_studio_app.js",
             "report_studio/static/src/js/rs_report_list.js",
             "report_studio/static/src/xml/report_studio_app.xml",
+            "report_studio/static/src/xml/field_selector.xml",
             "report_studio/static/src/scss/editor.scss",
         ],
         "web.report_assets_common": [

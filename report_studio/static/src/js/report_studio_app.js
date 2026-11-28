@@ -11,6 +11,11 @@ import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { user } from "@web/core/user";
 import { _t } from "@web/core/l10n/translation";
 import { addColumn, ensureWidths, removeColumn, setWidth, totalWidth } from "./column_widths";
+import { FieldSelector } from "./field_selector";
+import { TableStyleDialog, cleanTableStyle } from "./table_style_dialog";
+
+// Fields that can be the source of a Table.
+const isX2many = (field) => ["one2many", "many2many"].includes(field.type);
 
 // Proposed font sizes (pt); empty = the layout one.
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36];
@@ -231,10 +236,18 @@ function cleanBlock(block) {
     if (Array.isArray(block.columns)) {
         out.columns = block.columns.map(({ _uid: _c, ...col }) => {
             if (!col.align) delete col.align;
+            if (!col.background) delete col.background;
+            if (!col.border_left) delete col.border_left;
+            if (!col.border_right) delete col.border_right;
             col.label_translations = cleanTranslations(col.label_translations);
             if (!col.label_translations) delete col.label_translations;
             return col;
         });
+    }
+    if (block.type === "table") {
+        const columnBorders = (block.columns || []).some((c) => c.border_left || c.border_right);
+        out.style = cleanTableStyle(block.style, columnBorders);
+        if (!out.style) delete out.style;
     }
     for (const key of ["translations", "label_translations"]) {
         if (key in out) {
@@ -364,7 +377,7 @@ class PreviewDialog extends Component {
 
 export class ReportStudioApp extends Component {
     static template = "report_studio.App";
-    static components = { Dropdown, DropdownItem };
+    static components = { Dropdown, DropdownItem, FieldSelector };
     static props = ["*"];
 
     setup() {
@@ -376,6 +389,9 @@ export class ReportStudioApp extends Component {
         this.columnCounts = COLUMN_COUNTS;
         this.totalWidth = totalWidth;
         this.canvasRef = useRef("canvas");
+        // Field loader for the field selectors (cached per model).
+        this.loadFields = (model) => this.fetchFields(model);
+        this.isX2many = isX2many;
         this.canvasTimer = null;
         this.state = useState({
             // new | edit (the list is the standard action_rs_report_list view)
@@ -576,8 +592,7 @@ export class ReportStudioApp extends Component {
     async loadTableFields(blocks) {
         for (const block of blocks) {
             if (block.type === "table") {
-                const relation = this.state.fields.find((f) => f.name === block.source)?.relation;
-                if (relation) await this.fetchFields(relation).catch(() => {});
+                await this.loadPath(block.source);
             }
             if (block.children) await this.loadTableFields(block.children);
         }
@@ -754,12 +769,33 @@ export class ReportStudioApp extends Component {
         return this.uidAtPath(path.split(".").slice(0, -1).join("."));
     }
 
-    get tableColumnFields() {
-        const sel = this.selected;
-        if (!sel || sel.type !== "table") return [];
-        const sourceField = this.state.fields.find((f) => f.name === sel.source);
-        if (!sourceField || !sourceField.relation) return [];
-        return this.state.fieldCache[sourceField.relation] || [];
+    // Model reached by a dotted path from the report model, from the cached
+    // fields ("" when unknown or not loaded yet).
+    relationOf(path) {
+        let model = this.state.modelName;
+        for (const part of (path || "").split(".").filter(Boolean)) {
+            const field = (this.state.fieldCache[model] || []).find((f) => f.name === part);
+            if (!field?.relation) return "";
+            model = field.relation;
+        }
+        return path ? model : "";
+    }
+
+    // Load the fields of every model along a path (for the column suggestions).
+    async loadPath(path) {
+        let model = this.state.modelName;
+        for (const part of (path || "").split(".").filter(Boolean)) {
+            const field = (await this.fetchFields(model).catch(() => [])).find((f) => f.name === part);
+            if (!field?.relation) return;
+            model = field.relation;
+            await this.fetchFields(model).catch(() => {});
+        }
+    }
+
+    // Path chosen in a field selector.
+    setPath(target, key, value) {
+        target[key] = value;
+        this.markDirty();
     }
 
     selectParent() {
@@ -794,15 +830,32 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    onTableSourceChange(ev) {
-        const sel = this.selected;
-        if (!sel) return;
-        sel.source = ev.target.value;
-        const field = this.state.fields.find((f) => f.name === sel.source);
-        if (field && field.relation) {
-            this.fetchFields(field.relation).catch(() => {});
-        }
+    async onTableSource(block, value) {
+        block.source = value;
         this.markDirty();
+        await this.loadPath(value);
+    }
+
+    // Popup with backgrounds, borders and row heights of the table.
+    openTableStyle() {
+        const block = this.selected;
+        if (block?.type !== "table") return;
+        this.dialog.add(TableStyleDialog, {
+            block,
+            labels: this.labels,
+            onApply: ({ style, columns }) => {
+                block.style = style;
+                for (const values of columns) {
+                    const column = block.columns.find((c) => c._uid === values._uid);
+                    if (column) {
+                        column.background = values.background;
+                        column.border_left = values.border_left;
+                        column.border_right = values.border_right;
+                    }
+                }
+                this.markDirty();
+            },
+        });
     }
 
     onAddColumn() {
@@ -1000,6 +1053,10 @@ export class ReportStudioApp extends Component {
 
     get sectionLabelPlaceholder() {
         return _t("e.g. Customer data");
+    }
+
+    get columnFieldPlaceholder() {
+        return _t("field");
     }
 
     get columnLabelPlaceholder() {

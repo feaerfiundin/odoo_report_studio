@@ -334,6 +334,29 @@ class TestRsReport(TransactionCase):
         self.assertIn("/report_studio/static/src/scss/report.scss",
                       [f["url"] for f in bundle.files])
 
+    def test_table_style_saved_and_rendered(self):
+        order = self._sale_order()
+        product = self.env["product.product"].create({"name": "Styled product"})
+        for _i in range(2):
+            self.env["sale.order.line"].create({"order_id": order.id, "product_id": product.id})
+        definition = json.dumps({"children": [{
+            "type": "table", "source": "order_line",
+            "style": {"head": {"background": "#000080", "color": "#ffffff"},
+                      "rows": {"alt_background": "#eeeeee", "height": 7},
+                      "borders": {"preset": "horizontal", "width": 2}},
+            "columns": [{"path": "name", "label": "Description", "border_right": True},
+                        {"path": "product_uom_qty", "label": "Qty", "background": "#ffff00"}],
+        }]})
+        version = self.report._create_version(definition)
+        self.assertIn("background-color: #000080", version.arch)
+        self.assertIn("line_1_index % 2", version.arch)
+        html = self.report.render_canvas(definition, order.id)
+        # first row base (transparent), second row alternate; the column wins
+        self.assertEqual(html.count("background-color: #eeeeee"), 1)
+        self.assertEqual(html.count("background-color: transparent"), 1)
+        self.assertEqual(html.count("background-color: #ffff00"), 2)
+        self.assertIn("border-right: 2px solid #333333", html)
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Preview customer"})
         return self.env["sale.order"].create({"partner_id": partner.id})

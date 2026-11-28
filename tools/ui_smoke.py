@@ -156,6 +156,15 @@ with sync_playwright() as p:
         # Il nuovo blocco è selezionato: pannello Proprietà del tipo giusto.
         page.wait_for_selector(f".o_rs_props_title:text-is('{block_labels[btype]}')")
 
+    def set_field(locator, value):
+        """Scelta del campo (autocompletamento in stile Odoo): scrive e conferma con Tab."""
+        if isinstance(locator, str):
+            locator = page.locator(locator)
+        inp = locator.locator("input.o-autocomplete--input")
+        inp.fill(value)
+        inp.press("Tab")
+        page.wait_for_timeout(150)
+
     def select_parent():
         page.click(".o_rs_props button:has-text('Seleziona il contenitore')")
 
@@ -235,14 +244,13 @@ with sync_playwright() as p:
         select_parent()                        # torna alla sezione
         page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
         add_block("field")                     # nella sezione
-        page.fill(".o_rs_props input[list=rs_fields]", "name")
+        set_field(".o_rs_props .o_rs_path_field", "name")
         add_block("table")                     # accanto al campo
-        page.fill(".o_rs_props input[list=rs_fields] >> nth=0", "order_line")
-        page.locator(".o_rs_props input[list=rs_fields] >> nth=0").dispatch_event("input")
-        page.fill(".o_rs_props input[placeholder=campo] >> nth=0", "name")
+        set_field(".o_rs_props .o_rs_path_source", "order_line")
+        set_field(page.locator(".o_rs_props .o_rs_column").nth(0).locator(".o_rs_path_column"), "name")
         page.fill(".o_rs_props input[placeholder=etichetta] >> nth=0", "Descrizione")
         add_block("if")
-        page.fill(".o_rs_props input[list=rs_fields]", "amount_total")
+        set_field(".o_rs_props .o_rs_path_if", "amount_total")
         page.select_option(".o_rs_props select", ">")
         page.fill(".o_rs_props label:has-text('Valore') + input", "0")
         add_block("text")
@@ -328,7 +336,7 @@ with sync_playwright() as p:
         page.click(".o_rs_props button:has-text('+ colonna')")
         paths = ["name", "product_uom_qty", "price_unit"]
         for i, path in enumerate(paths):
-            page.fill(f".o_rs_props .o_rs_column >> nth={i} >> input[placeholder=campo]", path)
+            set_field(page.locator(".o_rs_props .o_rs_column").nth(i).locator(".o_rs_path_column"), path)
         widths = lambda: [int(v) for v in page.locator(".o_rs_props .o_rs_width_input").evaluate_all("els => els.map(e => e.value)")]
         expect(widths() == [34, 33, 33], f"dopo 3 colonne: {widths()}")
         first = page.locator(".o_rs_props .o_rs_width_input").nth(0)
@@ -489,7 +497,7 @@ with sync_playwright() as p:
 
     def invalid_save_shows_server_message():
         add_block("field")
-        page.fill(".o_rs_props input[list=rs_fields]", "campo_che_non_esiste")
+        set_field(".o_rs_props .o_rs_path_field", "campo_che_non_esiste")
         page.click(f"{topbar} .o_rs_btn_save")
         text = notification_text()
         expect("campo_che_non_esiste" in text, f"messaggio generico: {text}")
@@ -642,6 +650,76 @@ with sync_playwright() as p:
             lang_state["activated"] = ids
         return "italiano attivato per la prova" if not active else "italiano già attivo"
 
+    def field_suggestions():
+        """Campo in stile Odoo: 4 suggerimenti + "Cerca ancora...", popup con ricerca e relazioni."""
+        canvas.locator("[data-rs-type=field]").first.click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Campo')")
+        inp = page.locator(".o_rs_props .o_rs_path_field input.o-autocomplete--input")
+        inp.fill("")
+        inp.type("p", delay=30)
+        page.wait_for_selector(".o-autocomplete--dropdown-menu li")
+        items = page.locator(".o-autocomplete--dropdown-menu li").all_inner_texts()
+        expect(len(items) == 5 and "Cerca ancora" in items[-1], f"suggerimenti: {items}")
+        page.locator(".o-autocomplete--dropdown-menu li", has_text="Cerca ancora").click()
+        page.wait_for_selector(".o_rs_field_search")
+        rows = page.locator(".o_rs_field_search .o_rs_field_row").count()
+        page.fill(".o_rs_field_search_input", "cliente")
+        page.wait_for_timeout(300)
+        filtered = page.locator(".o_rs_field_search .o_rs_field_row").count()
+        expect(0 < filtered < rows, f"ricerca: {rows} -> {filtered}")
+        # Dentro la relazione partner_id, poi il campo "name".
+        page.locator(".o_rs_field_search .o_rs_field_row[data-name=partner_id] .o_rs_field_open").click()
+        page.wait_for_selector(".o_rs_field_search .o_rs_field_path li:nth-child(2)")
+        page.fill(".o_rs_field_search_input", "")
+        page.locator(".o_rs_field_search .o_rs_field_row[data-name=name]").click()
+        page.wait_for_selector(".o_rs_field_search", state="detached")
+        value = inp.input_value()
+        expect(value == "partner_id.name", f"percorso scelto: {value!r}")
+        # Nessuna creazione: niente "Crea" nel menu.
+        inp.fill("zzz_nessuno")
+        page.wait_for_timeout(500)
+        texts = " ".join(page.locator(".o-autocomplete--dropdown-menu li").all_inner_texts())
+        expect("Crea" not in texts and "Create" not in texts, f"opzione di creazione: {texts}")
+        inp.fill("name")
+        inp.press("Tab")
+        return f"5 voci, popup {rows} -> {filtered} campi, scelto {value}"
+
+    def table_style():
+        """Popup Stile tabella: intestazione, righe alterne, bordi, sfondo e bordi di colonna."""
+        canvas.locator("[data-rs-type=table]").click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
+        page.click(".o_rs_props .o_rs_table_style_btn")
+        page.wait_for_selector(".o_rs_table_style")
+        dlg = ".o_rs_table_style"
+        set_color = lambda sel, color: page.locator(sel).evaluate(
+            "(el, c) => { el.value = c; el.dispatchEvent(new Event('input', {bubbles: true})); }", color)
+        set_color(f"{dlg} .col-md-6 >> nth=0 >> .o_rs_color[data-key=background] input[type=color]", "#000080")
+        set_color(f"{dlg} .col-md-6 >> nth=0 >> .o_rs_color[data-key=color] input[type=color]", "#ffffff")
+        set_color(f"{dlg} .col-md-6 >> nth=1 >> .o_rs_color[data-key=alt_background] input[type=color]", "#eeeeee")
+        page.fill(f"{dlg} .o_rs_rows_height", "7")
+        page.locator(f"{dlg} .o_rs_rows_height").press("Tab")
+        page.select_option(f"{dlg} .o_rs_rows_valign", "middle")
+        page.click(f"{dlg} .o_rs_preset[data-preset=horizontal]")
+        page.select_option(f"{dlg} .o_rs_table_border_width", "2")
+        set_color(f"{dlg} .o_rs_style_column >> nth=1 >> input[type=color]", "#ffff00")
+        page.check(f"{dlg} .o_rs_style_column >> nth=0 >> .o_rs_col_border_right")
+        page.click(".o_rs_style_apply")
+        page.wait_for_selector(dlg, state="detached")
+        wait_canvas()
+        page.wait_for_timeout(600)
+        th = canvas.locator("[data-rs-type=table] th").first.evaluate(
+            "el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color, getComputedStyle(el).borderTopWidth]")
+        expect(th[0] == "rgb(0, 0, 128)" and th[1] == "rgb(255, 255, 255)" and th[2] == "2px", f"intestazione: {th}")
+        cells = canvas.locator("[data-rs-type=table] tbody tr").evaluate_all(
+            "trs => trs.slice(0, 2).map(tr => [...tr.cells].map(td => getComputedStyle(td).backgroundColor))")
+        expect(len(cells) == 2, f"righe: {cells}")
+        expect(cells[1][0] == "rgb(238, 238, 238)", f"riga alterna: {cells}")
+        expect(all(row[1] == "rgb(255, 255, 0)" for row in cells), f"colonna gialla (vince sulla riga): {cells}")
+        right = canvas.locator("[data-rs-type=table] tbody td").first.evaluate("el => getComputedStyle(el).borderRightStyle")
+        height = canvas.locator("[data-rs-type=table] tbody td").first.evaluate("el => el.getBoundingClientRect().height")
+        expect(right == "solid" and height > 20, f"bordo destro {right}, altezza {height}")
+        return f"intestazione {th}, righe {cells}, altezza {height:.0f}px"
+
     def section_label_borders():
         """Sezione: etichetta con sfondo, bordi come nei fogli di calcolo, classi dal menu."""
         canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
@@ -724,6 +802,8 @@ with sync_playwright() as p:
         step(page, "larghezze_colonne", column_widths)
         step(page, "blocchi_impaginazione", layout_blocks)
         step(page, "allineamento", alignment)
+        step(page, "campo_suggerimenti", field_suggestions)
+        step(page, "stile_tabella", table_style)
         step(page, "sezione_etichetta_bordi", section_label_borders)
         step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)

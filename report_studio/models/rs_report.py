@@ -521,6 +521,19 @@ class RsReport(models.Model):
                 "dashed": _("Dashed"),
                 "dotted": _("Dotted"),
             },
+            "border_presets": {
+                "all": _("All"),
+                "none": _("No borders"),
+                "outer": _("Outer"),
+                "horizontal": _("Horizontal lines"),
+                "vertical": _("Vertical lines"),
+                "header": _("Under the header"),
+            },
+            "valigns": {
+                "top": _("Top of the cell"),
+                "middle": _("Middle of the cell"),
+                "bottom": _("Bottom of the cell"),
+            },
             # Classes offered by the CSS Class menu of the Section: Bootstrap
             # utilities available in the reports, plus o_rs_keep_together
             # (static/src/scss/report.scss).

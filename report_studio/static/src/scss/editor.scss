@@ -171,3 +171,17 @@
     }
 
 }
+
+// Field selector: the Odoo autocomplete fills the cell of the column grid.
+.o_rs_app .o_rs_field_selector .o-autocomplete--input {
+    width: 100%;
+}
+
+.o_rs_field_search .o_rs_field_search_list {
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.o_rs_table_style .o_rs_style_label {
+    min-width: 8rem;
+}

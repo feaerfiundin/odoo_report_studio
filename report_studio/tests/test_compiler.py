@@ -433,6 +433,71 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('<div class="o_rs_section_title" style="padding: 1mm 2mm">Customer</div>', arch)
         etree_ok(arch)
 
+    # ----- table style -----
+
+    def _table(self, **extra):
+        return dict({"type": "table", "source": "order_line", "columns": [
+            {"path": "name", "label": "Description"},
+            {"path": "product_uom_qty", "label": "Qty"}]}, **extra)
+
+    def test_table_header_and_rows_style(self):
+        xml = compile_([self._table(style={
+            "head": {"background": "#000080", "color": "#ffffff", "height": 8},
+            "rows": {"background": "#ffffff", "height": 6, "valign": "middle"}})])
+        self.assertIn('<th style="background-color: #000080; color: #ffffff; height: 8mm">Description</th>', xml)
+        self.assertIn('<td style="height: 6mm; vertical-align: middle; background-color: #ffffff">'
+                      '<span t-field="line_1.name"/></td>', xml)
+
+    def test_table_alternate_rows_and_column_wins(self):
+        table = self._table(style={"rows": {"alt_background": "#eeeeee"}})
+        table["columns"][1]["background"] = "#ffff00"
+        xml = compile_([table])
+        # alternate rows: dynamic style on the first column
+        self.assertIn('<td t-attf-style="background-color: {{ \'#eeeeee\' if line_1_index % 2 '
+                      'else \'transparent\' }}"><span t-field="line_1.name"/></td>', xml)
+        # the column background wins
+        self.assertIn('<td style="background-color: #ffff00"><span t-field="line_1.product_uom_qty"/></td>', xml)
+        etree_ok(xml)
+
+    def test_table_border_presets(self):
+        line = "1px solid #333333"
+        cases = {
+            "all": ('<th style="border: %s">' % line, '<td style="border: %s">' % line),
+            "horizontal": ('<th style="border: 0; border-top: %s; border-bottom: %s">' % (line, line), None),
+            "vertical": ('<th style="border: 0; border-left: %s; border-right: %s">' % (line, line), None),
+            "header": ('<th style="border: 0; border-bottom: %s">' % line, '<td style="border: 0">'),
+            "none": ('<th style="border: 0">', '<td style="border: 0">'),
+        }
+        for preset, (head, cell) in cases.items():
+            xml = compile_([self._table(style={"borders": {"preset": preset}})])
+            self.assertIn(head, xml, preset)
+            if cell:
+                self.assertIn(cell, xml, preset)
+            self.assertIn("border-collapse: collapse", xml)
+        xml = compile_([self._table(style={"borders": {"preset": "outer", "style": "double",
+                                                       "width": 3, "color": "#ff0000"}})])
+        self.assertIn('<table class="table table-sm" style="border-collapse: collapse; '
+                      'border: 3px double #ff0000">', xml)
+
+    def test_table_column_borders(self):
+        table = self._table(style={"borders": {"width": 2}})
+        table["columns"][0]["border_right"] = True
+        xml = compile_([table])
+        self.assertIn('<th style="border-right: 2px solid #333333">Description</th>', xml)
+        self.assertIn('<td style="border-right: 2px solid #333333">', xml)
+        self.assertIn('style="border-collapse: collapse"', xml)
+
+    def test_table_style_validated(self):
+        for style in ({"head": {"background": "blue"}}, {"rows": {"valign": "baseline"}},
+                      {"rows": {"height": 500}}, {"head": {"height": -1}}, {"borders": {"preset": "diagonal"}},
+                      {"borders": {"style": "groove"}}, {"other": 1}, "x"):
+            with self.assertRaises(compiler.CompileError, msg=style):
+                compile_([self._table(style=style)])
+        table = self._table()
+        table["columns"][0]["border_left"] = "yes"
+        with self.assertRaises(compiler.CompileError):
+            compile_([table])
+
     # ----- languages -----
 
     def test_translations_choose_text_by_lang(self):

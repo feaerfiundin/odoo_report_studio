@@ -12,7 +12,7 @@
                 <span class="flex-grow-1 min-w-0">
                     v<t t-esc="v.version_no"/>
                     <t t-if="v.is_active"><span class="badge bg-success ms-1">active</span></t>
-                    <small class="text-muted d-block text-truncate" t-att-title="v.comment"><t t-esc="v.comment"/></small>
+                    <small class="text-muted d-block text-truncate" t-att-title="v.comment or ''"><t t-esc="v.comment or ''"/></small>
                 </span>
                 <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Restore</button>
                 <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copy</button>
@@ -443,7 +443,8 @@
 
                                 <t t-if="selected.type === 'field'">
                                     <label class="form-label">Field</label>
-                                    <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
+                                    <FieldSelector value="selected.path or ''" model="state.modelName" loadFields="loadFields"
+                                                   onChange="(v) => this.setPath(selected, 'path', v)" class="'o_rs_path_field'"/>
                                     <label class="form-label mt-2">Label</label>
                                     <input class="form-control o_rs_field_label"
                                            t-att-placeholder="trPlaceholder(selected, 'label', labelPlaceholder) or labelPlaceholder"
@@ -460,7 +461,11 @@
 
                                 <t t-if="selected.type === 'table'">
                                     <label class="form-label">Source (one2many / many2many)</label>
-                                    <input class="form-control" list="rs_fields" t-att-value="selected.source" t-on-input="onTableSourceChange"/>
+                                    <FieldSelector value="selected.source or ''" model="state.modelName" loadFields="loadFields"
+                                                   filter="isX2many" onChange="(v) => this.onTableSource(selected, v)" class="'o_rs_path_source'"/>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 o_rs_table_style_btn" t-on-click="openTableStyle">
+                                        <i class="fa fa-paint-brush me-1"/>Table style: backgrounds, borders, row height…
+                                    </button>
                                     <t t-call="report_studio.AlignControls"><t t-set="target" t-value="selected"/></t>
                                     <t t-call="report_studio.FontControls">
                                         <t t-set="font" t-value="selected.head_font"/><t t-set="title" t-value="fontTitles.head"/>
@@ -482,8 +487,8 @@
                                     </div>
                                     <t t-foreach="selected.columns" t-as="col" t-key="col._uid">
                                         <div class="o_rs_column o_rs_column_grid mb-1" t-att-data-uid="col._uid">
-                                            <input class="form-control form-control-sm" list="rs_cols" placeholder="field"
-                                                   t-model="col.path" t-on-input="markDirty"/>
+                                            <FieldSelector value="col.path or ''" model="relationOf(selected.source)" loadFields="loadFields"
+                                                           placeholder="columnFieldPlaceholder" onChange="(v) => this.setPath(col, 'path', v)" class="'o_rs_path_column'"/>
                                             <input class="form-control form-control-sm o_rs_col_label"
                                                    t-att-placeholder="trPlaceholder(col, 'label', columnLabelPlaceholder) or columnLabelPlaceholder"
                                                    t-att-value="trValue(col, 'label')"
@@ -520,18 +525,14 @@
                                                     t-on-click="onRemoveColumn" title="Remove column">×</button>
                                         </div>
                                     </t>
-                                    <datalist id="rs_cols">
-                                        <t t-foreach="tableColumnFields" t-as="cf" t-key="cf.name">
-                                            <option t-att-value="cf.name"/>
-                                        </t>
-                                    </datalist>
                                     <button class="btn btn-sm btn-outline-primary" t-on-click="onAddColumn">+ column</button>
                                     <t t-call="report_studio.MarginControls"><t t-set="margins" t-value="selected.margins"/></t>
                                 </t>
 
                                 <t t-if="selected.type === 'if'">
                                     <label class="form-label">Field</label>
-                                    <input class="form-control" list="rs_fields" t-model="selected.path" t-on-input="markDirty"/>
+                                    <FieldSelector value="selected.path or ''" model="state.modelName" loadFields="loadFields"
+                                                   onChange="(v) => this.setPath(selected, 'path', v)" class="'o_rs_path_if'"/>
                                     <label class="form-label mt-2">Operator</label>
                                     <select class="form-select" t-model="selected.op" t-on-change="markDirty">
                                         <option value="==">equal to</option>
@@ -586,11 +587,6 @@
                     </div>
                 </div>
 
-                <datalist id="rs_fields">
-                    <t t-foreach="state.fields" t-as="f" t-key="f.name">
-                        <option t-att-value="f.name"/>
-                    </t>
-                </datalist>
             </t>
         </div>
     </t>
