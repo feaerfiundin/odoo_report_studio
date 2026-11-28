@@ -3,4 +3,5 @@
 
 from . import rs_report
 from . import rs_report_version
+from . import rs_block
 from . import res_users

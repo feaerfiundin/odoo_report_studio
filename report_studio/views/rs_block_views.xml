@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!-- Reusable blocks: created from the editor ("Save as Block"), here they
+         are renamed or deleted. -->
+    <record id="rs_block_view_list" model="ir.ui.view">
+        <field name="name">rs.block.list</field>
+        <field name="model">rs.block</field>
+        <field name="arch" type="xml">
+            <list string="Reusable Blocks" create="0" editable="bottom">
+                <field name="name" />
+                <field name="block_type" readonly="1" />
+                <field name="model_name" readonly="1" />
+                <field name="model_description" readonly="1" optional="show" />
+                <field name="user_id" readonly="1" optional="show" />
+                <field name="create_date" string="Created on" readonly="1" optional="show" />
+            </list>
+        </field>
+    </record>
+
+    <record id="rs_block_view_search" model="ir.ui.view">
+        <field name="name">rs.block.search</field>
+        <field name="model">rs.block</field>
+        <field name="arch" type="xml">
+            <search string="Reusable Blocks">
+                <field name="name" />
+                <field name="model_name" />
+                <field name="user_id" />
+                <group>
+                    <filter
+                        name="group_model"
+                        string="Model"
+                        context="{'group_by': 'model_name'}"
+                    />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rs_block" model="ir.actions.act_window">
+        <field name="name">Reusable Blocks</field>
+        <field name="res_model">rs.block</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="rs_block_view_list" />
+        <field name="search_view_id" ref="rs_block_view_search" />
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No reusable block</p>
+            <p>In the editor select a block and press "Save as Block".</p>
+        </field>
+    </record>
+</odoo>

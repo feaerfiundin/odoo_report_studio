@@ -538,13 +538,64 @@ with sync_playwright() as p:
         expect(own == "center", f"campo con allineamento proprio: {own}")
         return f"testo {text}, campo {field} -> {own}, intestazioni {head}, colonna {column}, resto {outside}"
 
-    def save_version():
-        page.fill(".o_rs_versions input[placeholder='Commento versione']", "smoke")
+    def save_dialog(comment, new_version=True):
+        """Popup del pulsante Salva: nuova versione o bozza, con commento."""
         page.click(f"{topbar} .o_rs_btn_save")
+        page.wait_for_selector(".o_rs_save_dialog")
+        switch = page.locator(".o_rs_save_dialog .o_rs_save_new_version")
+        if switch.is_checked() != new_version:
+            switch.click()
+        page.fill(".o_rs_save_dialog .o_rs_save_comment", comment)
+        page.click(".o_rs_save_confirm")
+
+    def save_version():
+        save_dialog("smoke")
         text = notification_text()
         expect("Versione salvata" in text, text)
-        versions = page.locator("button:has-text('Ripristina')").count()
-        return f"versioni: {versions}"
+        page.wait_for_selector(".o_rs_save_dialog", state="detached")
+        return text
+
+    def draft():
+        """Salvataggio della sola bozza: riaprendo l'editor si riparte da lì; si può scartare."""
+        add_block("spacer")
+        save_dialog("bozza di prova", new_version=False)
+        text = notification_text()
+        expect("Bozza salvata" in text, text)
+        page.wait_for_selector(f"{topbar} .o_rs_draft_badge")
+        spacers = lambda: canvas.locator("[data-rs-type=spacer]").count()
+        with_draft = canvas_types().count("spacer")
+        # Si torna all'elenco e si riapre il report, come farebbe l'utente.
+        page.locator(f"{app} button:has-text('Saved Layouts')").first.click()
+        page.wait_for_selector(row)
+        page.wait_for_timeout(800)
+        page.locator(row, has_text=f"Smoke {STAMP}").first.locator("td[name=name]").click()
+        page.wait_for_selector(".o_rs_canvas_frame", timeout=30000)
+        wait_canvas()
+        expect(page.locator(f"{topbar} .o_rs_draft_badge").count() == 1, "bozza non segnalata alla riapertura")
+        expect(spacers() == with_draft, f"la bozza non è stata riaperta: {spacers()} spaziatori")
+        # Il commento della bozza resta pronto nel popup Salva.
+        page.click(f"{topbar} .o_rs_btn_save")
+        page.wait_for_selector(".o_rs_save_dialog")
+        prefilled = page.locator(".o_rs_save_dialog .o_rs_save_comment").input_value()
+        page.click(".modal-footer button:has-text('Abbandona')")
+        page.wait_for_selector(".o_rs_save_dialog", state="detached")
+        expect(prefilled == "bozza di prova", f"commento della bozza: {prefilled!r}")
+        # Scarta la bozza dal popup Versioni: si torna alla versione attiva.
+        page.click(f"{topbar} .o_rs_btn_versions")
+        page.wait_for_selector(".o_rs_versions_dialog .o_rs_discard_draft")
+        # Con una bozza, attivare una versione chiede conferma (qui si annulla).
+        page.locator(".o_rs_versions_dialog .o_rs_version_activate").first.click()
+        page.wait_for_selector(".modal-footer button:has-text('Scarta la bozza e continua')")
+        page.click(".modal-footer button:has-text('Annulla')")
+        page.wait_for_selector(".modal-footer button:has-text('Scarta la bozza e continua')", state="detached")
+        page.click(".o_rs_versions_dialog .o_rs_discard_draft")
+        page.wait_for_selector(".o_rs_versions_dialog .o_rs_discard_draft", state="detached")
+        page.click(".modal-footer button:has-text('Chiudi')")
+        page.wait_for_selector(".o_rs_versions_dialog", state="detached")
+        wait_canvas()
+        expect(page.locator(f"{topbar} .o_rs_draft_badge").count() == 0, "bozza ancora segnalata")
+        expect(spacers() == with_draft - 1, f"bozza non scartata: {spacers()} spaziatori")
+        return f"bozza salvata, ritrovata riaprendo il report ({with_draft} spaziatori), commento ripreso, scartata"
 
     def preview_pdf():
         with page.expect_response(lambda r: "/report_studio/preview" in r.url, timeout=90000) as info:
@@ -560,26 +611,36 @@ with sync_playwright() as p:
     def invalid_save_shows_server_message():
         add_block("field")
         set_field(".o_rs_props .o_rs_path_field", "campo_che_non_esiste")
-        page.click(f"{topbar} .o_rs_btn_save")
+        save_dialog("non valida")
         text = notification_text()
         expect("campo_che_non_esiste" in text, f"messaggio generico: {text}")
+        # Il popup resta aperto dopo l'errore: lo si chiude e si corregge.
+        page.click(".modal-footer button:has-text('Abbandona')")
+        page.wait_for_selector(".o_rs_save_dialog", state="detached")
         delete_selected()
         return text
 
-    def restore(nth_from_end):
-        """Ripristina la versione n-esima dal fondo (1 = v1) e aspetta la nuova versione."""
-        buttons = page.locator("button:has-text('Ripristina')")
-        before = buttons.count()
-        buttons.nth(before - nth_from_end).click()
-        page.wait_for_timeout(300)
-        modal = page.locator(".o_dialog")
-        if modal.count():
-            modal.locator("button.btn-primary").click()
+    def open_versions():
+        page.click(f"{topbar} .o_rs_btn_versions")
+        page.wait_for_selector(".o_rs_versions_dialog .o_rs_version_row")
+        return page.locator(".o_rs_versions_dialog .o_rs_version_row")
+
+    def close_versions():
+        page.click(".modal-footer button:has-text('Chiudi')")
+        page.wait_for_selector(".o_rs_versions_dialog", state="detached")
+
+    def version_row(no):
+        return page.locator(f".o_rs_versions_dialog .o_rs_version_row[data-version='{no}']")
+
+    def restore(no):
+        """Ripristina la versione no come nuova versione (popup Versioni)."""
+        rows = open_versions()
+        before = rows.count()
+        version_row(no).locator(".o_rs_version_restore").click()
         page.wait_for_function(
-            "[...document.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Ripristina').length > %d" % before,
-            timeout=15000,
-        )
-        page.wait_for_timeout(300)
+            "document.querySelectorAll('.o_rs_versions_dialog .o_rs_version_row').length > %d" % before,
+            timeout=15000)
+        close_versions()
         return before
 
     def restore_versions():
@@ -591,15 +652,104 @@ with sync_playwright() as p:
         expect(len(labels) >= 6, f"dopo il ripristino della v2: {labels}")
         return f"versioni: {before} -> {before + 2}, blocchi ripristinati: {len(labels)}"
 
+    def versions_dialog():
+        """Popup Versioni: commenti modificabili, versione attiva spostabile, cancellazione."""
+        rows = open_versions()
+        count = rows.count()
+        newest = int(rows.first.get_attribute("data-version"))
+        # Commento della v1 modificato e riletto alla riapertura.
+        comment = version_row(1).locator(".o_rs_version_comment")
+        comment.fill("prima versione (vuota)")
+        comment.press("Tab")
+        page.wait_for_timeout(500)
+        close_versions()
+        open_versions()
+        expect(version_row(1).locator(".o_rs_version_comment").input_value() == "prima versione (vuota)",
+               "commento non salvato")
+        # La versione attiva non si cancella; la v1 diventa attiva senza copie.
+        expect(version_row(newest).locator(".o_rs_version_delete").is_disabled(), "versione attiva cancellabile")
+        version_row(1).locator(".o_rs_version_activate").click()
+        page.wait_for_selector(".o_rs_versions_dialog .o_rs_version_row[data-version='1'] .badge")
+        expect(rows.count() == count, "attivare una versione ne ha creata una nuova")
+        page.wait_for_timeout(800)
+        expect(canvas_types() == [], "la pagina non mostra la versione attivata (v1, vuota)")
+        # Torna attiva l'ultima, poi si cancella la penultima.
+        version_row(newest).locator(".o_rs_version_activate").click()
+        page.wait_for_selector(f".o_rs_versions_dialog .o_rs_version_row[data-version='{newest}'] .badge")
+        version_row(newest - 1).locator(".o_rs_version_delete").click()
+        page.click(".modal-footer button.btn-primary:has-text('Elimina la versione')")
+        page.wait_for_function(
+            "document.querySelectorAll('.o_rs_versions_dialog .o_rs_version_row').length < %d" % count,
+            timeout=15000)
+        remaining = rows.count()
+        close_versions()
+        wait_canvas()
+        expect(len(canvas_types()) >= 6, "la pagina non è tornata all'ultima versione")
+        return f"commento salvato, v1 attivata e poi v{newest}, cancellata v{newest - 1}: {count} -> {remaining}"
+
     def copy_version():
-        page.fill("input[placeholder='Nome della copia']", f"Copia {STAMP}")
-        page.locator("button:has-text('Copia')").first.click()
+        open_versions()
+        row = page.locator(".o_rs_versions_dialog .o_rs_version_row").first
+        row.locator(".o_rs_version_copy_name").fill(f"Copia {STAMP}")
+        row.locator(".o_rs_version_copy").click()
         page.wait_for_function(
             f"document.querySelector('.o_rs_topbar') && "
             f"document.querySelector('.o_rs_topbar').textContent.includes('Copia {STAMP}')",
             timeout=15000,
         )
         return "aperta la copia"
+
+    def custom_blocks():
+        """Blocchi riutilizzabili: salva come blocco, gruppo Contenuto custom, collegamento scelto."""
+        expect(page.locator(".o_rs_toolbox .o_rs_group_label", has_text="Contenuto custom").count() == 0,
+               "gruppo Contenuto custom presente senza blocchi")
+        # Blocco su res.partner creato dal server: si collega al documento con un campo many2one.
+        rpc("rs.block", "create_from_editor", [f"Partner {STAMP}", "res.partner", {
+            "type": "section", "title": {"text": "Destinatario"},
+            "children": [{"type": "field", "path": "name"}, {"type": "field", "path": "city"}]}])
+        # Salva come blocco: la sezione con "Riga 1".
+        canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
+        select_parent()
+        page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
+        page.click(f"{topbar} .o_rs_btn_save_block")
+        page.wait_for_selector(".o_rs_save_block_dialog")
+        page.fill(".o_rs_save_block_dialog .o_rs_block_name", f"Sezione {STAMP}")
+        page.click(".o_rs_block_save")
+        text = notification_text()
+        expect("Blocco salvato" in text, text)
+        group = page.locator(".o_rs_toolbox .o_rs_group_label", has_text="Contenuto custom")
+        expect(group.count() == 1, "gruppo Contenuto custom assente")
+        tools = page.locator(".o_rs_toolbox .o_rs_tool[data-type=custom]").all_inner_texts()
+        expect(any(f"Sezione {STAMP}" in t for t in tools) and any(f"Partner {STAMP}" in t for t in tools),
+               f"blocchi custom: {tools}")
+        # Il gruppo sta tra Contenuto e Impaginazione.
+        labels = page.locator(".o_rs_toolbox .o_rs_group_label").all_inner_texts()
+        expect([l.strip().lower() for l in labels] == ["contenuto", "contenuto custom", "impaginazione"],
+               f"gruppi: {labels}")
+        # Inserimento del blocco partner: più collegamenti -> si sceglie quello di consegna.
+        canvas.locator("body").click(position={"x": 3, "y": 3})
+        page.locator(".o_rs_toolbox .o_rs_tool[data-type=custom]", has_text=f"Partner {STAMP}").click()
+        page.wait_for_selector(".o_rs_link_dialog")
+        page.click(".o_rs_link_dialog .o_rs_link_choice[data-name=partner_shipping_id]")
+        page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
+        wait_canvas()
+        inserted = canvas.locator("[data-rs-type=section]", has_text="Destinatario").last
+        inserted.locator("[data-rs-type=field]").first.click()
+        page.wait_for_selector(".o_rs_props_title:text-is('Campo')")
+        path = page.locator(".o_rs_props .o_rs_path_field input").input_value()
+        expect(path == "partner_shipping_id.name", f"percorso con collegamento: {path!r}")
+        select_parent()
+        delete_selected()
+        wait_canvas()
+        # Inserimento del blocco dello stesso modello: nessuna domanda, copia della sezione.
+        before = canvas.locator("[data-rs-type=section]").count()
+        page.locator(".o_rs_toolbox .o_rs_tool[data-type=custom]", has_text=f"Sezione {STAMP}").click()
+        page.wait_for_timeout(300)
+        expect(page.locator(".o_rs_link_dialog").count() == 0, "domanda di collegamento per lo stesso modello")
+        wait_canvas()
+        expect(canvas.locator("[data-rs-type=section]").count() > before, "blocco custom non inserito")
+        delete_selected()
+        return f"gruppo {labels}, collegamento partner_shipping_id, copia della sezione"
 
     def back_to_list():
         go_list()
@@ -907,9 +1057,12 @@ with sync_playwright() as p:
         step(page, "sezione_etichetta_bordi", section_label_borders)
         step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)
+        step(page, "bozza", draft)
         step(page, "anteprima_pdf", preview_pdf)
         step(page, "errore_server_leggibile", invalid_save_shows_server_message)
         step(page, "ripristina_versioni", restore_versions)
+        step(page, "popup_versioni", versions_dialog)
+        step(page, "blocchi_riutilizzabili", custom_blocks)
         step(page, "copia_versione", copy_version)
         step(page, "torna_elenco", back_to_list)
         step(page, "ordina_per_nome", sort_by_name)   # qui l'elenco ha almeno due report
@@ -938,6 +1091,10 @@ with sync_playwright() as p:
             if (ids.length) await call('unlink', [ids]);
             return ids.length; }""", STAMP)
         print(f"Report di prova eliminati: {removed}")
+        blocks = rpc("rs.block", "search", [[["name", "like", STAMP]]])
+        if blocks:
+            rpc("rs.block", "unlink", [blocks])
+        print(f"Blocchi di prova eliminati: {len(blocks)}")
     except Exception as exc:  # noqa
         print(f"Pulizia non riuscita: {exc}")
     if lang_state["activated"]:

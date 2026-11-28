@@ -3,23 +3,6 @@
      License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
 <templates xml:space="preserve">
 
-    <t t-name="report_studio.Versions">
-        <div class="o_rs_section_title"><i class="fa fa-history me-1"/>Versions</div>
-        <input class="form-control form-control-sm mb-2" placeholder="Version comment"
-               title="Comment of the next saved version" t-model="state.comment"/>
-        <t t-foreach="state.versions" t-as="v" t-key="v.id">
-            <div class="d-flex align-items-center gap-1 mb-1 o_rs_version">
-                <span class="flex-grow-1 min-w-0">
-                    v<t t-esc="v.version_no"/>
-                    <t t-if="v.is_active"><span class="badge bg-success ms-1">active</span></t>
-                    <small class="text-muted d-block text-truncate" t-att-title="v.comment or ''"><t t-esc="v.comment or ''"/></small>
-                </span>
-                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="restoreVersion">Restore</button>
-                <button class="btn btn-sm btn-outline-secondary" t-att-data-id="v.id" t-on-click="copyVersion">Copy</button>
-            </div>
-        </t>
-        <input class="form-control form-control-sm mt-1" placeholder="Name of the copy" t-model="state.copyName"/>
-    </t>
 
     <!-- Font controls: size, bold, italic, underline.
          Parameters: font (block object), title (group label). -->
@@ -106,7 +89,7 @@
 
     <!-- Toolbar button not available yet ("Coming soon"). -->
     <t t-name="report_studio.TopButtonSoon">
-        <button class="btn o_rs_tb_btn btn-outline-secondary" disabled="disabled" title="Coming soon">
+        <button t-attf-class="btn o_rs_tb_btn btn-outline-secondary {{ extraClass or '' }}" disabled="disabled" title="Coming soon">
             <i t-attf-class="fa {{ icon }}"/>
             <span><t t-esc="label"/></span>
         </button>
@@ -178,6 +161,8 @@
                     <span class="o_rs_report_name fw-bold"><t t-esc="state.reportName"/></span>
                     <span class="badge text-bg-light border"><t t-esc="state.modelName"/></span>
                     <span class="badge bg-secondary"><t t-if="state.mode === 'qweb'">Free QWeb</t><t t-else="">Blocks</t></span>
+                    <span t-if="state.hasDraft" class="badge text-bg-warning o_rs_draft_badge"
+                          title="Work saved without a new version: printing uses the active version">Draft</span>
                     <span t-if="state.dirty" class="text-warning small">Unsaved changes</span>
 
                     <div class="ms-auto d-flex align-items-center gap-2">
@@ -211,10 +196,21 @@
                         </t>
                         <t t-call="report_studio.TopButtonSoon">
                             <t t-set="icon" t-value="'fa-bookmark-o'"/><t t-set="label" t-value="soonButtons.saveTemplate"/>
+                            <t t-set="extraClass" t-value="'o_rs_tb_small'"/>
                         </t>
+                        <button class="btn o_rs_tb_btn o_rs_tb_small btn-outline-secondary o_rs_btn_save_block"
+                                title="Save the selected block as a reusable block"
+                                t-att-disabled="!state.canWrite or !selected or selected.type === 'column' or state.mode === 'qweb'"
+                                t-on-click="openSaveBlock">
+                            <i class="fa fa-cube"/><span>Save as Block</span>
+                        </button>
                         <button class="btn o_rs_tb_btn btn-outline-secondary o_rs_btn_preview" title="PDF Preview"
                                 t-att-disabled="!state.recordId" t-on-click="preview">
                             <i class="fa fa-eye"/><span>Preview</span>
+                        </button>
+                        <button class="btn o_rs_tb_btn btn-outline-secondary o_rs_btn_versions" title="Versions of the report"
+                                t-att-disabled="!state.reportId" t-on-click="openVersions">
+                            <i class="fa fa-history"/><span>Versions</span>
                         </button>
                         <t t-call="report_studio.TopButtonSoon">
                             <t t-set="icon" t-value="'fa-print'"/><t t-set="label" t-value="soonButtons.testPrint"/>
@@ -222,8 +218,8 @@
                         <t t-call="report_studio.TopButtonSoon">
                             <t t-set="icon" t-value="'fa-question-circle'"/><t t-set="label" t-value="soonButtons.help"/>
                         </t>
-                        <button class="btn o_rs_tb_btn btn-primary o_rs_btn_save" title="Save as a new version"
-                                t-att-disabled="!state.reportId" t-on-click="saveVersion">
+                        <button class="btn o_rs_tb_btn btn-primary o_rs_btn_save" title="Save: new version or draft"
+                                t-att-disabled="!state.reportId or !state.canWrite" t-on-click="saveVersion">
                             <i class="fa fa-save"/><span>Save</span>
                         </button>
                     </div>
@@ -231,15 +227,16 @@
 
                 <div class="o_rs_body d-flex flex-grow-1">
 
-                    <!-- LEFT: tools and versions -->
-                    <div class="o_rs_left d-flex flex-column border-end">
+                    <!-- LEFT: blocks -->
+                    <div t-if="state.mode !== 'qweb'" class="o_rs_left d-flex flex-column border-end">
                         <div t-if="state.mode !== 'qweb'" class="o_rs_toolbox flex-grow-1 overflow-auto p-2">
                             <div class="o_rs_section_title"><i class="fa fa-th-large me-1"/>Blocks</div>
                             <t t-foreach="blockGroups" t-as="group" t-key="group.label">
                                 <div class="o_rs_group_label"><t t-esc="group.label"/></div>
-                                <t t-foreach="group.items" t-as="item" t-key="item.type">
-                                    <button class="o_rs_tool btn btn-link" t-att-data-type="item.type" t-on-click="onAddBlock"
-                                            draggable="true" t-on-dragstart="(ev) => this.onToolDragStart(ev, item.type)"
+                                <t t-foreach="group.items" t-as="item" t-key="item.key">
+                                    <button class="o_rs_tool btn btn-link" t-att-data-type="item.type"
+                                            t-att-data-custom-id="item.customId" t-on-click="onAddBlock"
+                                            draggable="true" t-on-dragstart="(ev) => this.onToolDragStart(ev, item)"
                                             t-on-dragend="endDrag">
                                         <i t-attf-class="fa {{ item.icon }} fa-fw me-2"/><t t-esc="item.label"/>
                                     </button>
@@ -248,9 +245,6 @@
                             <div class="small text-muted mt-2">
                                 Click: the block goes inside the selected one (Section, Column, Condition) or after it. Or drag it into the page.
                             </div>
-                        </div>
-                        <div t-attf-class="o_rs_versions overflow-auto p-2 {{ state.mode !== 'qweb' ? 'border-top' : 'flex-grow-1' }}">
-                            <t t-call="report_studio.Versions"/>
                         </div>
                     </div>
 

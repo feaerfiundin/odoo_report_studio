@@ -9,7 +9,6 @@ IMMUTABLE_FIELDS = {
     "report_id",
     "version_no",
     "definition",
-    "comment",
     "arch",
     "view_id",
     "document_view_id",
@@ -17,10 +16,12 @@ IMMUTABLE_FIELDS = {
 
 
 class RsReportVersion(models.Model):
-    """Immutable snapshot of a report: JSON definition, QWeb template and view.
+    """Snapshot of a report: JSON definition, QWeb template and view.
 
-    Once created, a version cannot be changed: changes produce a new version
-    through rs.report._create_version().
+    Once created, the content of a version cannot be changed (only its
+    comment): changes produce a new version through
+    rs.report._create_version(). Old versions can be deleted, never the
+    active one (the printed one).
     """
 
     _name = "rs.report.version"
@@ -90,15 +91,22 @@ class RsReportVersion(models.Model):
         if IMMUTABLE_FIELDS & set(vals):
             raise UserError(
                 self.env._(
-                    "Report versions are immutable. "
-                    "Create a new version to change their content."
+                    "The content of a report version cannot be changed, only its "
+                    "comment. Create a new version to change the content."
                 )
             )
         return super().write(vals)
 
     def unlink(self):
-        raise UserError(
-            self.env._(
-                "Report versions cannot be deleted: the history is permanent."
+        """Delete old versions and their QWeb views; never the active one."""
+        if self.filtered("is_active"):
+            raise UserError(
+                self.env._(
+                    "The active version (the printed one) cannot be deleted: "
+                    "activate another version first."
+                )
             )
-        )
+        views = self.sudo().view_id | self.sudo().document_view_id
+        result = super().unlink()
+        views.exists().unlink()
+        return result

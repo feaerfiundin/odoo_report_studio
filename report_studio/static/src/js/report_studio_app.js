@@ -13,6 +13,7 @@ import { _t } from "@web/core/l10n/translation";
 import { addColumn, ensureWidths, removeColumn, setWidth, totalWidth } from "./column_widths";
 import { FieldSelector } from "./field_selector";
 import { TableStyleDialog, cleanTableStyle } from "./table_style_dialog";
+import { LinkDialog, SaveBlockDialog, SaveDialog, VersionsDialog } from "./editor_dialogs";
 
 // Fields that can be the source of a Table.
 const isX2many = (field) => ["one2many", "many2many"].includes(field.type);
@@ -121,6 +122,26 @@ td.o_rs_cv_column { outline-offset: -2px; }
 .o_rs_cv_drop.o_rs_line { height: 3px; background: #017e84; border-radius: 2px; }
 .o_rs_cv_drop.o_rs_box { border: 2px dashed #017e84; background: rgba(1, 126, 132, .08); }
 `;
+
+// Field paths of a block relative to the document model: field and condition
+// paths, table sources (table columns are relative to the source lines).
+function walkRootPaths(block, fn) {
+    if ((block.type === "field" || block.type === "if") && block.path) fn(block, "path");
+    if (block.type === "table" && block.source) fn(block, "source");
+    for (const child of block.children || []) walkRootPaths(child, fn);
+}
+
+// Copy of a block with every root path prefixed ("name" -> "partner_id.name")
+// or unprefixed (the opposite), for reusable blocks.
+function withPathPrefix(block, prefix, remove = false) {
+    const copy = JSON.parse(JSON.stringify(block));
+    if (prefix) {
+        walkRootPaths(copy, (b, key) => {
+            b[key] = remove ? b[key].slice(prefix.length) : prefix + b[key];
+        });
+    }
+    return copy;
+}
 
 // Does the block (or one of its descendants) own this list of children?
 function ownsList(block, list) {
@@ -434,12 +455,14 @@ export class ReportStudioApp extends Component {
             selectedUid: null,
             fieldCache: {},
             fields: [],
-            versions: [],
             records: [],
             recordId: false,
-            comment: "",
-            copyName: "",
             dirty: false,
+            // work saved without a new version
+            hasDraft: false,
+            draftComment: "",
+            // reusable blocks usable in this report (custom content)
+            customBlocks: [],
             // visual view
             canvasHtml: "",
             canvasError: "",
@@ -495,7 +518,7 @@ export class ReportStudioApp extends Component {
     setLabels(labels) {
         this.labels = labels;
         this.blockLabels = labels.blocks;
-        this.blockGroups = BLOCK_GROUPS.map((group) => ({
+        this.baseBlockGroups = BLOCK_GROUPS.map((group) => ({
             label: labels.groups[group.key],
             items: group.items.map((item) => ({ ...item, label: labels.blocks[item.type] })),
         }));
@@ -505,6 +528,24 @@ export class ReportStudioApp extends Component {
         this.borderStyles = BORDER_STYLES.map((key) => [key, labels.borders[key]]);
         this.borderWidths = BORDER_WIDTHS;
         this.cssPresets = labels.css_classes;
+    }
+
+    // Toolbox groups: Content, Custom Content (only when there are reusable
+    // blocks for this report), Layout.
+    get blockGroups() {
+        const custom = this.state.customBlocks.map((block) => ({
+            type: "custom",
+            key: `custom_${block.id}`,
+            customId: block.id,
+            label: block.name,
+            icon: "fa-cube",
+        }));
+        const groups = this.baseBlockGroups.map((g) => ({
+            ...g,
+            items: g.items.map((i) => ({ ...i, key: i.type })),
+        }));
+        if (!custom.length) return groups;
+        return [groups[0], { label: this.labels.groups.custom, items: custom }, ...groups.slice(1)];
     }
 
     // ----- list -----
@@ -618,13 +659,10 @@ export class ReportStudioApp extends Component {
         }
     }
 
-    async loadVersions() {
-        this.state.versions = await this.orm.searchRead(
-            "rs.report.version",
-            [["report_id", "=", this.state.reportId]],
-            ["version_no", "comment", "is_active", "user_id"],
-            { order: "version_no desc" }
-        );
+    async loadCustomBlocks() {
+        this.state.customBlocks = await this.orm
+            .call("rs.block", "get_for_model", [this.state.modelName])
+            .catch(() => []);
     }
 
     async loadRecords() {
@@ -653,11 +691,17 @@ export class ReportStudioApp extends Component {
         this.state.mode = report.report_mode;
         this.state.active = report.active;
         this.state.fields = await this.fetchFields(report.model_name);
-        await this.loadVersions();
+        const [extra] = await this.orm.read("rs.report", [reportId], ["draft_definition", "draft_comment"], {
+            context: { active_test: false },
+        });
         const [version] = await this.orm.read(
             "rs.report.version", [report.current_version_id[0]], ["definition"]
         );
-        const parsed = JSON.parse(version.definition);
+        // A draft (work saved without a new version) wins over the active version.
+        this.state.hasDraft = Boolean(extra.draft_definition);
+        this.state.draftComment = extra.draft_comment || "";
+        const parsed = JSON.parse(extra.draft_definition || version.definition);
+        await this.loadCustomBlocks();
         if (parsed.mode === "qweb") {
             this.state.mode = "qweb";
             this.state.qwebText = parsed.arch || "";
@@ -909,7 +953,7 @@ export class ReportStudioApp extends Component {
         }
     }
 
-    onCanvasDrop(ev) {
+    async onCanvasDrop(ev) {
         ev.preventDefault();
         const payload = this.dragPayload;
         const target = this.dropInfo;
@@ -917,7 +961,10 @@ export class ReportStudioApp extends Component {
         if (!payload || !target) return;
         let block;
         let index = target.index;
-        if (payload.kind === "new") {
+        if (payload.kind === "custom") {
+            block = await this.customBlockCopy(payload.id);
+            if (!block) return;
+        } else if (payload.kind === "new") {
             block = defaultBlock(payload.type);
             if (payload.type === "text") block.content = this.labels.blocks.text;
         } else {
@@ -938,9 +985,12 @@ export class ReportStudioApp extends Component {
         if (this.canvasTools) this.canvasTools.drop.style.display = "none";
     }
 
-    // Drag a new block from the toolbox into the page.
-    onToolDragStart(ev, type) {
-        this.dragPayload = { kind: "new", type };
+    // Drag a new block (or a reusable one) from the toolbox into the page.
+    onToolDragStart(ev, item) {
+        this.dragPayload =
+            item.type === "custom"
+                ? { kind: "custom", id: item.customId }
+                : { kind: "new", type: item.type };
         ev.dataTransfer.setData("text/plain", "report_studio");
         ev.dataTransfer.effectAllowed = "copy";
     }
@@ -1023,12 +1073,9 @@ export class ReportStudioApp extends Component {
         this.scheduleCanvas();
     }
 
-    onAddBlock(ev) {
-        const type = ev.currentTarget.dataset.type;
-        const block = defaultBlock(type);
-        if (type === "text") {
-            block.content = this.labels.blocks.text;
-        }
+    // Insert a block inside the selected Section/Condition/Column, or after the
+    // selected block, or at the end of the page.
+    insertAtSelection(block) {
         let target = this.state.definition.children;
         let index = null;
         const sel = this.selected;
@@ -1044,6 +1091,95 @@ export class ReportStudioApp extends Component {
         else target.splice(index, 0, block);
         this.state.selectedUid = block._uid;
         this.markDirty();
+    }
+
+    async onAddBlock(ev) {
+        const { type, customId } = ev.currentTarget.dataset;
+        if (type === "custom") {
+            const block = await this.customBlockCopy(parseInt(customId));
+            if (block) this.insertAtSelection(block);
+            return;
+        }
+        const block = defaultBlock(type);
+        if (type === "text") {
+            block.content = this.labels.blocks.text;
+        }
+        this.insertAtSelection(block);
+    }
+
+    // Copy of a reusable block for this report: its paths get the prefix of
+    // the linking field (asked when the document has more than one).
+    async customBlockCopy(customId) {
+        const custom = this.state.customBlocks.find((b) => b.id === customId);
+        if (!custom) return null;
+        let prefix = "";
+        if (!custom.same_model) {
+            let link = custom.links.length === 1 ? custom.links[0] : null;
+            if (!link) {
+                link = await new Promise((resolve) => {
+                    this.dialog.add(
+                        LinkDialog,
+                        { blockName: custom.name, links: custom.links, onChoose: resolve },
+                        { onClose: () => resolve(null) }
+                    );
+                });
+            }
+            if (!link) return null;
+            prefix = `${link.name}.`;
+        }
+        const block = withUids(withPathPrefix(custom.definition, prefix));
+        const sources = [];
+        walkRootPaths(block, (b, key) => key === "source" && sources.push(b.source));
+        for (const source of sources) await this.loadPath(source);
+        return block;
+    }
+
+    // "Save as Block": the selected block becomes a reusable block, on the
+    // document model or on the model linked by a common many2one prefix.
+    openSaveBlock() {
+        const sel = this.selected;
+        if (!sel || sel.type === "column") return;
+        const block = cleanBlock(sel);
+        const paths = [];
+        walkRootPaths(block, (b, key) => paths.push(b[key]));
+        const models = [
+            { model: this.state.modelName, prefix: "", label: _t("Fields of the document (%s)", this.state.modelName) },
+        ];
+        const first = paths.length && paths.every((p) => p.includes(".")) ? paths[0].split(".")[0] : "";
+        const link = first && paths.every((p) => p.startsWith(first + "."))
+            ? this.state.fields.find((f) => f.name === first && f.type === "many2one")
+            : null;
+        if (link) {
+            models.push({
+                model: link.relation,
+                prefix: `${first}.`,
+                label: _t("Fields of %(field)s (%(model)s): reusable in every document linked to it", {
+                    field: link.string,
+                    model: link.relation,
+                }),
+            });
+        }
+        this.dialog.add(SaveBlockDialog, {
+            caption: this.blockCaption(sel),
+            models,
+            onSave: async ({ name, option }) => {
+                try {
+                    await this.orm.call("rs.block", "create_from_editor", [
+                        name,
+                        option.model,
+                        withPathPrefix(block, option.prefix, true),
+                    ]);
+                } catch (error) {
+                    this.notification.add(errorMessage(error, _t("Save failed")), { type: "danger" });
+                    return false;
+                }
+                await this.loadCustomBlocks();
+                this.notification.add(_t("Block saved: you find it in the Blocks column"), {
+                    type: "success",
+                });
+                return true;
+            },
+        });
     }
 
     async onTableSource(block, value) {
@@ -1420,19 +1556,47 @@ export class ReportStudioApp extends Component {
         }
     }
 
-    async saveVersion() {
-        try {
-            await this.orm.call("rs.report", "action_save_version", [[this.state.reportId]], {
-                definition: this.currentDefinitionJson(),
-                comment: this.state.comment || false,
-            });
-            this.state.comment = "";
-            this.state.dirty = false;
-            await this.loadVersions();
-            this.notification.add(_t("Version saved"), { type: "success" });
-        } catch (error) {
-            this.notification.add(errorMessage(error, _t("Save failed")), { type: "danger" });
-        }
+    // Save popup: new version or work in progress (draft), with the comment.
+    saveVersion() {
+        this.dialog.add(SaveDialog, {
+            comment: this.state.draftComment,
+            onSave: async ({ newVersion, comment }) => {
+                try {
+                    if (newVersion) {
+                        await this.orm.call("rs.report", "action_save_version", [[this.state.reportId]], {
+                            definition: this.currentDefinitionJson(),
+                            comment: comment || false,
+                        });
+                    } else {
+                        await this.orm.call("rs.report", "save_draft", [[this.state.reportId]], {
+                            definition: this.currentDefinitionJson(),
+                            comment: comment || false,
+                        });
+                    }
+                } catch (error) {
+                    this.notification.add(errorMessage(error, _t("Save failed")), { type: "danger" });
+                    return false;
+                }
+                this.state.dirty = false;
+                this.state.hasDraft = !newVersion;
+                this.state.draftComment = newVersion ? "" : comment;
+                this.notification.add(newVersion ? _t("Version saved") : _t("Draft saved"), {
+                    type: "success",
+                });
+                return true;
+            },
+        });
+    }
+
+    openVersions() {
+        this.dialog.add(VersionsDialog, {
+            reportId: this.state.reportId,
+            reportName: this.state.reportName,
+            canWrite: this.state.canWrite,
+            hasDraft: this.state.hasDraft,
+            onReload: () => this.selectReport(this.state.reportId),
+            onOpenReport: (id) => this.openEditor(id),
+        });
     }
 
     preview() {
@@ -1442,26 +1606,6 @@ export class ReportStudioApp extends Component {
             records: this.state.records,
             recordId: this.state.recordId,
         });
-    }
-
-    // ----- versions -----
-
-    async restoreVersion(ev) {
-        const versionId = parseInt(ev.currentTarget.dataset.id);
-        await this.orm.call("rs.report", "restore_version_by_id", [[this.state.reportId], versionId]);
-        await this.selectReport(this.state.reportId);
-        this.notification.add(_t("Version restored as a new version"), { type: "success" });
-    }
-
-    async copyVersion(ev) {
-        const versionId = parseInt(ev.currentTarget.dataset.id);
-        const name = this.state.copyName || _t("%s (copy)", this.state.reportName);
-        const newId = await this.orm.call(
-            "rs.report", "copy_version_by_id", [[this.state.reportId], versionId, name]
-        );
-        this.state.copyName = "";
-        await this.openEditor(newId);
-        this.notification.add(_t("New report created from the copy"), { type: "success" });
     }
 }
 

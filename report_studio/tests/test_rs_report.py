@@ -35,9 +35,70 @@ class TestRsReport(TransactionCase):
         self.assertEqual(v3.version_no, 3)
         self.assertEqual(self.report.current_version_id, v3)
 
-    def test_version_is_immutable(self):
+    def test_version_content_is_immutable_comment_is_not(self):
+        version = self.report.version_ids[0]
         with self.assertRaises(UserError):
-            self.report.version_ids[0].write({"comment": "change"})
+            version.write({"definition": json.dumps({"children": []})})
+        self.report.set_version_comment(version.id, "New comment")
+        self.assertEqual(version.comment, "New comment")
+
+    def test_draft_activate_and_delete_versions(self):
+        definition = json.dumps({"children": [{"type": "text", "content": "v2"}]})
+        v1 = self.report.current_version_id
+        v2 = self.report.version_ids.browse(self.report.action_save_version(definition, "two"))
+        # draft: saved, not printed, consumed by the next version
+        draft = json.dumps({"children": [{"type": "text", "content": "draft"}]})
+        self.report.save_draft(draft, "work in progress")
+        self.assertEqual(self.report.draft_definition, draft)
+        self.assertEqual(self.report.current_version_id, v2)
+        self.assertEqual(self.report.action_id.report_name, v2.view_id.key)
+        self.report.action_save_version(draft, self.report.draft_comment)
+        self.assertFalse(self.report.draft_definition)
+        self.assertEqual(self.report.current_version_id.comment, "work in progress")
+        self.report.save_draft(draft)
+        self.report.discard_draft()
+        self.assertFalse(self.report.draft_definition)
+        # activate an older version without copying it
+        count = self.report.version_count
+        self.report.activate_version_by_id(v1.id)
+        self.assertEqual(self.report.current_version_id, v1)
+        self.assertEqual(self.report.action_id.report_name, v1.view_id.key)
+        self.assertEqual(self.report.version_count, count)
+        # delete an old version (and its view), never the active one
+        view = v2.view_id
+        self.report.delete_version_by_id(v2.id)
+        self.assertFalse(v2.exists())
+        self.assertFalse(view.exists())
+        with self.assertRaises(UserError):
+            self.report.delete_version_by_id(v1.id)
+        viewer = new_test_user(self.env, login="rs_versions_viewer",
+                               groups="base.group_user,report_studio.group_rs_viewer")
+        with self.assertRaises(AccessError):
+            self.report.with_user(viewer).set_version_comment(v1.id, "no")
+        with self.assertRaises(AccessError):
+            self.report.with_user(viewer).save_draft(draft)
+
+    def test_reusable_block_linked_by_many2one(self):
+        Block = self.env["rs.block"]
+        section = {"type": "section", "title": {"text": "Customer"}, "children": [
+            {"type": "field", "path": "name"}, {"type": "field", "path": "street"}]}
+        block_id = Block.create_from_editor("Customer data", "res.partner", section)
+        with self.assertRaises(UserError):
+            Block.create_from_editor("Bad", "res.partner",
+                                     {"type": "field", "path": "missing_field"})
+        with self.assertRaises(UserError):
+            Block.create_from_editor(" ", "res.partner", section)
+        usable = {b["id"]: b for b in Block.get_for_model("sale.order")}
+        self.assertIn(block_id, usable)
+        links = [link["name"] for link in usable[block_id]["links"]]
+        self.assertIn("partner_id", links)
+        self.assertIn("partner_shipping_id", links)
+        self.assertFalse(usable[block_id]["same_model"])
+        self.assertEqual(usable[block_id]["definition"], section)
+        # a model without links to res.partner does not get it
+        self.assertNotIn(block_id, [b["id"] for b in Block.get_for_model("uom.uom")])
+        same = {b["id"]: b for b in Block.get_for_model("res.partner")}
+        self.assertTrue(same[block_id]["same_model"])
 
     def test_invalid_field_is_rejected(self):
         bad = {"type": "page", "children": [{"type": "field", "path": "missing_field"}]}

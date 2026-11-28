@@ -12,7 +12,7 @@ Available addons
 
 addon | version | maintainers | summary
 --- | --- | --- | ---
-[report_studio](report_studio/) | 18.0.0.2.0 | feaerfiundin | Block based visual designer for QWeb/PDF reports, with versioning
+[report_studio](report_studio/) | 18.0.0.3.0 | feaerfiundin | Block based visual designer for QWeb/PDF reports, with versioning
 
 [//]: # (end addons)
 

@@ -45,8 +45,16 @@ and "Search More..." with a searchable list, relations included. Free Python exp
 are never accepted: conditions only compare validated field paths with
 scalar values.
 
-Every save creates a new immutable version: earlier versions can be
-restored or copied into a new report. Native Odoo documents can be copied
+Saving creates a new version (the printed one) or only a draft of the work
+in progress. The Versions popup shows every version with its editable
+comment: a version can be made the active one again, restored as a new
+version, copied into a new report or deleted (never the active one).
+
+Reusable blocks: any block (e.g. a section with the data of a contact) can
+be saved with "Save as Block" and inserted in other reports from the
+"Custom Content" group of the toolbox. A block saved on a linked model
+(e.g. res.partner) adapts to each document through the linking field
+(customer, delivery address...); the insertion is an independent copy. Native Odoo documents can be copied
 into an editable free QWeb report (Administrators only).
 
 Texts, field labels and table headers can be translated, and a report can
@@ -88,7 +96,11 @@ Usage
    the right spot of the page. Click a block in the page to edit its
    properties; the bar above the selected block moves it (arrows or drag
    handle) and deletes it.
-4. Press **Preview** for the PDF, **Save** to create a new version.
+4. Press **Preview** for the PDF, **Save** to create a new version or to
+   save only a draft; **Versions** lists, comments, activates, restores,
+   copies and deletes the versions. **Save as Block** saves the selected
+   block as a reusable block (menu **Report Studio → Reusable Blocks** to
+   rename or delete them).
 5. To translate the texts, choose a language in the language menu of the
    top bar and write the texts in that language; empty texts are printed in
    the main language. Click an empty spot of the page and enable **Print in

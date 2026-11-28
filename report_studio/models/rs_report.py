@@ -115,6 +115,10 @@ class RsReport(models.Model):
         string="Active Version",
         copy=False,
     )
+    # Work in progress saved without a new version: the editor opens it, the
+    # print action keeps using the active version.
+    draft_definition = fields.Text(copy=False)
+    draft_comment = fields.Char(copy=False)
     version_count = fields.Integer(
         compute="_compute_version_count", string="Number of Versions"
     )
@@ -485,7 +489,11 @@ class RsReport(models.Model):
         """
         _ = self.env._
         return {
-            "groups": {"content": _("Content"), "layout": _("Layout")},
+            "groups": {
+                "content": _("Content"),
+                "custom": _("Custom Content"),
+                "layout": _("Layout"),
+            },
             "blocks": {
                 "text": _("Text"),
                 "field": _("Field"),
@@ -716,8 +724,47 @@ class RsReport(models.Model):
     # ----- public methods called by the editor (they return ids) -----
 
     def action_save_version(self, definition, comment=False):
+        """New version from the editor; the draft, if any, is consumed."""
         self.ensure_one()
-        return self._create_version(definition, comment=comment).id
+        version = self._create_version(definition, comment=comment)
+        self.write({"draft_definition": False, "draft_comment": False})
+        return version.id
+
+    def save_draft(self, definition, comment=False):
+        """Save the work in progress without a new version (not printed)."""
+        self.ensure_one()
+        self.check_access("write")
+        self._check_definition_permission(definition or EMPTY_DEFINITION)
+        self.write({"draft_definition": definition, "draft_comment": comment or False})
+        return True
+
+    def discard_draft(self):
+        self.ensure_one()
+        self.check_access("write")
+        self.write({"draft_definition": False, "draft_comment": False})
+        return True
+
+    def activate_version_by_id(self, version_id):
+        """Make an existing version the active (printed) one, without copying it."""
+        self.ensure_one()
+        self.check_access("write")
+        version = self._get_own_version(int(version_id))
+        self.current_version_id = version
+        self._ensure_report_action(version.view_id.key)
+        return version.id
+
+    def delete_version_by_id(self, version_id):
+        """Delete an old version (never the active one)."""
+        self.ensure_one()
+        self.check_access("write")
+        self._get_own_version(int(version_id)).unlink()
+        return True
+
+    def set_version_comment(self, version_id, comment):
+        self.ensure_one()
+        self.check_access("write")
+        self._get_own_version(int(version_id)).write({"comment": comment or False})
+        return True
 
     def restore_version_by_id(self, version_id):
         return self.action_restore_version(int(version_id)).id

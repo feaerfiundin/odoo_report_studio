@@ -37,8 +37,15 @@ heights. Fields are chosen like in Odoo many2one fields: a few suggestions
 and &quot;Search More...&quot; with a searchable list, relations included. Free Python expressions
 are never accepted: conditions only compare validated field paths with
 scalar values.</p>
-<p>Every save creates a new immutable version: earlier versions can be
-restored or copied into a new report. Native Odoo documents can be copied
+<p>Saving creates a new version (the printed one) or only a draft of the work
+in progress. The Versions popup shows every version with its editable
+comment: a version can be made the active one again, restored as a new
+version, copied into a new report or deleted (never the active one).</p>
+<p>Reusable blocks: any block (e.g. a section with the data of a contact) can
+be saved with &quot;Save as Block&quot; and inserted in other reports from the
+&quot;Custom Content&quot; group of the toolbox. A block saved on a linked model
+(e.g. res.partner) adapts to each document through the linking field
+(customer, delivery address...); the insertion is an independent copy. Native Odoo documents can be copied
 into an editable free QWeb report (Administrators only).</p>
 <p>Texts, field labels and table headers can be translated, and a report can
 be printed in the language of the customer, like the native Odoo documents.</p>
@@ -88,7 +95,11 @@ Section, Column or Condition, or after the selected block) or drag it to
 the right spot of the page. Click a block in the page to edit its
 properties; the bar above the selected block moves it (arrows or drag
 handle) and deletes it.</li>
-<li>Press <strong>Preview</strong> for the PDF, <strong>Save</strong> to create a new version.</li>
+<li>Press <strong>Preview</strong> for the PDF, <strong>Save</strong> to create a new version or to
+save only a draft; <strong>Versions</strong> lists, comments, activates, restores,
+copies and deletes the versions. <strong>Save as Block</strong> saves the selected
+block as a reusable block (menu <strong>Report Studio → Reusable Blocks</strong> to
+rename or delete them).</li>
 <li>To translate the texts, choose a language in the language menu of the
 top bar and write the texts in that language; empty texts are printed in
 the main language. Click an empty spot of the page and enable <strong>Print in

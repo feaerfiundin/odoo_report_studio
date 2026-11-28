@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Copyright 2026 feaerfiundin
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<templates xml:space="preserve">
+
+    <t t-name="report_studio.VersionsDialog">
+        <Dialog title.translate="Versions" size="'lg'" bodyClass="'o_rs_versions_dialog'">
+            <div t-if="state.hasDraft" class="alert alert-warning d-flex align-items-center o_rs_draft_notice">
+                <span class="me-auto">
+                    <i class="fa fa-pencil me-1"/>There is a draft (work saved without a new version): the editor shows it, printing uses the active version.
+                </span>
+                <button t-if="props.canWrite" type="button" class="btn btn-sm btn-outline-danger o_rs_discard_draft"
+                        t-on-click="discardDraft">Discard Draft</button>
+            </div>
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Date</th>
+                        <th>Author</th>
+                        <th class="w-50">Comment</th>
+                        <th/>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="state.versions" t-as="v" t-key="v.id">
+                        <tr class="o_rs_version_row" t-att-data-version="v.version_no">
+                            <td class="text-nowrap">
+                                v<t t-esc="v.version_no"/>
+                                <span t-if="v.is_active" class="badge bg-success ms-1">active</span>
+                            </td>
+                            <td class="small text-nowrap"><t t-esc="v.date"/></td>
+                            <td class="small"><t t-esc="v.author"/></td>
+                            <td>
+                                <input class="form-control form-control-sm o_rs_version_comment"
+                                       t-att-value="v.comment or ''" t-att-readonly="!props.canWrite"
+                                       placeholder="no comment"
+                                       t-on-change="(ev) => this.onComment(v, ev)"/>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <t t-if="props.canWrite">
+                                    <button t-if="!v.is_active" type="button" class="btn btn-sm btn-outline-primary o_rs_version_activate"
+                                            title="Make it the active (printed) version" t-on-click="() => this.activate(v)">
+                                        <i class="fa fa-check"/>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-1 o_rs_version_restore"
+                                            title="Restore as a new version" t-on-click="() => this.restore(v)">
+                                        <i class="fa fa-undo"/>
+                                    </button>
+                                    <span class="d-inline-flex ms-1">
+                                        <input class="form-control form-control-sm o_rs_version_copy_name" style="width: 9rem"
+                                               placeholder="name of the copy"
+                                               t-on-input="(ev) => this.state.copyNames[v.id] = ev.target.value"/>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary o_rs_version_copy"
+                                                title="Copy into a new report" t-on-click="() => this.copy(v)">
+                                            <i class="fa fa-copy"/>
+                                        </button>
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-1 o_rs_version_delete"
+                                            title="Delete the version" t-att-disabled="v.is_active" t-on-click="() => this.delete(v)">
+                                        <i class="fa fa-trash"/>
+                                    </button>
+                                </t>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="props.close">Close</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <t t-name="report_studio.SaveDialog">
+        <Dialog title.translate="Save" size="'md'" bodyClass="'o_rs_save_dialog'">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input o_rs_save_new_version" type="checkbox" id="o_rs_save_new_version"
+                       t-model="state.newVersion"/>
+                <label class="form-check-label" for="o_rs_save_new_version">New version</label>
+            </div>
+            <div class="small text-muted mb-3">
+                <t t-if="state.newVersion">The new version becomes the active one: it is the one printed.</t>
+                <t t-else="">Only the work in progress is saved (draft): you find it when you open the editor again, printing keeps using the active version.</t>
+            </div>
+            <label class="form-label">Comment</label>
+            <textarea class="form-control o_rs_save_comment" rows="3" t-model="state.comment"
+                      placeholder="What changed in this version"/>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary o_rs_save_confirm" t-att-disabled="state.saving" t-on-click="save">Save</button>
+                <button class="btn btn-secondary" t-on-click="props.close">Discard</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <t t-name="report_studio.SaveBlockDialog">
+        <Dialog title.translate="Save as Block" size="'md'" bodyClass="'o_rs_save_block_dialog'">
+            <div class="small text-muted mb-2">
+                Block: <b t-esc="props.caption"/>
+            </div>
+            <label class="form-label">Name</label>
+            <input class="form-control o_rs_block_name" t-model="state.name" placeholder="e.g. Customer data"/>
+            <label class="form-label mt-3">Data of the block</label>
+            <t t-foreach="props.models" t-as="option" t-key="option_index">
+                <div class="form-check">
+                    <input class="form-check-input o_rs_block_model" type="radio" name="o_rs_block_model"
+                           t-att-id="'o_rs_block_model_' + option_index" t-att-value="option_index"
+                           t-att-checked="state.choice === option_index"
+                           t-on-change="() => this.state.choice = option_index"/>
+                    <label class="form-check-label" t-att-for="'o_rs_block_model_' + option_index">
+                        <t t-esc="option.label"/>
+                    </label>
+                </div>
+            </t>
+            <div class="small text-muted mt-2">
+                A block on a linked model (e.g. a contact) can be used in every document that has a field towards that model.
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary o_rs_block_save" t-att-disabled="state.saving or !state.name.trim()"
+                        t-on-click="save">Save</button>
+                <button class="btn btn-secondary" t-on-click="props.close">Discard</button>
+            </t>
+        </Dialog>
+    </t>
+
+    <t t-name="report_studio.LinkDialog">
+        <Dialog title.translate="Insert Block" size="'md'" bodyClass="'o_rs_link_dialog'">
+            <p t-esc="question"/>
+            <div class="list-group">
+                <t t-foreach="props.links" t-as="link" t-key="link.name">
+                    <button type="button" class="list-group-item list-group-item-action o_rs_link_choice"
+                            t-att-data-name="link.name" t-on-click="() => this.choose(link)">
+                        <t t-esc="link.string"/> <small class="text-muted font-monospace">(<t t-esc="link.name"/>)</small>
+                    </button>
+                </t>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="props.close">Discard</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

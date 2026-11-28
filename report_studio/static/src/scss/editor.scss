@@ -36,6 +36,17 @@
         }
     }
 
+    // Narrower buttons with a two-line label ("Save as Template", "Save as Block").
+    .o_rs_tb_btn.o_rs_tb_small {
+        min-width: 4.6rem;
+    }
+
+    .o_rs_tb_small span {
+        white-space: normal;
+        max-width: 5.2rem;
+        font-size: 0.82rem;
+    }
+
     .o_rs_active_toggle .form-check-input {
         cursor: pointer;
     }

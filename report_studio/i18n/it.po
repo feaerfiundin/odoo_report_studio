@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 14:40+0000\n"
-"PO-Revision-Date: 2026-11-28 14:40+0000\n"
+"POT-Creation-Date: 2026-11-28 15:39+0000\n"
+"PO-Revision-Date: 2026-11-28 15:39+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: it\n"
@@ -34,7 +34,7 @@ msgstr "%(what)s non valido: %(value)r (da %(low)g a %(high)g)"
 #. odoo-javascript
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
-#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
 msgid "%s (copy)"
 msgstr "%s (copia)"
 
@@ -89,6 +89,14 @@ msgstr "+ Aggiungi uno stile…"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "+ column"
 msgstr "+ colonna"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid ""
+"A block on a linked model (e.g. a contact) can be used in every document "
+"that has a field towards that model."
+msgstr "Un blocco su un modello collegato (es. un contatto) si può usare in ogni documento che ha un campo verso quel modello."
 
 #. module: report_studio
 #. odoo-python
@@ -218,6 +226,9 @@ msgid "Attachment"
 msgstr "Allegato"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__user_id
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__user_id
 msgid "Author"
 msgstr "Autore"
@@ -229,6 +240,23 @@ msgstr "Autore"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Background"
 msgstr "Sfondo"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__block_type
+msgid "Block Type"
+msgstr "Tipo di blocco"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Block saved: you find it in the Blocks column"
+msgstr "Blocco salvato: lo trovi nella colonna Blocchi"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Block:"
+msgstr "Blocco:"
 
 #. module: report_studio
 #. odoo-javascript
@@ -320,6 +348,7 @@ msgstr "Centro"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Change failed"
 msgstr "Modifica non riuscita"
@@ -360,6 +389,7 @@ msgstr "Clic: il blocco va dentro quello selezionato (Sezione, Colonna, Condizio
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Close"
@@ -389,15 +419,11 @@ msgid "Coming soon"
 msgstr "In arrivo"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__comment
 msgid "Comment"
 msgstr "Commento"
-
-#. module: report_studio
-#. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Comment of the next saved version"
-msgstr "Commento della prossima versione salvata"
 
 #. module: report_studio
 #. odoo-python
@@ -425,9 +451,9 @@ msgstr "Contenuto"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Copy"
-msgstr "Copia"
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Copy into a new report"
+msgstr "Copia in un nuovo report"
 
 #. module: report_studio
 #. odoo-python
@@ -460,6 +486,7 @@ msgid "Create Editable Copy"
 msgstr "Crea copia editabile"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__create_uid
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__create_uid
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__create_uid
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
@@ -467,10 +494,18 @@ msgid "Created by"
 msgstr "Creato da"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__create_date
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__create_date
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__create_date
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_block_view_list
 msgid "Created on"
 msgstr "Creato il"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Custom Content"
+msgstr "Contenuto custom"
 
 #. module: report_studio
 #. odoo-python
@@ -486,14 +521,33 @@ msgstr "Righe dati"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Data of the block"
+msgstr "Dati del blocco"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Date"
+msgstr "Data"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 msgid "Default"
 msgstr "Predefinito"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__definition
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__definition
 msgid "Definition"
 msgstr "Definizione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Delete Version"
+msgstr "Elimina versione"
 
 #. module: report_studio
 #. odoo-javascript
@@ -503,12 +557,45 @@ msgstr "Elimina il blocco"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Delete the version"
+msgstr "Elimina la versione"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Delete version %s? This cannot be undone."
+msgstr "Eliminare la versione %s? L'operazione non si può annullare."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Discard"
 msgstr "Abbandona"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Discard Draft"
+msgstr "Scarta bozza"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Discard the draft and continue"
+msgstr "Scarta la bozza e continua"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Discard the draft?"
+msgstr "Scartare la bozza?"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__display_name
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__display_name
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__display_name
 msgid "Display Name"
@@ -531,6 +618,34 @@ msgstr "Puntinata"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Double"
 msgstr "Doppia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Draft"
+msgstr "Bozza"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__draft_comment
+msgid "Draft Comment"
+msgstr "Commento della bozza"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_report__draft_definition
+msgid "Draft Definition"
+msgstr "Definizione della bozza"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Draft discarded"
+msgstr "Bozza scartata"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Draft saved"
+msgstr "Bozza salvata"
 
 #. module: report_studio
 #. odoo-javascript
@@ -560,6 +675,12 @@ msgstr "Pagina vuota: aggiungi un blocco dalla colonna di sinistra."
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Empty section: select it and add blocks"
 msgstr "Sezione vuota: selezionala e aggiungi blocchi"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_block.py:0
+msgid "Enter the name of the block."
+msgstr "Inserisci il nome del blocco."
 
 #. module: report_studio
 #. odoo-javascript
@@ -610,6 +731,19 @@ msgstr "Il campo %(path)r non esiste sul modello %(model)s"
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 msgid "Field Type"
 msgstr "Tipo campo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid ""
+"Fields of %(field)s (%(model)s): reusable in every document linked to it"
+msgstr "Campi di %(field)s (%(model)s): riutilizzabile in ogni documento collegato"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Fields of the document (%s)"
+msgstr "Campi del documento (%s)"
 
 #. module: report_studio
 #. odoo-javascript
@@ -693,6 +827,7 @@ msgid "Horizontal lines"
 msgstr "Linee orizzontali"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__id
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__id
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__id
 msgid "ID"
@@ -717,6 +852,11 @@ msgid "In the PDF the following content starts on a new page."
 msgstr "Nel PDF il contenuto successivo inizia su una nuova pagina."
 
 #. module: report_studio
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_block
+msgid "In the editor select a block and press \"Save as Block\"."
+msgstr "Nell'editor seleziona un blocco e premi \"Salva come blocco\"."
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Initial version"
@@ -727,6 +867,12 @@ msgstr "Versione iniziale"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Inner spacing"
 msgstr "Spaziatura interna"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Insert Block"
+msgstr "Inserisci blocco"
 
 #. module: report_studio
 #. odoo-python
@@ -751,6 +897,12 @@ msgstr "Classe CSS non valida: %r"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "Invalid JSON: %s"
 msgstr "JSON non valido: %s"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_block.py:0
+msgid "Invalid block: %s"
+msgstr "Blocco non valido: %s"
 
 #. module: report_studio
 #. odoo-python
@@ -872,6 +1024,11 @@ msgid "JSON definition of the report blocks."
 msgstr "Definizione JSON dei blocchi del report."
 
 #. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_block__definition
+msgid "JSON of the block."
+msgstr "JSON del blocco."
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Justify"
@@ -908,12 +1065,14 @@ msgid "Last Modified"
 msgstr "Ultima modifica"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__write_uid
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__write_uid
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__write_uid
 msgid "Last Updated by"
 msgstr "Ultimo aggiornamento di"
 
 #. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__write_date
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__write_date
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__write_date
 msgid "Last Updated on"
@@ -987,6 +1146,12 @@ msgstr "Lingua principale dei testi:"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Make it the active (printed) version"
+msgstr "Rendila la versione attiva (stampata)"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Margins (mm)"
 msgstr "Margini (mm)"
@@ -1013,6 +1178,8 @@ msgstr "Modalità"
 #. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__model_name
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_block_view_search
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_list
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
@@ -1021,6 +1188,7 @@ msgstr "Modello"
 
 #. module: report_studio
 #. odoo-python
+#: code:addons/report_studio/models/rs_block.py:0
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Model %s not found."
 msgstr "Modello %s non trovato."
@@ -1029,6 +1197,17 @@ msgstr "Modello %s non trovato."
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
 msgid "Model (technical name)"
 msgstr "Modello (nome tecnico)"
+
+#. module: report_studio
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__model_description
+msgid "Model Description"
+msgstr "Descrizione del modello"
+
+#. module: report_studio
+#: model:ir.model.fields,help:report_studio.field_rs_block__model_name
+msgid ""
+"Model of the block data (e.g. res.partner); field paths are relative to it."
+msgstr "Modello dei dati del blocco (es. res.partner); i percorsi dei campi sono relativi a questo."
 
 #. module: report_studio
 #: model:ir.model.fields,help:report_studio.field_rs_report__model_id
@@ -1080,16 +1259,12 @@ msgstr "Sposta, trascina, elimina il blocco o seleziona il suo contenitore con l
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: model:ir.model.fields,field_description:report_studio.field_rs_block__name
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__name
 msgid "Name"
 msgstr "Nome"
-
-#. module: report_studio
-#. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Name of the copy"
-msgstr "Nome della copia"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1100,9 +1275,15 @@ msgstr "Nuovo report"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
 msgid "New report created from the copy"
 msgstr "Nuovo report creato dalla copia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "New version"
+msgstr "Nuova versione"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1146,6 +1327,11 @@ msgstr "Nessun record disponibile per l'anteprima."
 #: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_print
 msgid "No report"
 msgstr "Nessun report"
+
+#. module: report_studio
+#: model_terms:ir.actions.act_window,help:report_studio.action_rs_block
+msgid "No reusable block"
+msgstr "Nessun blocco riutilizzabile"
 
 #. module: report_studio
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
@@ -1205,6 +1391,14 @@ msgstr "Solo gli Amministratori di Report Studio possono modificare il QWeb libe
 #: code:addons/report_studio/models/res_users.py:0
 msgid "Only a Report Studio Administrator can change Report Studio roles."
 msgstr "Solo un Amministratore di Report Studio può modificare i ruoli Report Studio."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid ""
+"Only the work in progress is saved (draft): you find it when you open the "
+"editor again, printing keeps using the active version."
+msgstr "Si salva solo il lavoro in corso (bozza): lo ritrovi quando riapri l'editor, la stampa continua a usare la versione attiva."
 
 #. module: report_studio
 #: model:ir.model.fields,help:report_studio.field_rs_report_version__document_view_id
@@ -1433,6 +1627,11 @@ msgid "Report Studio - Report"
 msgstr "Report Studio - Report"
 
 #. module: report_studio
+#: model:ir.model,name:report_studio.model_rs_block
+msgid "Report Studio - Reusable Block"
+msgstr "Report Studio - Blocco riutilizzabile"
+
+#. module: report_studio
 #: model:ir.model,name:report_studio.model_rs_report_version
 msgid "Report Studio - Version"
 msgstr "Report Studio - Versione"
@@ -1487,19 +1686,6 @@ msgid "Report restored"
 msgstr "Report attivato"
 
 #. module: report_studio
-#. odoo-python
-#: code:addons/report_studio/models/rs_report_version.py:0
-msgid ""
-"Report versions are immutable. Create a new version to change their content."
-msgstr "Le versioni dei report sono immutabili. Crea una nuova versione per modificarne il contenuto."
-
-#. module: report_studio
-#. odoo-python
-#: code:addons/report_studio/models/rs_report_version.py:0
-msgid "Report versions cannot be deleted: the history is permanent."
-msgstr "Le versioni dei report non possono essere eliminate: lo storico è permanente."
-
-#. module: report_studio
 #: model:ir.actions.act_window,name:report_studio.action_rs_report_print
 #: model:ir.ui.menu,name:report_studio.menu_report_studio_print
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
@@ -1513,15 +1699,23 @@ msgstr "I report si creano da Saved Layouts."
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Restore"
-msgstr "Ripristina"
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "Restore as a new version"
+msgstr "Ripristina come nuova versione"
 
 #. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Restored from version %s"
 msgstr "Ripristino dalla versione %s"
+
+#. module: report_studio
+#: model:ir.actions.act_window,name:report_studio.action_rs_block
+#: model:ir.ui.menu,name:report_studio.menu_report_studio_blocks
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_block_view_list
+#: model_terms:ir.ui.view,arch_db:report_studio.rs_block_view_search
+msgid "Reusable Blocks"
+msgstr "Blocchi riutilizzabili"
 
 #. module: report_studio
 #. odoo-python
@@ -1561,6 +1755,7 @@ msgstr "Altezza delle righe (mm)"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Save"
 msgstr "Salva"
@@ -1571,6 +1766,13 @@ msgid "Save as Attachment"
 msgstr "Salva come allegato"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Save as Block"
+msgstr "Salva come blocco"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Save as Template"
@@ -1578,15 +1780,21 @@ msgstr "Salva come template"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Save as a new version"
-msgstr "Salva come nuova versione"
-
-#. module: report_studio
-#. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Save failed"
 msgstr "Salvataggio non riuscito"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Save the selected block as a reusable block"
+msgstr "Salva il blocco selezionato come blocco riutilizzabile"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Save: new version or draft"
+msgstr "Salva: nuova versione o bozza"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1810,6 +2018,14 @@ msgid "The QWeb template is empty"
 msgstr "Il template QWeb è vuoto"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report_version.py:0
+msgid ""
+"The active version (the printed one) cannot be deleted: activate another "
+"version first."
+msgstr "La versione attiva (quella stampata) non si può eliminare: prima attiva un'altra versione."
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "The blocks added from the left column go into this column."
@@ -1843,6 +2059,14 @@ msgstr "Il bordo della colonna deve essere vero o falso"
 
 #. module: report_studio
 #. odoo-python
+#: code:addons/report_studio/models/rs_report_version.py:0
+msgid ""
+"The content of a report version cannot be changed, only its comment. Create "
+"a new version to change the content."
+msgstr "Il contenuto di una versione non si può modificare, solo il suo commento. Crea una nuova versione per cambiare il contenuto."
+
+#. module: report_studio
+#. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The definition must be a JSON object"
 msgstr "La definizione deve essere un oggetto JSON"
@@ -1858,6 +2082,12 @@ msgstr "Il campo %r non è un contatto (many2one a res.partner)"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The font must be an object"
 msgstr "Il carattere deve essere un oggetto"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "The new version becomes the active one: it is the one printed."
+msgstr "La nuova versione diventa quella attiva: è quella stampata."
 
 #. module: report_studio
 #. odoo-javascript
@@ -1910,9 +2140,31 @@ msgstr "Il numero di versione deve essere unico per report."
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid ""
+"There is a draft (work saved without a new version): the editor shows it, "
+"printing uses the active version."
+msgstr "C'è una bozza (lavoro salvato senza nuova versione): l'editor mostra quella, la stampa usa la versione attiva."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid ""
+"There is a draft: activating or restoring a version discards it. Do you want"
+" to continue?"
+msgstr "C'è una bozza: attivare o ripristinare una versione la scarta. Vuoi continuare?"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Thickness"
 msgstr "Spessore"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_block.py:0
+msgid "This block cannot be saved as a reusable block."
+msgstr "Questo blocco non si può salvare come blocco riutilizzabile."
 
 #. module: report_studio
 #. odoo-javascript
@@ -2024,19 +2276,21 @@ msgid "Value Font"
 msgstr "Carattere valore"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__version_no
 msgid "Version"
 msgstr "Versione"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Version comment"
-msgstr "Commento versione"
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Version %s is now the active one"
+msgstr "La versione %s ora è quella attiva"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
 msgid "Version restored as a new version"
 msgstr "Versione ripristinata come nuova versione"
 
@@ -2048,10 +2302,17 @@ msgstr "Versione salvata"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__version_ids
 msgid "Versions"
 msgstr "Versioni"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Versions of the report"
+msgstr "Versioni del report"
 
 #. module: report_studio
 #. odoo-javascript
@@ -2083,10 +2344,22 @@ msgid "Viewer"
 msgstr "Visualizzatore"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "What changed in this version"
+msgstr "Cosa è cambiato in questa versione"
+
+#. module: report_studio
 #: model:ir.model.fields,help:report_studio.field_rs_report__attachment_use
 msgid ""
 "When the PDF was already saved as an attachment, printing again uses it."
 msgstr "Se il PDF è già stato salvato come allegato, la ristampa usa quello."
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/editor_dialogs.js:0
+msgid "Which data of the document should the block \"%s\" show?"
+msgstr "Quali dati del documento deve mostrare il blocco \"%s\"?"
 
 #. module: report_studio
 #. odoo-javascript
@@ -2097,6 +2370,12 @@ msgstr "Largh. %"
 #. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Work saved without a new version: printing uses the active version"
+msgstr "Lavoro salvato senza nuova versione: la stampa usa la versione attiva"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 msgid "active"
 msgstr "attiva"
 
@@ -2150,6 +2429,7 @@ msgstr "diverso da"
 #. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 msgid "e.g. Customer data"
 msgstr "es. Dati cliente"
 
@@ -2241,6 +2521,18 @@ msgstr "minore di"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "name of the copy"
+msgstr "nome della copia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
+msgid "no comment"
+msgstr "nessun commento"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "none"
@@ -2296,7 +2588,7 @@ msgstr "testo"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+#: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 msgid "v"
 msgstr "v"
 

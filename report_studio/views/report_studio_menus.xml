@@ -35,4 +35,13 @@
         action="action_rs_report_print"
         sequence="20"
     />
+
+    <!-- Reusable blocks (custom content of the editor toolbox). -->
+    <menuitem
+        id="menu_report_studio_blocks"
+        name="Reusable Blocks"
+        parent="menu_report_studio_root"
+        action="action_rs_block"
+        sequence="30"
+    />
 </odoo>
