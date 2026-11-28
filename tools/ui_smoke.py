@@ -499,9 +499,11 @@ with sync_playwright() as p:
         page.wait_for_selector(".o_rs_props_title:text-is('Tabella')")
         align("center")
         # Colonne non impostate: simbolo della tabella (centro), attenuato.
-        second = page.locator(".o_rs_props .o_rs_col_align").nth(1)
-        expect("o_rs_inherited" in second.get_attribute("class")
-               and second.locator("i.fa-align-center").count() == 1, "colonna senza simbolo della tabella")
+        try:
+            page.wait_for_selector(".o_rs_props .o_rs_column >> nth=1 >> .o_rs_col_align.o_rs_inherited i.fa-align-center",
+                                   timeout=3000)
+        except Exception:
+            raise AssertionError("colonna senza simbolo della tabella")
         page.locator(".o_rs_props .o_rs_col_align").nth(0).click()
         page.locator(".o_rs_col_align_menu [data-align=left]").click()
         page.wait_for_selector(".o_rs_props .o_rs_col_align[data-align=left] i.fa-align-left", timeout=3000)
