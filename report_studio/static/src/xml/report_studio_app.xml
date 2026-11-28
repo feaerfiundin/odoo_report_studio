@@ -238,13 +238,15 @@
                             <t t-foreach="blockGroups" t-as="group" t-key="group.label">
                                 <div class="o_rs_group_label"><t t-esc="group.label"/></div>
                                 <t t-foreach="group.items" t-as="item" t-key="item.type">
-                                    <button class="o_rs_tool btn btn-link" t-att-data-type="item.type" t-on-click="onAddBlock">
+                                    <button class="o_rs_tool btn btn-link" t-att-data-type="item.type" t-on-click="onAddBlock"
+                                            draggable="true" t-on-dragstart="(ev) => this.onToolDragStart(ev, item.type)"
+                                            t-on-dragend="endDrag">
                                         <i t-attf-class="fa {{ item.icon }} fa-fw me-2"/><t t-esc="item.label"/>
                                     </button>
                                 </t>
                             </t>
                             <div class="small text-muted mt-2">
-                                The block goes inside the selected one (Section, Column, Condition) or after it.
+                                Click: the block goes inside the selected one (Section, Column, Condition) or after it. Or drag it into the page.
                             </div>
                         </div>
                         <div t-attf-class="o_rs_versions overflow-auto p-2 {{ state.mode !== 'qweb' ? 'border-top' : 'flex-grow-1' }}">
@@ -559,10 +561,8 @@
                                     <input class="form-control" t-model="selected.value" t-on-input="markDirty"/>
                                 </t>
 
-                                <div class="mt-3 d-flex gap-1" t-if="selected.type !== 'column'">
-                                    <button class="btn btn-sm btn-outline-secondary" data-dir="-1" t-on-click="onMove">↑</button>
-                                    <button class="btn btn-sm btn-outline-secondary" data-dir="1" t-on-click="onMove">↓</button>
-                                    <button class="btn btn-sm btn-outline-danger" t-on-click="onDelete">Delete Block</button>
+                                <div class="small text-muted mt-3">
+                                    Move, drag or delete the block with the bar above it in the page.
                                 </div>
                                 <div class="mt-2" t-if="selectedParentUid">
                                     <button class="btn btn-sm btn-link px-0" t-on-click="selectParent">↖ Select the container</button>

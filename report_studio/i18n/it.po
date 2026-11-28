@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 12:44+0000\n"
-"PO-Revision-Date: 2026-11-28 12:44+0000\n"
+"POT-Creation-Date: 2026-11-28 13:32+0000\n"
+"PO-Revision-Date: 2026-11-28 13:32+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: it\n"
@@ -352,6 +352,14 @@ msgstr "Classi separate da uno spazio (funzionano anche le classi Bootstrap)"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Click: the block goes inside the selected one (Section, Column, Condition) "
+"or after it. Or drag it into the page."
+msgstr "Clic: il blocco va dentro quello selezionato (Sezione, Colonna, Condizione) oppure dopo di esso. Oppure trascinalo nella pagina."
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Close"
@@ -489,9 +497,9 @@ msgstr "Definizione"
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Delete Block"
-msgstr "Elimina blocco"
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Delete the block"
+msgstr "Elimina il blocco"
 
 #. module: report_studio
 #. odoo-javascript
@@ -523,6 +531,12 @@ msgstr "Puntinata"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Double"
 msgstr "Doppia"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Drag to move the block"
+msgstr "Trascina per spostare il blocco"
 
 #. module: report_studio
 #: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__editor
@@ -1034,6 +1048,18 @@ msgstr "Modificati da me"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Move the block down"
+msgstr "Sposta il blocco in giù"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Move the block up"
+msgstr "Sposta il blocco in su"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Move the column left"
 msgstr "Sposta la colonna a sinistra"
@@ -1043,6 +1069,12 @@ msgstr "Sposta la colonna a sinistra"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Move the column right"
 msgstr "Sposta la colonna a destra"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move, drag or delete the block with the bar above it in the page."
+msgstr "Sposta, trascina o elimina il blocco con la barra sopra di esso nella pagina."
 
 #. module: report_studio
 #. odoo-javascript
@@ -1768,14 +1800,6 @@ msgstr "Il blocco Colonne deve avere da %(low)d a %(high)d colonne"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The QWeb template is empty"
 msgstr "Il template QWeb è vuoto"
-
-#. module: report_studio
-#. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid ""
-"The block goes inside the selected one (Section, Column, Condition) or after"
-" it."
-msgstr "Il blocco va dentro quello selezionato (Sezione, Colonna, Condizione) oppure dopo di esso."
 
 #. module: report_studio
 #. odoo-javascript

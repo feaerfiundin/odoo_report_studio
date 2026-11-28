@@ -106,7 +106,27 @@ span.o_rs_cv_block { display: inline-block; min-width: 1em; }
 td.o_rs_cv_column { outline-offset: -2px; }
 .o_rs_cv_page_break { border-top: 2px dashed #714B67; color: #714B67; font-size: 11px; text-align: center; }
 .o_rs_cv_spacer { background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(113, 75, 103, .06) 4px, rgba(113, 75, 103, .06) 8px); }
+.o_rs_cv_toolbar, .o_rs_cv_hover { position: absolute; z-index: 1000; display: flex; align-items: center; gap: 2px;
+    font: 11px/18px -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; white-space: nowrap;
+    border-radius: 3px 3px 0 0; padding: 0 3px; }
+.o_rs_cv_toolbar { background: #714B67; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+.o_rs_cv_hover { background: rgba(113, 75, 103, .8); pointer-events: none; z-index: 999; }
+.o_rs_cv_toolbar button, .o_rs_cv_grip { background: transparent; border: 0; color: #fff; padding: 0 4px;
+    font-size: 12px; line-height: 18px; cursor: pointer; }
+.o_rs_cv_toolbar button:hover:not(:disabled), .o_rs_cv_grip:hover { background: rgba(255, 255, 255, .2); border-radius: 2px; }
+.o_rs_cv_toolbar button:disabled { opacity: .4; cursor: default; }
+.o_rs_cv_grip { cursor: grab; }
+.o_rs_cv_caption { padding: 0 4px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.o_rs_cv_drop { position: absolute; z-index: 998; pointer-events: none; }
+.o_rs_cv_drop.o_rs_line { height: 3px; background: #017e84; border-radius: 2px; }
+.o_rs_cv_drop.o_rs_box { border: 2px dashed #017e84; background: rgba(1, 126, 132, .08); }
 `;
+
+// Does the block (or one of its descendants) own this list of children?
+function ownsList(block, list) {
+    if (block.children === list) return true;
+    return (block.children || []).some((child) => ownsList(child, list));
+}
 
 const CANVAS_DELAY = 400;
 
@@ -712,9 +732,12 @@ export class ReportStudioApp extends Component {
         doc.head.appendChild(style);
         doc.addEventListener("click", (ev) => {
             ev.preventDefault();
+            if (ev.target.closest(".o_rs_cv_toolbar")) return;
             const el = ev.target.closest("[data-rs-path]");
             this.state.selectedUid = el ? this.uidAtPath(el.dataset.rsPath) : null;
         });
+        this.setupCanvasTools(doc);
+        frame.contentWindow.addEventListener("resize", () => this.highlightSelection());
         frame.contentWindow.scrollTo(0, scroll);
         this.highlightSelection();
     }
@@ -724,9 +747,199 @@ export class ReportStudioApp extends Component {
         if (!doc) return;
         doc.querySelectorAll(".o_rs_cv_selected").forEach((el) => el.classList.remove("o_rs_cv_selected"));
         const path = this.pathOfUid(this.state.selectedUid);
-        if (path !== null) {
-            doc.querySelector(`[data-rs-path="${path}"]`)?.classList.add("o_rs_cv_selected");
+        const el = path !== null ? doc.querySelector(`[data-rs-path="${path}"]`) : null;
+        el?.classList.add("o_rs_cv_selected");
+        this.placeToolbar(doc, el);
+    }
+
+    // ----- canvas: toolbar of the selected block, hover name, drag & drop -----
+
+    // "Field · Order no.": block name and its label or main setting.
+    blockCaption(block) {
+        const name = this.blockLabels?.[block.type] || block.type;
+        let detail = "";
+        if (block.type === "field") detail = block.label || block.path;
+        else if (block.type === "text") detail = (block.content || "").split("\n")[0];
+        else if (block.type === "section") detail = block.title?.text;
+        else if (block.type === "table") detail = block.source;
+        else if (block.type === "if" && block.path) detail = `${block.path} ${block.op} ${block.value ?? ""}`;
+        else if (block.type === "columns") detail = String(block.children.length);
+        detail = (detail || "").trim();
+        if (detail.length > 40) detail = detail.slice(0, 40) + "…";
+        return detail ? `${name} · ${detail}` : name;
+    }
+
+    // Toolbar, hover name and drop indicator live in the iframe document.
+    setupCanvasTools(doc) {
+        const make = (tag, className, title, icon) => {
+            const el = doc.createElement(tag);
+            el.className = className;
+            if (title) el.title = title;
+            if (icon) {
+                const i = doc.createElement("i");
+                i.className = `fa ${icon}`;
+                el.appendChild(i);
+            }
+            return el;
+        };
+        const bar = make("div", "o_rs_cv_toolbar");
+        bar.style.display = "none";
+        const grip = make("span", "o_rs_cv_grip", _t("Drag to move the block"), "fa-arrows");
+        grip.draggable = true;
+        const caption = make("span", "o_rs_cv_caption");
+        const up = make("button", "o_rs_cv_up", _t("Move the block up"), "fa-arrow-up");
+        const down = make("button", "o_rs_cv_down", _t("Move the block down"), "fa-arrow-down");
+        const remove = make("button", "o_rs_cv_delete", _t("Delete the block"), "fa-trash");
+        for (const button of [up, down, remove]) button.type = "button";
+        bar.append(grip, caption, up, down, remove);
+        up.addEventListener("click", () => this.moveSelected(-1));
+        down.addEventListener("click", () => this.moveSelected(1));
+        remove.addEventListener("click", () => this.onDelete());
+        grip.addEventListener("dragstart", (ev) => {
+            this.dragPayload = { kind: "move", uid: this.state.selectedUid };
+            ev.dataTransfer.setData("text/plain", "report_studio");
+            ev.dataTransfer.effectAllowed = "move";
+        });
+        const hover = make("div", "o_rs_cv_hover");
+        hover.style.display = "none";
+        const drop = make("div", "o_rs_cv_drop");
+        drop.style.display = "none";
+        doc.body.append(bar, hover, drop);
+        this.canvasTools = { bar, caption, up, down, remove, grip, hover, drop };
+
+        doc.addEventListener("mouseover", (ev) => {
+            const el = ev.target.closest?.("[data-rs-path]");
+            if (!el || el.classList.contains("o_rs_cv_selected") || ev.target.closest(".o_rs_cv_toolbar")) {
+                hover.style.display = "none";
+                return;
+            }
+            const found = findNode(this.state.definition.children, this.uidAtPath(el.dataset.rsPath));
+            if (!found) return;
+            hover.textContent = this.blockCaption(found.node);
+            this.placeAbove(doc, hover, el);
+        });
+        doc.addEventListener("mouseleave", () => (hover.style.display = "none"));
+        doc.addEventListener("dragover", (ev) => this.onCanvasDragOver(ev, doc));
+        doc.addEventListener("dragleave", (ev) => {
+            if (!ev.relatedTarget) drop.style.display = "none";
+        });
+        doc.addEventListener("drop", (ev) => this.onCanvasDrop(ev));
+        doc.addEventListener("dragend", () => this.endDrag());
+    }
+
+    // Absolute position just above an element (inside it when at the top of the page).
+    placeAbove(doc, box, el) {
+        const rect = el.getBoundingClientRect();
+        const win = doc.defaultView;
+        box.style.display = "flex";
+        const top = rect.top + win.scrollY - box.offsetHeight;
+        box.style.top = `${Math.max(top, win.scrollY)}px`;
+        box.style.left = `${Math.max(rect.left + win.scrollX, 0)}px`;
+    }
+
+    placeToolbar(doc, el) {
+        const tools = this.canvasTools;
+        if (!tools || tools.bar.ownerDocument !== doc) return;
+        const found = el && findNode(this.state.definition.children, this.state.selectedUid);
+        if (!found) {
+            tools.bar.style.display = "none";
+            return;
         }
+        const isColumn = found.node.type === "column";
+        tools.caption.textContent = this.blockCaption(found.node);
+        tools.grip.style.display = tools.up.style.display = tools.down.style.display =
+            tools.remove.style.display = isColumn ? "none" : "";
+        tools.up.disabled = found.index === 0;
+        tools.down.disabled = found.index === found.list.length - 1;
+        tools.hover.style.display = "none";
+        this.placeAbove(doc, tools.bar, el);
+    }
+
+    // Where a dragged block would land: before/after a block, inside a container
+    // (Section, Column, Condition: middle of it), or at the end of the page.
+    dropTarget(ev) {
+        const root = this.state.definition.children;
+        const el = ev.target.closest?.("[data-rs-path]");
+        if (!el) return { list: root, index: root.length, el: null, mode: "end" };
+        const found = findNode(root, this.uidAtPath(el.dataset.rsPath));
+        if (!found) return null;
+        const node = found.node;
+        const rect = el.getBoundingClientRect();
+        const ratio = rect.height ? (ev.clientY - rect.top) / rect.height : 0.5;
+        const container = Array.isArray(node.children) && node.type !== "columns";
+        if (node.type === "column" || (container && ratio > 0.25 && ratio < 0.75)) {
+            return { list: node.children, index: node.children.length, el, mode: "inside" };
+        }
+        const after = ratio >= 0.5;
+        return { list: found.list, index: found.index + (after ? 1 : 0), el, mode: after ? "after" : "before" };
+    }
+
+    onCanvasDragOver(ev, doc) {
+        const payload = this.dragPayload;
+        if (!payload) return;
+        const target = this.dropTarget(ev);
+        const moving = payload.kind === "move" && findNode(this.state.definition.children, payload.uid);
+        // A block cannot go inside itself; columns live only in Columns blocks.
+        if (!target || (moving && (moving.node.type === "column" || ownsList(moving.node, target.list)))) {
+            this.dropInfo = null;
+            this.canvasTools.drop.style.display = "none";
+            return;
+        }
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = payload.kind === "move" ? "move" : "copy";
+        this.dropInfo = target;
+        const drop = this.canvasTools.drop;
+        const win = doc.defaultView;
+        const rect = target.el ? target.el.getBoundingClientRect() : doc.querySelector(".page")?.getBoundingClientRect();
+        if (!rect) return;
+        drop.style.display = "block";
+        drop.className = `o_rs_cv_drop ${target.mode === "inside" ? "o_rs_box" : "o_rs_line"}`;
+        drop.style.left = `${rect.left + win.scrollX}px`;
+        drop.style.width = `${rect.width}px`;
+        if (target.mode === "inside") {
+            drop.style.top = `${rect.top + win.scrollY}px`;
+            drop.style.height = `${rect.height}px`;
+        } else {
+            const y = target.mode === "before" ? rect.top : rect.bottom;
+            drop.style.top = `${y + win.scrollY - 1}px`;
+            drop.style.height = "";
+        }
+    }
+
+    onCanvasDrop(ev) {
+        ev.preventDefault();
+        const payload = this.dragPayload;
+        const target = this.dropInfo;
+        this.endDrag();
+        if (!payload || !target) return;
+        let block;
+        let index = target.index;
+        if (payload.kind === "new") {
+            block = defaultBlock(payload.type);
+            if (payload.type === "text") block.content = this.labels.blocks.text;
+        } else {
+            const found = findNode(this.state.definition.children, payload.uid);
+            if (!found || ownsList(found.node, target.list)) return;
+            if (found.list === target.list && found.index < index) index -= 1;
+            found.list.splice(found.index, 1);
+            block = found.node;
+        }
+        target.list.splice(index, 0, block);
+        this.state.selectedUid = block._uid;
+        this.markDirty();
+    }
+
+    endDrag() {
+        this.dragPayload = null;
+        this.dropInfo = null;
+        if (this.canvasTools) this.canvasTools.drop.style.display = "none";
+    }
+
+    // Drag a new block from the toolbox into the page.
+    onToolDragStart(ev, type) {
+        this.dragPayload = { kind: "new", type };
+        ev.dataTransfer.setData("text/plain", "report_studio");
+        ev.dataTransfer.effectAllowed = "copy";
     }
 
     // Position in the tree ("0.2.1") <-> _uid of the block in the editor.
@@ -1163,9 +1376,9 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
-    onMove(ev) {
+    // Move the selected block up (-1) or down (+1) among its siblings.
+    moveSelected(direction) {
         if (this.selected?.type === "column") return;
-        const direction = parseInt(ev.currentTarget.dataset.dir);
         const found = findNode(this.state.definition.children, this.state.selectedUid);
         if (!found) return;
         const target = found.index + direction;

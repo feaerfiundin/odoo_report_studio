@@ -165,6 +165,32 @@ with sync_playwright() as p:
         inp.press("Tab")
         page.wait_for_timeout(150)
 
+    def delete_selected():
+        """Cestino nella barra del blocco selezionato (pagina centrale)."""
+        wait_canvas()
+        canvas.locator(".o_rs_cv_toolbar .o_rs_cv_delete").click()
+        page.wait_for_timeout(200)
+
+    def drag_in_canvas(target_css, mode, toolbox_type=None, has_text=None):
+        """Trascinamento simulato (eventi HTML5): dalla maniglia della barra, o da un
+        pulsante della colonna Blocchi, fino a prima/dopo/dentro un blocco della pagina."""
+        if toolbox_type:
+            page.locator(f".o_rs_toolbox button[data-type={toolbox_type}]").evaluate(
+                "el => el.dispatchEvent(new DragEvent('dragstart', {bubbles: true, dataTransfer: new DataTransfer()}))")
+        else:
+            canvas.locator(".o_rs_cv_toolbar .o_rs_cv_grip").evaluate(
+                "el => el.dispatchEvent(new DragEvent('dragstart', {bubbles: true, dataTransfer: new DataTransfer()}))")
+        target = canvas.locator(target_css, has_text=has_text) if has_text else canvas.locator(target_css)
+        target.first.evaluate("""(el, mode) => {
+            const r = el.getBoundingClientRect();
+            const y = mode === 'before' ? r.top + 1 : mode === 'after' ? r.bottom - 1 : r.top + r.height / 2;
+            const opts = {bubbles: true, cancelable: true, clientX: r.left + 5, clientY: y,
+                          dataTransfer: new DataTransfer()};
+            el.dispatchEvent(new DragEvent('dragover', opts));
+            el.dispatchEvent(new DragEvent('drop', opts));
+        }""", mode)
+        wait_canvas()
+
     def select_parent():
         page.click(".o_rs_props button:has-text('Seleziona il contenitore')")
 
@@ -258,7 +284,7 @@ with sync_playwright() as p:
         types = canvas_types()
         expect(types == ["section", "text", "field", "table", "if", "text"], f"blocchi nella pagina: {types}")
         # La pagina mostra i dati reali e il testo appena digitato.
-        expect(canvas.locator("text=Totale positivo").count() == 1, "testo non aggiornato nella pagina")
+        expect(canvas.locator(".page").locator("text=Totale positivo").count() == 1, "testo non aggiornato nella pagina")
         expect(canvas.locator("th:has-text('Descrizione')").count() == 1, "tabella senza intestazione")
         # L'ultimo blocco aggiunto è evidenziato come selezionato.
         selected = canvas.locator(".o_rs_cv_selected")
@@ -403,7 +429,7 @@ with sync_playwright() as p:
         set_field(".o_rs_props .o_rs_path_source", "order_line")
         page.wait_for_selector(".o_rs_props .o_rs_source_first", state="detached")
         placeholder2 = page.locator(".o_rs_props .o_rs_path_column input").first.get_attribute("placeholder")
-        page.click(".o_rs_props button:has-text('Elimina blocco')")
+        delete_selected()
         return f"{before} -> {after} -> ripristinato; segnaposto {placeholder!r} -> {placeholder2!r}"
 
     def layout_blocks():
@@ -421,7 +447,8 @@ with sync_playwright() as p:
         # Testo nella terza colonna, con margine sinistro della colonna.
         cols.nth(2).click()
         page.wait_for_selector(".o_rs_props_title:text-is('Colonna')")
-        expect(page.locator(".o_rs_props button:has-text('Elimina blocco')").count() == 0, "una colonna si può eliminare")
+        wait_canvas()
+        expect(not canvas.locator(".o_rs_cv_toolbar .o_rs_cv_delete").is_visible(), "una colonna si può eliminare")
         page.fill(".o_rs_props .o_rs_margins input[data-side=left]", "4")
         page.locator(".o_rs_props .o_rs_margins input[data-side=left]").press("Tab")
         add_block("text")
@@ -452,7 +479,7 @@ with sync_playwright() as p:
         expect("3px dashed" in sep, f"separatore: {sep!r}")
         spacer = canvas.locator("[data-rs-type=spacer] > div").first.get_attribute("style") or ""
         expect("15mm" in spacer, f"spaziatore: {spacer!r}")
-        expect(canvas.locator("text=Interruzione di pagina").count() == 1, "interruzione di pagina non visibile")
+        expect(canvas.locator(".page").locator("text=Interruzione di pagina").count() == 1, "interruzione di pagina non visibile")
         return f"pagina: {tail}"
 
     def alignment():
@@ -532,7 +559,7 @@ with sync_playwright() as p:
         page.click(f"{topbar} .o_rs_btn_save")
         text = notification_text()
         expect("campo_che_non_esiste" in text, f"messaggio generico: {text}")
-        page.click(".o_rs_props button:has-text('Elimina blocco')")
+        delete_selected()
         return text
 
     def restore(nth_from_end):
@@ -751,6 +778,39 @@ with sync_playwright() as p:
         expect(right == "solid" and height > 20, f"bordo destro {right}, altezza {height}")
         return f"intestazione {th}, righe {cells}, altezza {height:.0f}px"
 
+    def drag_and_drop():
+        """Barra del blocco selezionato (nome · etichetta, ↑↓, cestino) e trascinamento."""
+        total = "[data-rs-type=text]"
+        canvas.locator(total, has_text="Totale positivo").click()
+        wait_canvas()
+        caption = canvas.locator(".o_rs_cv_toolbar .o_rs_cv_caption").inner_text()
+        expect(caption.startswith("Testo") and "Totale positivo" in caption, f"barra: {caption!r}")
+        path = lambda: canvas.locator(total, has_text="Totale positivo").get_attribute("data-rs-path")
+        inside_if = path()
+        # Fuori dalla condizione, prima di tutto il resto della pagina.
+        drag_in_canvas("[data-rs-path='0']", "before")
+        expect(path() == "0", f"dopo il trascinamento in cima: {path()}")
+        # Freccia giù: diventa il secondo blocco della pagina.
+        canvas.locator(".o_rs_cv_toolbar .o_rs_cv_down").click()
+        wait_canvas()
+        expect(path() == "1", f"dopo la freccia giù: {path()}")
+        # Di nuovo dentro la condizione (al centro del blocco Condizione).
+        drag_in_canvas("[data-rs-type=if]", "inside")
+        expect(path() == inside_if, f"di nuovo nella condizione: {path()} invece di {inside_if}")
+        # Blocco nuovo trascinato dalla colonna Blocchi dopo il primo blocco della pagina.
+        drag_in_canvas("[data-rs-path='0']", "after", toolbox_type="spacer")
+        new_type = canvas.locator("[data-rs-path='1']").get_attribute("data-rs-type")
+        expect(new_type == "spacer", f"blocco nuovo in posizione 1: {new_type}")
+        delete_selected()
+        wait_canvas()
+        expect(canvas.locator("[data-rs-path='1']").get_attribute("data-rs-type") != "spacer", "spaziatore non eliminato")
+        # Al passaggio del mouse su un altro blocco compare solo il nome.
+        canvas.locator("[data-rs-type=table]").hover()
+        page.wait_for_timeout(200)
+        hover = canvas.locator(".o_rs_cv_hover").inner_text()
+        expect(hover.startswith("Tabella"), f"nome al passaggio: {hover!r}")
+        return f"barra {caption!r}; trascinato in cima, ↓, rientrato in {inside_if}; spaziatore dalla colonna Blocchi"
+
     def section_label_borders():
         """Sezione: etichetta con sfondo, bordi come nei fogli di calcolo, classi dal menu."""
         canvas.locator("[data-rs-type=text]", has_text="Riga 1").click()
@@ -798,15 +858,15 @@ with sync_playwright() as p:
         area.fill("Linea uno\nLinea due")
         wait_canvas()
         page.wait_for_timeout(600)
-        expect(canvas.locator("text=Linea uno").count() == 1, "la pagina non mostra la traduzione")
-        expect(canvas.locator("text=Riga 1").count() == 0, f"in {other} la pagina mostra ancora il testo base")
+        expect(canvas.locator(".page").locator("text=Linea uno").count() == 1, "la pagina non mostra la traduzione")
+        expect(canvas.locator(".page").locator("text=Riga 1").count() == 0, f"in {other} la pagina mostra ancora il testo base")
         label = [o for o in select.locator("option").all_inner_texts() if o.startswith(short)]
         expect(label and "✓" in label[0], f"lingua tradotta non marcata: {label}")
         page.select_option(f"{topbar} .o_rs_lang_select", base)
         wait_canvas()
         page.wait_for_timeout(600)
         expect(area.input_value().startswith("Riga 1"), f"testo base cambiato: {area.input_value()!r}")
-        expect(canvas.locator("text=Riga 1").count() == 1, "torna alla lingua principale: testo base assente")
+        expect(canvas.locator(".page").locator("text=Riga 1").count() == 1, "torna alla lingua principale: testo base assente")
         # Opzione della pagina: stampa nella lingua del cliente.
         canvas.locator("body").click(position={"x": 3, "y": 3})
         page.wait_for_selector(".o_rs_props :text('Seleziona un blocco')")
@@ -836,6 +896,7 @@ with sync_playwright() as p:
         step(page, "allineamento", alignment)
         step(page, "campo_suggerimenti", field_suggestions)
         step(page, "stile_tabella", table_style)
+        step(page, "trascina_blocchi", drag_and_drop)
         step(page, "sezione_etichetta_bordi", section_label_borders)
         step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)

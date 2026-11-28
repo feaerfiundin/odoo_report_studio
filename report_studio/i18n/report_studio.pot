@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 12:44+0000\n"
-"PO-Revision-Date: 2026-11-28 12:44+0000\n"
+"POT-Creation-Date: 2026-11-28 13:32+0000\n"
+"PO-Revision-Date: 2026-11-28 13:32+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -351,6 +351,14 @@ msgstr ""
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Click: the block goes inside the selected one (Section, Column, Condition) "
+"or after it. Or drag it into the page."
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Close"
@@ -488,8 +496,8 @@ msgstr ""
 
 #. module: report_studio
 #. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid "Delete Block"
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Delete the block"
 msgstr ""
 
 #. module: report_studio
@@ -521,6 +529,12 @@ msgstr ""
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Double"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Drag to move the block"
 msgstr ""
 
 #. module: report_studio
@@ -1033,6 +1047,18 @@ msgstr ""
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Move the block down"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Move the block up"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Move the column left"
 msgstr ""
@@ -1041,6 +1067,12 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Move the column right"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move, drag or delete the block with the bar above it in the page."
 msgstr ""
 
 #. module: report_studio
@@ -1766,14 +1798,6 @@ msgstr ""
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The QWeb template is empty"
-msgstr ""
-
-#. module: report_studio
-#. odoo-javascript
-#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
-msgid ""
-"The block goes inside the selected one (Section, Column, Condition) or after"
-" it."
 msgstr ""
 
 #. module: report_studio
