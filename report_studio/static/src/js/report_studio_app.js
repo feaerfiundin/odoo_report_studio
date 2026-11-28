@@ -884,6 +884,17 @@ export class ReportStudioApp extends Component {
         this.markDirty();
     }
 
+    // Move a column left (-1) or right (+1): it keeps field, label,
+    // translations, width, alignment, background and borders.
+    moveColumn(uid, direction) {
+        const columns = this.selected?.columns;
+        const index = columns?.findIndex((c) => c._uid === uid) ?? -1;
+        const target = index + direction;
+        if (index < 0 || target < 0 || target >= columns.length) return;
+        [columns[index], columns[target]] = [columns[target], columns[index]];
+        this.markDirty();
+    }
+
     onColumnLock(uid, ev) {
         const column = this.selected?.columns?.find((c) => c._uid === uid);
         if (!column) return;
@@ -1053,6 +1064,10 @@ export class ReportStudioApp extends Component {
 
     get sectionLabelPlaceholder() {
         return _t("e.g. Customer data");
+    }
+
+    get sourceFirstPlaceholder() {
+        return _t("choose the source first");
     }
 
     get columnFieldPlaceholder() {

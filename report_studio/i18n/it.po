@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 09:53+0000\n"
-"PO-Revision-Date: 2026-11-28 09:53+0000\n"
+"POT-Creation-Date: 2026-11-28 12:44+0000\n"
+"PO-Revision-Date: 2026-11-28 12:44+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: it\n"
@@ -335,6 +335,14 @@ msgstr "Scegli un campo"
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Choose the model"
 msgstr "Scegli il modello"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Choose the table source first: the column fields are the fields of its "
+"lines."
+msgstr "Scegli prima la sorgente della tabella: i campi delle colonne sono quelli delle sue righe."
 
 #. module: report_studio
 #. odoo-javascript
@@ -1023,6 +1031,18 @@ msgstr "Modificato da"
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
 msgid "Modified by Me"
 msgstr "Modificati da me"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move the column left"
+msgstr "Sposta la colonna a sinistra"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move the column right"
+msgstr "Sposta la colonna a destra"
 
 #. module: report_studio
 #. odoo-javascript
@@ -2071,6 +2091,12 @@ msgstr "auto"
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "border"
 msgstr "bordo"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "choose the source first"
+msgstr "scegli prima la sorgente"
 
 #. module: report_studio
 #. odoo-python

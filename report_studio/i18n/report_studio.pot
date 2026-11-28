@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 09:53+0000\n"
-"PO-Revision-Date: 2026-11-28 09:53+0000\n"
+"POT-Creation-Date: 2026-11-28 12:44+0000\n"
+"PO-Revision-Date: 2026-11-28 12:44+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -333,6 +333,14 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Choose the model"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Choose the table source first: the column fields are the fields of its "
+"lines."
 msgstr ""
 
 #. module: report_studio
@@ -1021,6 +1029,18 @@ msgstr ""
 #. module: report_studio
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
 msgid "Modified by Me"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move the column left"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Move the column right"
 msgstr ""
 
 #. module: report_studio
@@ -2069,6 +2089,12 @@ msgstr ""
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "border"
+msgstr ""
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "choose the source first"
 msgstr ""
 
 #. module: report_studio

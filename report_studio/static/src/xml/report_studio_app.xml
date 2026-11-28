@@ -479,16 +479,29 @@
                                             Total <t t-esc="totalWidth(selected.columns)"/>%
                                         </small>
                                     </div>
-                                    <!-- One row per column: field, label, width, lock, alignment, remove. -->
+                                    <!-- One row per column: move, field, label, width, lock, alignment, remove. -->
+                                    <div t-if="!relationOf(selected.source)" class="small text-warning mb-1 o_rs_source_first">
+                                        <i class="fa fa-info-circle me-1"/>Choose the table source first: the column fields are the fields of its lines.
+                                    </div>
                                     <div class="o_rs_column_grid o_rs_column_head small text-muted">
-                                        <span>Field</span><span>Label</span><span>Width %</span>
+                                        <span/><span>Field</span><span>Label</span><span>Width %</span>
                                         <span title="Lock the width"><i class="fa fa-lock"/></span>
                                         <span title="Alignment"><i class="fa fa-align-left"/></span><span/>
                                     </div>
                                     <t t-foreach="selected.columns" t-as="col" t-key="col._uid">
                                         <div class="o_rs_column o_rs_column_grid mb-1" t-att-data-uid="col._uid">
+                                            <div class="o_rs_col_move d-flex flex-column">
+                                                <button type="button" class="btn btn-link p-0 lh-1 o_rs_col_up" title="Move the column left"
+                                                        t-att-disabled="col_first" t-on-click="() => this.moveColumn(col._uid, -1)">
+                                                    <i class="fa fa-caret-up"/>
+                                                </button>
+                                                <button type="button" class="btn btn-link p-0 lh-1 o_rs_col_down" title="Move the column right"
+                                                        t-att-disabled="col_last" t-on-click="() => this.moveColumn(col._uid, 1)">
+                                                    <i class="fa fa-caret-down"/>
+                                                </button>
+                                            </div>
                                             <FieldSelector value="col.path or ''" model="relationOf(selected.source)" loadFields="loadFields"
-                                                           placeholder="columnFieldPlaceholder" onChange="(v) => this.setPath(col, 'path', v)" class="'o_rs_path_column'"/>
+                                                           placeholder="relationOf(selected.source) ? columnFieldPlaceholder : sourceFirstPlaceholder" onChange="(v) => this.setPath(col, 'path', v)" class="'o_rs_path_column'"/>
                                             <input class="form-control form-control-sm o_rs_col_label"
                                                    t-att-placeholder="trPlaceholder(col, 'label', columnLabelPlaceholder) or columnLabelPlaceholder"
                                                    t-att-value="trValue(col, 'label')"

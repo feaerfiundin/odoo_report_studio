@@ -375,6 +375,37 @@ with sync_playwright() as p:
             expect(page.locator(".o_rs_props").evaluate("el => el.scrollTop") > 0, "il pannello non scorre")
         return f"34/33/33 -> 50/25/25 -> blocco 2a -> 60/25/15; pagina {th}; riga unica; margine {pad}; scorre {scroll[1]}"
 
+    def move_columns():
+        """Avviso "scegli prima la sorgente" e spostamento delle colonne con ▲▼."""
+        heads = lambda: [t.strip() for t in canvas.locator("[data-rs-type=table] th").all_inner_texts()]
+        th_widths = lambda: canvas.locator("[data-rs-type=table] th").evaluate_all("els => els.map(e => e.style.width)")
+        before = heads()
+        # La prima colonna scende di una posizione: porta con sé larghezza ed etichetta.
+        page.locator(".o_rs_props .o_rs_column").nth(0).locator(".o_rs_col_down").click()
+        wait_canvas()
+        page.wait_for_timeout(600)
+        after = heads()
+        expect(after[:2] == [before[1], before[0]] and after[2:] == before[2:], f"ordine: {before} -> {after}")
+        expect(th_widths() == ["25%", "60%", "15%"], f"larghezze dopo lo spostamento: {th_widths()}")
+        expect(page.locator(".o_rs_props .o_rs_column").nth(0).locator(".o_rs_col_up").is_disabled(),
+               "▲ attivo sulla prima colonna")
+        expect(page.locator(".o_rs_props .o_rs_column").nth(2).locator(".o_rs_col_down").is_disabled(),
+               "▼ attivo sull'ultima colonna")
+        page.locator(".o_rs_props .o_rs_column").nth(1).locator(".o_rs_col_up").click()  # rimette a posto
+        wait_canvas()
+        page.wait_for_timeout(600)
+        expect(heads() == before, f"ripristino dell'ordine: {heads()}")
+        # Tabella nuova senza sorgente: la colonna chiede prima la sorgente.
+        add_block("table")
+        hint = page.locator(".o_rs_props .o_rs_source_first").count()
+        placeholder = page.locator(".o_rs_props .o_rs_path_column input").first.get_attribute("placeholder")
+        expect(hint == 1 and "sorgente" in (placeholder or ""), f"avviso: {hint}, segnaposto {placeholder!r}")
+        set_field(".o_rs_props .o_rs_path_source", "order_line")
+        page.wait_for_selector(".o_rs_props .o_rs_source_first", state="detached")
+        placeholder2 = page.locator(".o_rs_props .o_rs_path_column input").first.get_attribute("placeholder")
+        page.click(".o_rs_props button:has-text('Elimina blocco')")
+        return f"{before} -> {after} -> ripristinato; segnaposto {placeholder!r} -> {placeholder2!r}"
+
     def layout_blocks():
         # Nessuna selezione: clic su una zona della pagina fuori dai blocchi.
         canvas.locator("body").click(position={"x": 3, "y": 3})
@@ -800,6 +831,7 @@ with sync_playwright() as p:
         step(page, "larghezze_logica", width_logic)
         step(page, "carattere_ed_etichetta", fonts_and_label)
         step(page, "larghezze_colonne", column_widths)
+        step(page, "sposta_colonne", move_columns)
         step(page, "blocchi_impaginazione", layout_blocks)
         step(page, "allineamento", alignment)
         step(page, "campo_suggerimenti", field_suggestions)
