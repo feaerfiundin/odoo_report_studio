@@ -433,6 +433,57 @@ class TestCompiler(unittest.TestCase):
         self.assertIn('<div class="o_rs_section_title" style="padding: 1mm 2mm">Customer</div>', arch)
         etree_ok(arch)
 
+    # ----- section: source, size, position in the page -----
+
+    def test_section_source_and_use_document(self):
+        xml = compile_([{"type": "section", "source": "partner_id", "children": [
+            {"type": "field", "path": "name"},
+            {"type": "field", "path": "amount_total", "use_document": True}]}])
+        self.assertIn('<t t-set="section_1" t-value="o.partner_id"/>', xml)
+        self.assertIn('<span t-field="section_1.name"/>', xml)
+        self.assertIn('<span t-field="o.amount_total"/>', xml)
+        # the fields inside are checked on the source model
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "section", "source": "partner_id",
+                       "children": [{"type": "field", "path": "amount_total"}]}])
+        for source in ("order_line", "name", "missing"):
+            with self.assertRaises(compiler.CompileError, msg=source):
+                compile_([{"type": "section", "source": source, "children": []}])
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "field", "path": "name", "use_document": "yes"}])
+
+    def test_section_width_and_position(self):
+        xml = compile_([{"type": "section", "width": {"mode": "percent", "value": 50},
+                         "halign": "right", "children": []}])
+        self.assertIn('<div style="width: 50%; box-sizing: border-box; margin-left: auto">', xml)
+        xml = compile_([{"type": "section", "width": {"mode": "mm", "value": 80},
+                         "halign": "center", "children": []}])
+        self.assertIn("width: 80mm; box-sizing: border-box; margin-left: auto; margin-right: auto", xml)
+        self.assertNotIn("width:", compile_([{"type": "section", "width": {"mode": "full"}, "children": []}]))
+        for width in ({"mode": "percent", "value": 150}, {"mode": "cm", "value": 3}, {"mode": "mm"}):
+            with self.assertRaises(compiler.CompileError, msg=width):
+                compile_([{"type": "section", "width": width, "children": []}])
+
+    def test_section_height_and_vertical_alignment(self):
+        xml = compile_([{"type": "section", "height": 40, "valign": "middle", "margins": {"left": 2},
+                         "title": {"text": "Shipping"}, "children": [{"type": "text", "content": "x"}]}])
+        self.assertIn('<div style="display: table; width: 100%; height: 40mm; border-collapse: collapse">', xml)
+        self.assertIn('<div style="display: table-cell; vertical-align: middle; padding: 0mm 0mm 0mm 2mm">', xml)
+        self.assertIn('<div class="o_rs_section_title"', xml)
+        etree_ok(xml)
+
+    def test_section_repeated_on_every_page(self):
+        xml = compile_([{"type": "section", "position": "footer", "height": 30, "class": "small",
+                         "children": [{"type": "field", "path": "name"}]}])
+        self.assertIn('class="small o_rs_page_footer"', xml)
+        self.assertIn('data-rs-height="30"', xml)
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "section", "position": "header", "children": []}])  # no height
+        with self.assertRaises(compiler.CompileError):
+            compile_([{"type": "section", "position": "aside", "height": 10, "children": []}])
+        arch = self._annotated([{"type": "section", "position": "header", "height": 25, "children": []}])
+        self.assertIn('<div class="o_rs_cv_repeat">Repeated at the top of every page (25 mm)</div>', arch)
+
     # ----- table style -----
 
     def _table(self, **extra):

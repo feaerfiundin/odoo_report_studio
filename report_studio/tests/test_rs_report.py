@@ -418,6 +418,45 @@ class TestRsReport(TransactionCase):
         self.assertEqual(html.count("background-color: #ffff00"), 2)
         self.assertIn("border-right: 2px solid #333333", html)
 
+    def test_section_source_and_repeated_sections(self):
+        orders = self._sale_order() | self._sale_order()
+        orders[1].partner_id.name = "Second customer"
+        for layout in ("external", "basic"):
+            definition = json.dumps({"layout": layout, "children": [
+                {"type": "section", "position": "header", "height": 20, "source": "partner_id",
+                 "children": [{"type": "field", "path": "name"},
+                              {"type": "field", "path": "name", "use_document": True}]},
+                {"type": "text", "content": "Body text"},
+                {"type": "section", "position": "footer", "height": 15,
+                 "children": [{"type": "text", "content": "Carrier data"}]},
+            ]})
+            self.report._create_version(definition)
+            key = self.report.action_id.report_name
+            html, _fmt = self.env["ir.actions.report"]._render_qweb_html(key, orders.ids)
+            Report = self.env["ir.actions.report"]
+            bodies, _ids, header, footer, specific = Report._prepare_html(html, report_model="sale.order")
+            self.assertEqual(len(bodies), 2, layout)
+            for body in bodies:
+                self.assertIn("Body text", body)
+                self.assertNotIn("o_rs_page_header", body)
+                self.assertNotIn("Carrier data", body)
+            # one header per document, each with its own customer and order number
+            self.assertEqual(header.count("o_rs_page_header"), 2)
+            self.assertIn("Second customer", header)
+            self.assertIn(orders[0].name, header)
+            self.assertEqual(footer.count("Carrier data"), 2)
+            self.assertEqual(specific.get("data-report-rs-extra-top"), "20")
+            self.assertEqual(specific.get("data-report-rs-extra-bottom"), "15")
+            paper = self.env.ref("base.paperformat_euro")
+            args = Report._build_wkhtmltopdf_args(paper, False, specific_paperformat_args=specific)
+            top = float(args[args.index("--margin-top") + 1])
+            bottom = float(args[args.index("--margin-bottom") + 1])
+            self.assertEqual(top, paper.margin_top + 20)
+            self.assertEqual(bottom, paper.margin_bottom + 15)
+        # other reports are not touched
+        plain = Report._build_wkhtmltopdf_args(paper, False, specific_paperformat_args={})
+        self.assertEqual(float(plain[plain.index("--margin-top") + 1]), paper.margin_top)
+
     def _sale_order(self):
         partner = self.env["res.partner"].create({"name": "Preview customer"})
         return self.env["sale.order"].create({"partner_id": partner.id})

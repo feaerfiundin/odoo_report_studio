@@ -279,7 +279,74 @@
                             <t t-if="selected">
                                 <div class="o_rs_props_title mb-2"><t t-esc="blockLabels[selected.type] or selected.type"/></div>
 
+                                <!-- Inside a section with a source: use the fields of the document instead. -->
+                                <div t-if="['field', 'table', 'if', 'section'].includes(selected.type) and inSourcedSection(selected._uid)"
+                                     class="form-check form-switch mb-2 o_rs_use_document_box">
+                                    <input class="form-check-input o_rs_use_document" type="checkbox" id="o_rs_use_document"
+                                           t-att-checked="selected.use_document" t-on-change="(ev) => this.onUseDocument(selected, ev)"/>
+                                    <label class="form-check-label" for="o_rs_use_document">Use the fields of the document</label>
+                                    <div class="small text-muted" t-esc="useDocumentHint(selected)"/>
+                                </div>
+
                                 <t t-if="selected.type === 'section'">
+                                    <!-- Source: the blocks inside use the fields of this record. -->
+                                    <label class="form-label">Source (many2one)</label>
+                                    <FieldSelector value="selected.source or ''" model="contextModel(selected._uid)" loadFields="loadFields"
+                                                   filter="isMany2one" placeholder="sectionSourcePlaceholder"
+                                                   onChange="(v) => this.onSectionSource(selected, v)" class="'o_rs_path_section'"/>
+                                    <div class="small text-muted mb-2" t-if="selected.source" t-esc="sectionSourceHint(selected)"/>
+
+                                    <!-- Size and position. -->
+                                    <div class="o_rs_section_size mt-2">
+                                        <div class="fw-bold mb-1"><i class="fa fa-arrows-h me-1"/>Size and position</div>
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="form-select form-select-sm o_rs_section_width_mode"
+                                                    t-on-change="(ev) => this.onSectionWidth(selected, 'mode', ev)">
+                                                <t t-foreach="widthModes" t-as="m" t-key="m[0]">
+                                                    <option t-att-value="m[0]" t-att-selected="selected.width.mode === m[0]"><t t-esc="m[1]"/></option>
+                                                </t>
+                                            </select>
+                                            <input t-if="selected.width.mode !== 'full'" type="number" min="1" step="1"
+                                                   t-att-max="selected.width.mode === 'percent' ? 100 : 400"
+                                                   class="form-control form-control-sm o_rs_section_width_value" style="width: 5.5rem"
+                                                   t-att-value="selected.width.value or ''"
+                                                   t-on-change="(ev) => this.onSectionWidth(selected, 'value', ev)"/>
+                                            <span t-if="selected.width.mode !== 'full'" class="small text-muted">
+                                                <t t-if="selected.width.mode === 'percent'">%</t><t t-else="">mm</t>
+                                            </span>
+                                        </div>
+                                        <div t-if="selected.width.mode !== 'full'" class="btn-group btn-group-sm mt-1" role="group">
+                                            <t t-foreach="[['left', 'fa-align-left'], ['center', 'fa-align-center'], ['right', 'fa-align-right']]" t-as="h" t-key="h[0]">
+                                                <button type="button" t-att-data-halign="h[0]" t-att-title="labels.aligns[h[0]]"
+                                                        t-attf-class="btn btn-outline-secondary o_rs_section_halign {{ selected.halign === h[0] ? 'active' : '' }}"
+                                                        t-on-click="() => { selected.halign = h[0]; this.markDirty(); }">
+                                                    <i t-attf-class="fa {{ h[1] }}"/>
+                                                </button>
+                                            </t>
+                                        </div>
+                                        <div class="d-flex gap-1 align-items-center mt-2">
+                                            <small class="text-muted" style="min-width: 6rem">Height (mm)</small>
+                                            <input type="number" min="0" max="400" step="1" placeholder="auto"
+                                                   class="form-control form-control-sm o_rs_section_height" style="width: 5.5rem"
+                                                   t-att-value="selected.height or ''" t-on-change="(ev) => this.onSectionNumber(selected, 'height', ev)"/>
+                                            <select t-if="selected.height" class="form-select form-select-sm o_rs_section_valign"
+                                                    title="Vertical position of the content" t-model="selected.valign" t-on-change="markDirty">
+                                                <t t-foreach="valigns" t-as="v" t-key="v[0]">
+                                                    <option t-att-value="v[0]"><t t-esc="v[1]"/></option>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <label class="form-label small text-muted mt-2 mb-1">Position in the page</label>
+                                        <select class="form-select form-select-sm o_rs_section_position" t-model="selected.position" t-on-change="markDirty">
+                                            <t t-foreach="sectionPositions" t-as="p" t-key="p[0]">
+                                                <option t-att-value="p[0]"><t t-esc="p[1]"/></option>
+                                            </t>
+                                        </select>
+                                        <div t-if="selected.position !== 'flow'" t-attf-class="small mt-1 {{ selected.height ? 'text-muted' : 'text-danger' }}">
+                                            Repeated on every page of the PDF, together with the company header/footer. It needs a height in mm: the page margins grow by it.
+                                        </div>
+                                    </div>
+
                                     <!-- Label: bar on top of the section, translatable. -->
                                     <div class="o_rs_section_label">
                                         <label class="form-label">Label</label>
@@ -439,7 +506,7 @@
 
                                 <t t-if="selected.type === 'field'">
                                     <label class="form-label">Field</label>
-                                    <FieldSelector value="selected.path or ''" model="state.modelName" loadFields="loadFields"
+                                    <FieldSelector value="selected.path or ''" model="contextModel(selected._uid)" loadFields="loadFields"
                                                    onChange="(v) => this.setPath(selected, 'path', v)" class="'o_rs_path_field'"/>
                                     <label class="form-label mt-2">Label</label>
                                     <input class="form-control o_rs_field_label"
@@ -457,7 +524,7 @@
 
                                 <t t-if="selected.type === 'table'">
                                     <label class="form-label">Source (one2many / many2many)</label>
-                                    <FieldSelector value="selected.source or ''" model="state.modelName" loadFields="loadFields"
+                                    <FieldSelector value="selected.source or ''" model="contextModel(selected._uid)" loadFields="loadFields"
                                                    filter="isX2many" onChange="(v) => this.onTableSource(selected, v)" class="'o_rs_path_source'"/>
                                     <button type="button" class="btn btn-sm btn-outline-primary mt-2 o_rs_table_style_btn" t-on-click="openTableStyle">
                                         <i class="fa fa-paint-brush me-1"/>Table style: backgrounds, borders, row height…
@@ -476,7 +543,7 @@
                                         </small>
                                     </div>
                                     <!-- One row per column: move, field, label, width, lock, alignment, remove. -->
-                                    <div t-if="!relationOf(selected.source)" class="small text-warning mb-1 o_rs_source_first">
+                                    <div t-if="!relationOf(selected.source, contextModel(selected._uid))" class="small text-warning mb-1 o_rs_source_first">
                                         <i class="fa fa-info-circle me-1"/>Choose the table source first: the column fields are the fields of its lines.
                                     </div>
                                     <div class="o_rs_column_grid o_rs_column_head small text-muted">
@@ -496,8 +563,8 @@
                                                     <i class="fa fa-caret-down"/>
                                                 </button>
                                             </div>
-                                            <FieldSelector value="col.path or ''" model="relationOf(selected.source)" loadFields="loadFields"
-                                                           placeholder="relationOf(selected.source) ? columnFieldPlaceholder : sourceFirstPlaceholder" onChange="(v) => this.setPath(col, 'path', v)" class="'o_rs_path_column'"/>
+                                            <FieldSelector value="col.path or ''" model="relationOf(selected.source, contextModel(selected._uid))" loadFields="loadFields"
+                                                           placeholder="relationOf(selected.source, contextModel(selected._uid)) ? columnFieldPlaceholder : sourceFirstPlaceholder" onChange="(v) => this.setPath(col, 'path', v)" class="'o_rs_path_column'"/>
                                             <input class="form-control form-control-sm o_rs_col_label"
                                                    t-att-placeholder="trPlaceholder(col, 'label', columnLabelPlaceholder) or columnLabelPlaceholder"
                                                    t-att-value="trValue(col, 'label')"
@@ -540,7 +607,7 @@
 
                                 <t t-if="selected.type === 'if'">
                                     <label class="form-label">Field</label>
-                                    <FieldSelector value="selected.path or ''" model="state.modelName" loadFields="loadFields"
+                                    <FieldSelector value="selected.path or ''" model="contextModel(selected._uid)" loadFields="loadFields"
                                                    onChange="(v) => this.setPath(selected, 'path', v)" class="'o_rs_path_if'"/>
                                     <label class="form-label mt-2">Operator</label>
                                     <select class="form-select" t-model="selected.op" t-on-change="markDirty">

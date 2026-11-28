@@ -537,6 +537,16 @@ class RsReport(models.Model):
                 "vertical": _("Vertical lines"),
                 "header": _("Under the header"),
             },
+            "section_positions": {
+                "flow": _("In the flow of the page"),
+                "header": _("At the top of every page"),
+                "footer": _("At the bottom of every page"),
+            },
+            "width_modes": {
+                "full": _("Full width"),
+                "percent": _("Percent of the page"),
+                "mm": _("Fixed width (mm)"),
+            },
             "valigns": {
                 "top": _("Top of the cell"),
                 "middle": _("Middle of the cell"),

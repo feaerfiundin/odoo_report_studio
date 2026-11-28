@@ -145,6 +145,11 @@ BORDER_WIDTH = (1, 6)  # px
 BORDER_PRESETS = ("all", "none", "outer", "horizontal", "vertical", "header")
 VALIGNS = ("top", "middle", "bottom")
 ROW_HEIGHT = (1, 100)  # mm
+SECTION_WIDTH_MODES = ("full", "percent", "mm")
+SECTION_WIDTH_RANGE = {"percent": (1, 100), "mm": (1, 400)}
+SECTION_HALIGNS = ("left", "center", "right")
+SECTION_HEIGHT = (1, 400)  # mm
+SECTION_POSITIONS = ("flow", "header", "footer")
 
 
 class _Term(str):
@@ -197,15 +202,16 @@ class CompileError(ValueError):
 
 
 class _Context:
-    def __init__(self, resolver, annotate=False, gettext=None):
+    def __init__(self, resolver, annotate=False, gettext=None, root_model=None):
         self.resolver = resolver
         self.annotate = annotate
         self.gettext = gettext or _identity
+        self.root_model = root_model
         self._counter = 0
 
-    def new_var(self):
+    def new_var(self, prefix="line"):
         self._counter += 1
-        return "line_%d" % self._counter
+        return "%s_%d" % (prefix, self._counter)
 
 
 def _attr(value):
@@ -383,10 +389,22 @@ def _render_children(children, model, var, depth, ctx, tree_path=""):
     lines = []
     for index, child in enumerate(children):
         child_path = "%s.%d" % (tree_path, index) if tree_path else str(index)
+        # Inside a section with a source, a block can still use the fields of
+        # the document ("use_document"): then its paths start from the root.
+        child_model, child_var = model, var
+        if isinstance(child, dict) and child.get("use_document") is not None:
+            if not isinstance(child["use_document"], bool):
+                raise CompileError(_("'use_document' must be true or false"))
+            if child["use_document"]:
+                child_model, child_var = ctx.root_model, "o"
         if ctx.annotate:
-            lines.extend(_render_annotated(child, model, var, depth, ctx, child_path))
+            lines.extend(
+                _render_annotated(child, child_model, child_var, depth, ctx, child_path)
+            )
         else:
-            lines.extend(_render_block(child, model, var, depth, ctx, child_path))
+            lines.extend(
+                _render_block(child, child_model, child_var, depth, ctx, child_path)
+            )
     return lines
 
 
@@ -610,15 +628,66 @@ def _section_title(title):
     ]
 
 
-def _render_section(block, model, var, depth, ctx, tree_path):
-    """Section: container with optional label bar, borders and margins.
+def _section_classes(block, extra):
+    """class attribute: the classes of the user plus the module ones."""
+    classes = []
+    css_class = block.get("class")
+    if css_class is not None and not (isinstance(css_class, str) and not css_class.strip()):
+        if not isinstance(css_class, str) or not CSS_CLASS_RE.match(css_class):
+            raise CompileError(_("Invalid CSS class: %r"), css_class)
+        classes.append(css_class.strip())
+    classes.extend(extra)
+    return ' class="%s"' % " ".join(classes) if classes else ""
 
-    Without label and borders the output is a single div (as before); with
-    them the outer div carries the borders and the label bar spans its full
-    width, while the margins become the padding of an inner div.
+
+def _section_box(block):
+    """Width (percent or mm) and horizontal position of the section."""
+    width = _check_keys(block.get("width"), ("mode", "value"), _("section width"))
+    mode = width.get("mode") or "full"
+    if mode not in SECTION_WIDTH_MODES:
+        raise CompileError(_("Width mode not allowed: %r"), mode)
+    if mode == "full":
+        return []
+    low, high = SECTION_WIDTH_RANGE[mode]
+    value = _number(width.get("value"), low, high, what=_("Section width"))
+    unit = "%" if mode == "percent" else "mm"
+    halign = block.get("halign") or "left"
+    if halign not in SECTION_HALIGNS:
+        raise CompileError(_("Section position not allowed: %r"), halign)
+    margins = {
+        "left": "margin-right: auto",
+        "center": "margin-left: auto; margin-right: auto",
+        "right": "margin-left: auto",
+    }[halign]
+    return ["width: %g%s" % (value, unit), "box-sizing: border-box", margins]
+
+
+def _render_section(block, model, var, depth, ctx, tree_path):
+    """Section: container with optional source, label bar, borders, size and margins.
+
+    - ``source``: a many2one field; the blocks inside use its fields (unless
+      they set ``use_document``).
+    - ``width`` ({"mode": "full" | "percent" | "mm", "value": n}) and
+      ``halign`` (left, center, right): narrower section and its position.
+    - ``height`` (mm) and ``valign`` (top, middle, bottom): fixed height and
+      vertical position of the content inside it.
+    - ``position``: "flow" (default), "header" or "footer": repeated at the
+      top / bottom of every page of the PDF (needs a height, which the page
+      margins reserve; see models/ir_actions_report.py).
+
+    Without any of them the output is a single div (as before).
     """
+    before = []
+    inner_model, inner_var = model, var
+    source = block.get("source")
+    if source not in (None, ""):
+        ftype, comodel = _check_path(source, model, ctx)
+        if ftype is not None and ftype != "many2one":
+            raise CompileError(_("The section source %r must be a many2one field"), source)
+        inner_model, inner_var = comodel, ctx.new_var("section")
+        before.append('<t t-set="%s" t-value="%s.%s"/>' % (inner_var, var, source))
     children = _render_children(
-        block.get("children", []), model, var, depth + 1, ctx, tree_path
+        block.get("children", []), inner_model, inner_var, depth + 1, ctx, tree_path
     )
     children = children or _empty_placeholder(
         children, ctx, _("Empty section: select it and add blocks")
@@ -627,18 +696,77 @@ def _render_section(block, model, var, depth, ctx, tree_path):
     borders = _border_css(block.get("border"))
     margins = _margins_css(block.get("margins"))
     align = _align_css(block.get("align"))
-    if not title and not borders:
+    box = _section_box(block)
+    height = block.get("height")
+    if height not in (None, "", 0):
+        height = _number(height, *SECTION_HEIGHT, what=_("Section height (mm)"))
+    else:
+        height = None
+    valign = block.get("valign") or "top"
+    if valign not in VALIGNS:
+        raise CompileError(_("Vertical alignment not allowed: %r"), valign)
+    position = block.get("position") or "flow"
+    if position not in SECTION_POSITIONS:
+        raise CompileError(_("Section position in the page not allowed: %r"), position)
+    if position != "flow" and not height:
+        raise CompileError(
+            _("A section repeated on every page needs a height in mm")
+        )
+    extra_classes = [] if position == "flow" else ["o_rs_page_%s" % position]
+    if not (title or borders or box or height or extra_classes):
         return (
-            ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(margins, align))]
+            before
+            + ["<div%s%s>" % (_section_classes(block, []), _style_attr(margins, align))]
             + children
             + ["</div>"]
         )
-    return (
-        ["<div%s%s>" % (_css_attr(block.get("class")), _style_attr(*borders, align))]
-        + title
-        + ["<div%s>" % _style_attr(margins)]
+    marker = []
+    if ctx.annotate and position != "flow":
+        text = (
+            _("Repeated at the top of every page (%s mm)")
+            if position == "header"
+            else _("Repeated at the bottom of every page (%s mm)")
+        )
+        marker = ['<div class="o_rs_cv_repeat">%s</div>' % escape(ctx.gettext(text) % ("%g" % height))]
+    data = ' data-rs-height="%g"' % height if extra_classes else ""
+    if not height:
+        return (
+            before
+            + [
+                "<div%s%s%s>"
+                % (_section_classes(block, extra_classes), _style_attr(*borders, align, *box), data)
+            ]
+            + marker
+            + title
+            + ["<div%s>" % _style_attr(margins)]
+            + children
+            + ["</div>", "</div>"]
+        )
+    # Fixed height: a CSS table, so the content can be aligned vertically
+    # (wkhtmltopdf does not handle flexbox well).
+    outer = _style_attr(
+        "display: table",
+        "width: 100%" if not box else "",
+        "height: %gmm" % height,
+        "border-collapse: collapse",
+        *borders,
+        align,
+        *box,
+    )
+    rows = []
+    if title:
+        rows += ['<div style="display: table-row; height: 1px"><div style="display: table-cell">'] + title + ["</div></div>"]
+    rows += (
+        ['<div style="display: table-row"><div%s>' % _style_attr("display: table-cell", "vertical-align: %s" % valign, margins)]
         + children
-        + ["</div>", "</div>"]
+        + ["</div></div>"]
+    )
+    return (
+        before
+        + ["<div%s%s%s>" % (_section_classes(block, extra_classes), outer, data)]
+        + marker
+        + rows
+        + ["</div>"]
     )
 
 
@@ -968,7 +1096,7 @@ def compile_templates(
     if layout not in LAYOUTS:
         raise CompileError(_("Layout not allowed: %r"), layout)
 
-    ctx = _Context(resolver, annotate=annotate, gettext=gettext)
+    ctx = _Context(resolver, annotate=annotate, gettext=gettext, root_model=model)
     lang_field = _print_lang(definition, model, ctx)
     body = _render_children(definition.get("children", []), model, "o", 0, ctx)
     page = (

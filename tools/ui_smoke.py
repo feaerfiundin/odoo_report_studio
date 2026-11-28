@@ -732,12 +732,15 @@ with sync_playwright() as p:
         page.wait_for_selector(".o_rs_link_dialog")
         page.click(".o_rs_link_dialog .o_rs_link_choice[data-name=partner_shipping_id]")
         page.wait_for_selector(".o_rs_props_title:text-is('Sezione')")
+        # La sezione del contatto entra con il collegamento scelto come sorgente.
+        source = page.locator(".o_rs_props .o_rs_path_section input").input_value()
+        expect(source == "partner_shipping_id", f"sorgente con collegamento: {source!r}")
         wait_canvas()
         inserted = canvas.locator("[data-rs-type=section]", has_text="Destinatario").last
         inserted.locator("[data-rs-type=field]").first.click()
         page.wait_for_selector(".o_rs_props_title:text-is('Campo')")
         path = page.locator(".o_rs_props .o_rs_path_field input").input_value()
-        expect(path == "partner_shipping_id.name", f"percorso con collegamento: {path!r}")
+        expect(path == "name", f"campo relativo alla sorgente: {path!r}")
         select_parent()
         delete_selected()
         wait_canvas()
@@ -749,7 +752,7 @@ with sync_playwright() as p:
         wait_canvas()
         expect(canvas.locator("[data-rs-type=section]").count() > before, "blocco custom non inserito")
         delete_selected()
-        return f"gruppo {labels}, collegamento partner_shipping_id, copia della sezione"
+        return f"gruppo {labels}, sorgente partner_shipping_id, copia della sezione"
 
     def back_to_list():
         go_list()
@@ -996,6 +999,58 @@ with sync_playwright() as p:
         expect("o_rs_keep_together" in free, f"campo classi: {free!r}")
         return f"etichetta con sfondo {bg}, bordo {css[0]} {css[1]}, classi {css[2]!r}"
 
+    def section_source_and_layout():
+        """Sezione con sorgente (partner_id), campi del documento, larghezza, altezza, piè di pagina."""
+        canvas.locator("body").click(position={"x": 3, "y": 3})
+        page.wait_for_selector(".o_rs_props :text('Seleziona un blocco')")
+        add_block("section")
+        set_field(".o_rs_props .o_rs_path_section", "partner_id")
+        page.wait_for_selector(".o_rs_props :text('I blocchi interni usano i campi di res.partner')")
+        add_block("field")                     # dentro la sezione: campi del contatto
+        inp = page.locator(".o_rs_props .o_rs_path_field input.o-autocomplete--input")
+        inp.fill("")
+        inp.type("stre", delay=30)
+        page.wait_for_selector(".o-autocomplete--dropdown-menu li")
+        items = page.locator(".o-autocomplete--dropdown-menu li").all_inner_texts()
+        expect(any("(street)" in i for i in items), f"suggerimenti dal contatto: {items}")
+        inp.fill("name")
+        inp.press("Tab")
+        wait_canvas()
+        customer = canvas.locator("[data-rs-type=section]").last.inner_text()
+        # Usa i campi del documento: lo stesso campo "name" diventa il numero d'ordine.
+        page.check(".o_rs_props .o_rs_use_document")
+        wait_canvas()
+        document = canvas.locator("[data-rs-type=section]").last.inner_text()
+        expect(customer != document and "S0" in document, f"cliente {customer!r} / documento {document!r}")
+        # Larghezza 50% a destra, altezza 30 mm, a piè di ogni pagina.
+        select_parent()
+        page.wait_for_selector(".o_rs_props .o_rs_section_width_mode")
+        page.select_option(".o_rs_props .o_rs_section_width_mode", "percent")
+        page.fill(".o_rs_props .o_rs_section_width_value", "50")
+        page.locator(".o_rs_props .o_rs_section_width_value").press("Tab")
+        page.click(".o_rs_props .o_rs_section_halign[data-halign=right]")
+        page.fill(".o_rs_props .o_rs_section_height", "30")
+        page.locator(".o_rs_props .o_rs_section_height").press("Tab")
+        page.select_option(".o_rs_props .o_rs_section_valign", "middle")
+        page.select_option(".o_rs_props .o_rs_section_position", "footer")
+        wait_canvas()
+        box = canvas.locator("[data-rs-type=section]").last.locator(".o_rs_page_footer").evaluate(
+            "el => { const r = el.getBoundingClientRect(); const p = document.querySelector('.page').getBoundingClientRect();"
+            " return [Math.round(r.width / p.width * 100), Math.round(r.right - p.right), Math.round(r.height)]; }")
+        expect(48 <= box[0] <= 52 and abs(box[1]) <= 2 and box[2] >= 100, f"larghezza %, distanza dal margine destro, altezza px: {box}")
+        marker = canvas.locator(".o_rs_cv_repeat").last.inner_text()
+        expect("piè di ogni pagina" in marker, f"segno di sezione ripetuta: {marker!r}")
+        # PDF vero con la sezione ripetuta.
+        with page.expect_response(lambda r: "/report_studio/preview" in r.url, timeout=90000) as info:
+            page.click(f"{topbar} .o_rs_btn_preview")
+        resp = info.value
+        ok_pdf = resp.status == 200 and "pdf" in resp.headers.get("content-type", "")
+        page.click(".o_dialog button:has-text('Chiudi')")
+        page.wait_for_selector(".o_dialog", state="detached")
+        expect(ok_pdf, f"anteprima PDF: HTTP {resp.status}")
+        delete_selected()
+        return f"campo cliente {customer!r} -> documento {document!r}; riquadro {box}; {marker!r}; PDF ok"
+
     def translations():
         """Menu lingua: traduzione IT di un testo; pagina centrale nella lingua scelta."""
         select = page.locator(f"{topbar} .o_rs_lang_select")
@@ -1055,6 +1110,7 @@ with sync_playwright() as p:
         step(page, "stile_tabella", table_style)
         step(page, "trascina_blocchi", drag_and_drop)
         step(page, "sezione_etichetta_bordi", section_label_borders)
+        step(page, "sezione_sorgente_posizione", section_source_and_layout)
         step(page, "traduzioni", translations)
         step(page, "salva_versione", save_version)
         step(page, "bozza", draft)

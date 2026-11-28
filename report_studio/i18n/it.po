@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0-20261112\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-28 15:39+0000\n"
-"PO-Revision-Date: 2026-11-28 15:39+0000\n"
+"POT-Creation-Date: 2026-11-28 16:26+0000\n"
+"PO-Revision-Date: 2026-11-28 16:26+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: it\n"
@@ -68,6 +68,12 @@ msgid "'divider' must be true or false"
 msgstr "'divider' deve essere vero o falso"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "'use_document' must be true or false"
+msgstr "'use_document' deve essere vero o falso"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "(main)"
@@ -109,6 +115,12 @@ msgstr "Una colonna può stare solo dentro un blocco Colonne"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "A double line needs at least 3 px to show both lines."
 msgstr "Una riga doppia richiede almeno 3 px per mostrare entrambe le linee."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "A section repeated on every page needs a height in mm"
+msgstr "Una sezione ripetuta su ogni pagina richiede un'altezza in mm"
 
 #. module: report_studio
 #. odoo-javascript
@@ -219,6 +231,18 @@ msgstr "Come la tabella"
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "As the table (%s)"
 msgstr "Come la tabella (%s)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "At the bottom of every page"
+msgstr "A piè di ogni pagina"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "At the top of every page"
+msgstr "In testa a ogni pagina"
 
 #. module: report_studio
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
@@ -746,6 +770,12 @@ msgid "Fields of the document (%s)"
 msgstr "Campi del documento (%s)"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Fixed width (mm)"
+msgstr "Larghezza fissa (mm)"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/js/report_studio_app.js:0
 msgid "Font"
@@ -776,6 +806,12 @@ msgstr "QWeb libero"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Free QWeb mode: the template is edited in the center."
 msgstr "Modalità QWeb libero: il template si modifica al centro."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Full width"
+msgstr "Tutta la larghezza"
 
 #. module: report_studio
 #. odoo-javascript
@@ -855,6 +891,12 @@ msgstr "Nel PDF il contenuto successivo inizia su una nuova pagina."
 #: model_terms:ir.actions.act_window,help:report_studio.action_rs_block
 msgid "In the editor select a block and press \"Save as Block\"."
 msgstr "Nell'editor seleziona un blocco e premi \"Salva come blocco\"."
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "In the flow of the page"
+msgstr "Nel flusso della pagina"
 
 #. module: report_studio
 #. odoo-python
@@ -1381,6 +1423,12 @@ msgid "Off: printed in the language of the user printing."
 msgstr "Spenta: si stampa nella lingua di chi stampa."
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "Off: the fields of the source of the section (%s)."
+msgstr "Spento: i campi della sorgente della sezione (%s)."
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Only Report Studio Administrators can edit free QWeb."
@@ -1464,6 +1512,18 @@ msgstr "Interruzione di pagina"
 #: model:ir.model.fields,field_description:report_studio.field_rs_report__paperformat_id
 msgid "Paper Format"
 msgstr "Formato carta"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/models/rs_report.py:0
+msgid "Percent of the page"
+msgstr "Percentuale della pagina"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Position in the page"
+msgstr "Posizione nella pagina"
 
 #. module: report_studio
 #: model_terms:ir.actions.act_window,help:report_studio.action_rs_report_list
@@ -1603,6 +1663,26 @@ msgid "Remove from Print Menu"
 msgstr "Rimuovi dal menu Stampa"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Repeated at the bottom of every page (%s mm)"
+msgstr "Ripetuta a piè di ogni pagina (%s mm)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Repeated at the top of every page (%s mm)"
+msgstr "Ripetuta in testa a ogni pagina (%s mm)"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid ""
+"Repeated on every page of the PDF, together with the company header/footer. "
+"It needs a height in mm: the page margins grow by it."
+msgstr "Ripetuta su ogni pagina del PDF, insieme a intestazione/piè di pagina aziendali. Richiede un'altezza in mm: i margini della pagina crescono di quella misura."
+
+#. module: report_studio
 #: model:ir.model.fields,field_description:report_studio.field_rs_report_version__report_id
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_list
@@ -1610,6 +1690,11 @@ msgstr "Rimuovi dal menu Stampa"
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_view_search
 msgid "Report"
 msgstr "Report"
+
+#. module: report_studio
+#: model:ir.model,name:report_studio.model_ir_actions_report
+msgid "Report Action"
+msgstr "Azione report"
 
 #. module: report_studio
 #. odoo-javascript
@@ -1825,6 +1910,30 @@ msgid "Section"
 msgstr "Sezione"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Section height (mm)"
+msgstr "Altezza della sezione (mm)"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Section position in the page not allowed: %r"
+msgstr "Posizione della sezione nella pagina non ammessa: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Section position not allowed: %r"
+msgstr "Posizione della sezione non ammessa: %r"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Section width"
+msgstr "Larghezza della sezione"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Select a block in the page to edit its properties."
@@ -1873,6 +1982,12 @@ msgid "Size (pt)"
 msgstr "Dimensione (pt)"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Size and position"
+msgstr "Dimensioni e posizione"
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Small text"
@@ -1883,6 +1998,12 @@ msgstr "Testo piccolo"
 #: code:addons/report_studio/models/rs_report.py:0
 msgid "Solid"
 msgstr "Continua"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Source (many2one)"
+msgstr "Sorgente (many2one)"
 
 #. module: report_studio
 #. odoo-javascript
@@ -2032,6 +2153,12 @@ msgid "The blocks added from the left column go into this column."
 msgstr "I blocchi aggiunti dalla colonna di sinistra vanno in questa colonna."
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "The blocks inside use the fields of %s."
+msgstr "I blocchi interni usano i campi di %s."
+
+#. module: report_studio
 #. odoo-python
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The border must be an object"
@@ -2120,6 +2247,12 @@ msgstr "Il report compare nel menu Stampa del suo modello (es. dalla fattura). U
 #: code:addons/report_studio/lib/compiler.py:0
 msgid "The section label must be an object"
 msgstr "L'etichetta della sezione deve essere un oggetto"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "The section source %r must be a many2one field"
+msgstr "La sorgente della sezione %r deve essere un campo many2one"
 
 #. module: report_studio
 #. odoo-python
@@ -2258,6 +2391,12 @@ msgid "Uppercase text"
 msgstr "Testo maiuscolo"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Use the fields of the document"
+msgstr "Usa i campi del documento"
+
+#. module: report_studio
 #: model:ir.model,name:report_studio.model_res_users
 #: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__user
 msgid "User"
@@ -2339,6 +2478,12 @@ msgid "Vertical lines"
 msgstr "Linee verticali"
 
 #. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "Vertical position of the content"
+msgstr "Posizione verticale del contenuto"
+
+#. module: report_studio
 #: model:ir.model.fields.selection,name:report_studio.selection__res_users__report_studio_role__viewer
 msgid "Viewer"
 msgstr "Visualizzatore"
@@ -2368,6 +2513,12 @@ msgid "Width %"
 msgstr "Largh. %"
 
 #. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "Width mode not allowed: %r"
+msgstr "Modo di larghezza non ammesso: %r"
+
+#. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "Work saved without a new version: printing uses the active version"
@@ -2394,6 +2545,7 @@ msgstr "come il contenitore"
 #. module: report_studio
 #. odoo-javascript
 #: code:addons/report_studio/static/src/xml/field_selector.xml:0
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "auto"
 msgstr "auto"
 
@@ -2521,6 +2673,12 @@ msgstr "minore di"
 
 #. module: report_studio
 #. odoo-javascript
+#: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
+msgid "mm"
+msgstr "mm"
+
+#. module: report_studio
+#. odoo-javascript
 #: code:addons/report_studio/static/src/xml/editor_dialogs.xml:0
 msgid "name of the copy"
 msgstr "nome della copia"
@@ -2537,6 +2695,12 @@ msgstr "nessun commento"
 #: code:addons/report_studio/static/src/xml/report_studio_app.xml:0
 msgid "none"
 msgstr "nessuno"
+
+#. module: report_studio
+#. odoo-javascript
+#: code:addons/report_studio/static/src/js/report_studio_app.js:0
+msgid "none: fields of the document"
+msgstr "nessuna: campi del documento"
 
 #. module: report_studio
 #. odoo-javascript
@@ -2567,6 +2731,12 @@ msgstr "stile delle righe"
 #: model_terms:ir.ui.view,arch_db:report_studio.rs_report_print_view_form
 msgid "same as the report name"
 msgstr "come il nome del report"
+
+#. module: report_studio
+#. odoo-python
+#: code:addons/report_studio/lib/compiler.py:0
+msgid "section width"
+msgstr "larghezza della sezione"
 
 #. module: report_studio
 #. odoo-python

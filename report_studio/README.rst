@@ -38,7 +38,13 @@ Available blocks:
 
 Every block can set its font (size, bold, italic, underline), text
 alignment and inner margins where it makes sense. Sections can have a label
-bar and borders; tables have a style popup with header, row (also
+bar and borders, a width in percent or mm with left/center/right position, a
+fixed height with the content aligned top/middle/bottom, and a source (a
+many2one field, e.g. the customer) whose fields the blocks inside use (each
+block can still use the document fields). A section can be repeated at the
+top or at the bottom of every page of the PDF (e.g. the shipping data of a
+delivery note): it joins the company header/footer and the page margins grow
+by its height; tables have a style popup with header, row (also
 alternate) and column backgrounds, border schemes, column borders and row
 heights. Fields are chosen like in Odoo many2one fields: a few suggestions
 and "Search More..." with a searchable list, relations included. Free Python expressions

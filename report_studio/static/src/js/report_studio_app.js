@@ -119,17 +119,34 @@ td.o_rs_cv_column { outline-offset: -2px; }
 .o_rs_cv_grip { cursor: grab; }
 .o_rs_cv_caption { padding: 0 4px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .o_rs_cv_drop { position: absolute; z-index: 998; pointer-events: none; }
+.o_rs_cv_repeat { font: 10px/1.6 sans-serif; color: #017e84; border-bottom: 1px dotted #017e84; margin-bottom: 1px; }
 .o_rs_cv_drop.o_rs_line { height: 3px; background: #017e84; border-radius: 2px; }
 .o_rs_cv_drop.o_rs_box { border: 2px dashed #017e84; background: rgba(1, 126, 132, .08); }
 `;
 
 // Field paths of a block relative to the document model: field and condition
 // paths, table sources (table columns are relative to the source lines).
-function walkRootPaths(block, fn) {
-    if ((block.type === "field" || block.type === "if") && block.path) fn(block, "path");
-    if (block.type === "table" && block.source) fn(block, "source");
-    for (const child of block.children || []) walkRootPaths(child, fn);
+// Blocks inside a section with a source use its fields, unless they set
+// use_document: only the paths relative to the document are visited.
+function walkRootPaths(block, fn, inSource = false) {
+    const root = !inSource || block.use_document;
+    if (root) {
+        if ((block.type === "field" || block.type === "if") && block.path) fn(block, "path");
+        if ((block.type === "table" || block.type === "section") && block.source) fn(block, "source");
+    }
+    const childrenInSource = block.type === "section" && block.source ? true : root ? false : inSource;
+    for (const child of block.children || []) walkRootPaths(child, fn, childrenInSource);
 }
+
+// Section: size, position in the page and source (editor defaults).
+const sectionLayout = (block) => ({
+    source: block.source || "",
+    width: { mode: "full", value: null, ...(block.width || {}) },
+    halign: block.halign || "left",
+    height: block.height || null,
+    valign: block.valign || "top",
+    position: block.position || "flow",
+});
 
 // Copy of a block with every root path prefixed ("name" -> "partner_id.name")
 // or unprefixed (the opposite), for reusable blocks.
@@ -137,7 +154,12 @@ function withPathPrefix(block, prefix, remove = false) {
     const copy = JSON.parse(JSON.stringify(block));
     if (prefix) {
         walkRootPaths(copy, (b, key) => {
-            b[key] = remove ? b[key].slice(prefix.length) : prefix + b[key];
+            if (remove) {
+                // A section whose source is the link itself loses its source.
+                b[key] = b[key] === prefix.slice(0, -1) ? "" : b[key].slice(prefix.length);
+            } else {
+                b[key] = prefix + b[key];
+            }
         });
     }
     return copy;
@@ -168,6 +190,7 @@ function baseBlock(type) {
                 margins: zeroMargins(),
                 title: newSectionTitle(),
                 border: newBorder(),
+                ...sectionLayout({}),
                 children: [],
             };
         case "columns":
@@ -218,6 +241,7 @@ function withUids(block) {
         copy.title = title;
         copy.border = { ...newBorder(), ...(block.border || {}) };
         copy.border.sides = [...(copy.border.sides || [])];
+        Object.assign(copy, sectionLayout(block));
     }
     return ensureEditorKeys(copy);
 }
@@ -297,6 +321,7 @@ function cleanBlock(block) {
         }
     }
     if (!out.align) delete out.align;
+    if (!out.use_document) delete out.use_document;
     if (block.type === "if") out.value = parseLiteral(block.value);
     for (const key of FONT_KEYS[block.type] || []) {
         const font = cleanFont(block[key]);
@@ -313,6 +338,26 @@ function cleanBlock(block) {
         }
         if (title.text?.trim()) out.title = title;
         else delete out.title;
+        if (!block.source) delete out.source;
+        const width = block.width || {};
+        if (width.mode && width.mode !== "full" && Number(width.value) > 0) {
+            out.width = { mode: width.mode, value: Number(width.value) };
+            if (block.halign && block.halign !== "left") out.halign = block.halign;
+            else delete out.halign;
+        } else {
+            delete out.width;
+            delete out.halign;
+        }
+        if (Number(block.height) > 0) {
+            out.height = Number(block.height);
+            if (block.valign && block.valign !== "top") out.valign = block.valign;
+            else delete out.valign;
+        } else {
+            delete out.height;
+            delete out.valign;
+        }
+        if (block.position && block.position !== "flow") out.position = block.position;
+        else delete out.position;
         if (block.border?.sides?.length) {
             out.border = {
                 sides: MARGIN_SIDES.filter((side) => block.border.sides.includes(side)),
@@ -525,6 +570,9 @@ export class ReportStudioApp extends Component {
         this.marginSides = MARGIN_SIDES.map((side) => [side, labels.margins[side]]);
         this.alignments = ALIGNMENTS.map(([key, icon]) => [key, labels.aligns[key], icon]);
         this.separatorStyles = SEPARATOR_STYLES.map((key) => [key, labels.separators[key]]);
+        this.sectionPositions = ["flow", "header", "footer"].map((key) => [key, labels.section_positions[key]]);
+        this.widthModes = ["full", "percent", "mm"].map((key) => [key, labels.width_modes[key]]);
+        this.valigns = ["top", "middle", "bottom"].map((key) => [key, labels.valigns[key]]);
         this.borderStyles = BORDER_STYLES.map((key) => [key, labels.borders[key]]);
         this.borderWidths = BORDER_WIDTHS;
         this.cssPresets = labels.css_classes;
@@ -650,13 +698,87 @@ export class ReportStudioApp extends Component {
     }
 
     // Load the fields of the models linked to tables, to suggest the columns.
-    async loadTableFields(blocks) {
+    // Load the fields of the models reached by table and section sources,
+    // following the context of each block (sections with a source).
+    async loadTableFields(blocks, model = this.state.modelName) {
         for (const block of blocks) {
-            if (block.type === "table") {
-                await this.loadPath(block.source);
+            const base = block.use_document ? this.state.modelName : model;
+            if (block.type === "table" || block.type === "section") {
+                await this.loadPath(block.source, base);
             }
-            if (block.children) await this.loadTableFields(block.children);
+            if (block.children) {
+                const inner = block.type === "section" && block.source ? this.relationOf(block.source, base) : base;
+                await this.loadTableFields(block.children, inner || base);
+            }
         }
+    }
+
+    // Model the paths of a block are relative to: the document model, or the
+    // model of the closest section with a source ("use_document" resets it).
+    contextModel(uid) {
+        const path = this.pathOfUid(uid);
+        let model = this.state.modelName;
+        if (path === null) return model;
+        let list = this.state.definition.children;
+        const indexes = path.split(".").map(Number);
+        for (let i = 0; i < indexes.length; i++) {
+            const node = list[indexes[i]];
+            if (node.use_document) model = this.state.modelName;
+            if (i === indexes.length - 1) break;
+            if (node.type === "section" && node.source) {
+                model = this.relationOf(node.source, model) || model;
+            }
+            list = node.children;
+        }
+        return model;
+    }
+
+    // Is the block inside a section with a source (so it can opt out)?
+    inSourcedSection(uid) {
+        const path = this.pathOfUid(uid);
+        if (!path) return false;
+        let list = this.state.definition.children;
+        let sourced = false;
+        const indexes = path.split(".").map(Number);
+        for (let i = 0; i < indexes.length - 1; i++) {
+            const node = list[indexes[i]];
+            if (node.use_document) sourced = false;
+            if (node.type === "section" && node.source) sourced = true;
+            list = node.children;
+        }
+        return sourced;
+    }
+
+    isMany2one(field) {
+        return field.type === "many2one";
+    }
+
+    async onSectionSource(block, value) {
+        block.source = value;
+        this.markDirty();
+        await this.loadPath(value, this.contextModel(block._uid));
+        // Reload the fields used by the blocks inside, on the new model.
+        await this.loadTableFields(this.state.definition.children);
+    }
+
+    onUseDocument(block, ev) {
+        block.use_document = ev.target.checked;
+        this.markDirty();
+    }
+
+    onSectionWidth(block, key, ev) {
+        block.width[key] = key === "value" ? Number(ev.target.value) || null : ev.target.value;
+        if (key === "mode" && block.width.mode !== "full" && !block.width.value) {
+            block.width.value = block.width.mode === "percent" ? 50 : 80;
+        }
+        this.markDirty();
+    }
+
+    onSectionNumber(block, key, ev) {
+        const value = Number(ev.target.value);
+        block[key] = value > 0 ? Math.min(value, 400) : null;
+        ev.target.value = block[key] || "";
+        this.markDirty();
     }
 
     async loadCustomBlocks() {
@@ -1037,8 +1159,8 @@ export class ReportStudioApp extends Component {
 
     // Model reached by a dotted path from the report model, from the cached
     // fields ("" when unknown or not loaded yet).
-    relationOf(path) {
-        let model = this.state.modelName;
+    relationOf(path, base = this.state.modelName) {
+        let model = base;
         for (const part of (path || "").split(".").filter(Boolean)) {
             const field = (this.state.fieldCache[model] || []).find((f) => f.name === part);
             if (!field?.relation) return "";
@@ -1048,8 +1170,8 @@ export class ReportStudioApp extends Component {
     }
 
     // Load the fields of every model along a path (for the column suggestions).
-    async loadPath(path) {
-        let model = this.state.modelName;
+    async loadPath(path, base = this.state.modelName) {
+        let model = base;
         for (const part of (path || "").split(".").filter(Boolean)) {
             const field = (await this.fetchFields(model).catch(() => [])).find((f) => f.name === part);
             if (!field?.relation) return;
@@ -1127,7 +1249,13 @@ export class ReportStudioApp extends Component {
             if (!link) return null;
             prefix = `${link.name}.`;
         }
-        const block = withUids(withPathPrefix(custom.definition, prefix));
+        // A section without source becomes a section on the link (its fields
+        // stay relative to it); any other block gets the prefix on its paths.
+        const definition = custom.definition;
+        const asSource = prefix && definition.type === "section" && !definition.source;
+        const block = withUids(
+            asSource ? { ...definition, source: prefix.slice(0, -1) } : withPathPrefix(definition, prefix)
+        );
         const sources = [];
         walkRootPaths(block, (b, key) => key === "source" && sources.push(b.source));
         for (const source of sources) await this.loadPath(source);
@@ -1145,8 +1273,8 @@ export class ReportStudioApp extends Component {
         const models = [
             { model: this.state.modelName, prefix: "", label: _t("Fields of the document (%s)", this.state.modelName) },
         ];
-        const first = paths.length && paths.every((p) => p.includes(".")) ? paths[0].split(".")[0] : "";
-        const link = first && paths.every((p) => p.startsWith(first + "."))
+        const first = paths.length ? paths[0].split(".")[0] : "";
+        const link = first && paths.every((p) => p === first || p.startsWith(first + "."))
             ? this.state.fields.find((f) => f.name === first && f.type === "many2one")
             : null;
         if (link) {
@@ -1185,7 +1313,7 @@ export class ReportStudioApp extends Component {
     async onTableSource(block, value) {
         block.source = value;
         this.markDirty();
-        await this.loadPath(value);
+        await this.loadPath(value, this.contextModel(block._uid));
     }
 
     // Popup with backgrounds, borders and row heights of the table.
@@ -1420,6 +1548,20 @@ export class ReportStudioApp extends Component {
 
     get sourceFirstPlaceholder() {
         return _t("choose the source first");
+    }
+
+    useDocumentHint(block) {
+        const model = this.contextModel(block._uid);
+        return _t("Off: the fields of the source of the section (%s).", model);
+    }
+
+    sectionSourceHint(block) {
+        const model = this.relationOf(block.source, this.contextModel(block._uid)) || block.source;
+        return _t("The blocks inside use the fields of %s.", model);
+    }
+
+    get sectionSourcePlaceholder() {
+        return _t("none: fields of the document");
     }
 
     get columnFieldPlaceholder() {
